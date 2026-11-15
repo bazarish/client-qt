@@ -56,6 +56,7 @@ public:
     QString activeFacade() const { return activeFacade_; }
     bool hasServer() const { return hasServer_; }
     client::Session::CallState callState() const { return call_.state; }
+    bool callEnding() const { return callEnding_; }
     QString callPeer() const { return call_.peer; }
     QString callPeerName() const { return contacts_.peerName(call_.peer); }
     int unreadTotal() const { return unread_; }
@@ -182,6 +183,7 @@ private:
     void acceptCall();
     void declineCall();
     void endCall();
+    void onCallEndFailed(bool declining, const QString& reason);
     void onConnectRequested();
     void onConnectProgress(int percent, const QString& phase);
     void onSyncProgress(bool syncing, bool shown, qint64 takenBytes, qint64 totalBytes);
@@ -283,9 +285,9 @@ private:
     int connectPercent_ = 0;
     QHash<qint64, QString> pendingSavePath_;
     QHash<QString, QString> transferStages_;
-    QString refusedCallId_;
     QString callOpId_;
     bool callEndedLocally_ = false;
+    bool callEnding_ = false;
     CallTones callTones_;
     struct QueuedCommand {
         QString id;

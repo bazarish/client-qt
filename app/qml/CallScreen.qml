@@ -12,6 +12,10 @@ Popup {
     property string pending: ""
     property bool leaving: false
     onCallStateChanged: root.pending = ""
+    Connections {
+        target: root.session
+        function onCallEndFailed() { root.pending = "" }
+    }
     signal minimizeRequested()
 
     readonly property bool connected: session && session.callConnectedAtMs > 0

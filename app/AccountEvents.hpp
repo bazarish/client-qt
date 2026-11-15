@@ -136,6 +136,7 @@ signals:
     void actionOk(const QString& info);
     void botKeySettled(const QString& messageId, bool delivered);
     void actionFailed(const QString& error);
+    void callEndFailed();
     void contactAccepted(const QString& peer, bool ok, const QString& reason);
     void inviteState(const QString& uri, const QString& problem);
     void loginSigned(const QString& blob);

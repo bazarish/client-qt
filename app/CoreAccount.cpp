@@ -359,6 +359,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         &AccountEvents::storageUsageReady);
     connect(worker_, &SessionWorker::callStateChanged, this, &CoreAccount::onCallStateChanged);
     connect(worker_, &SessionWorker::callLogged, this, &CoreAccount::onCallLogged);
+    connect(worker_, &SessionWorker::callEndFailed, this, &CoreAccount::onCallEndFailed);
     connect(worker_, &SessionWorker::commandFinished, this, &CoreAccount::onCommandFinished);
     connect(worker_, &SessionWorker::loginSignerReady, this,
         [this](std::shared_ptr<bazarish::client::LoginSigner> signer) {

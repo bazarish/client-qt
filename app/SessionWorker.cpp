@@ -1178,7 +1178,7 @@ void SessionWorker::declineCall(const QString& callId)
     try {
         session_->declineCall(callId.toStdString());
     } catch (const std::exception& error) {
-        bazarish::log::warn("decline failed: {}", error.what());
+        emit callEndFailed(true, QString::fromUtf8(error.what()));
     }
     emitCallState();
     flushCallLog();
@@ -1187,12 +1187,13 @@ void SessionWorker::declineCall(const QString& callId)
 void SessionWorker::endCall()
 {
     if (!session_) {
+        emit callEndFailed(true, tr("No account is open"));
         return;
     }
     try {
         session_->endCall();
     } catch (const std::exception& error) {
-        bazarish::log::warn("hang-up failed: {}", error.what());
+        emit callEndFailed(false, QString::fromUtf8(error.what()));
     }
     emitCallState();
     flushCallLog();
@@ -1210,6 +1211,7 @@ void SessionWorker::setCallMuted(const bool muted)
 void SessionWorker::watchUnsent(const QVariantList& rows)
 {
     if (!session_) {
+        emit callEndFailed(false, tr("No account is open"));
         return;
     }
     for (const QVariant& held : rows) {

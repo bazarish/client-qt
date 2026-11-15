@@ -236,6 +236,7 @@ signals:
         const QString& stage, bool peerRinging, qint64 connectedAtMs, float inputLevel,
         float outputLevel);
     void callLogged(const QString& peer, bool incoming, int outcome);
+    void callEndFailed(bool declining, const QString& reason);
 
 private:
     QString beginOp(const QString& title, const QString& status);

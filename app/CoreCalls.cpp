@@ -25,11 +25,8 @@ void CoreAccount::onCallStateChanged(const int state, const QString& peer, const
     const float inputLevel, const float outputLevel)
 {
     const CallState name = callStateOf(state);
-    if (!refusedCallId_.isEmpty() && callId == refusedCallId_ && name != CallState::eIdle) {
-        return;
-    }
-    if (!callId.isEmpty() && callId != refusedCallId_) {
-        refusedCallId_.clear();
+    if (callEnding_ && (name == CallState::eIdle || callId != call_.id)) {
+        callEnding_ = false;
     }
     emit events_.callStateChanged(
         state, peer, callId, muted, stage, connectedAtMs, inputLevel, outputLevel);
@@ -102,19 +99,36 @@ void CoreAccount::acceptCall()
 
 void CoreAccount::declineCall()
 {
+    if (callEnding_) {
+        return;
+    }
     callEndedLocally_ = true;
+    callEnding_ = true;
     callTones_.stop();
-    refusedCallId_ = call_.id;
-    const QString callId = call_.id;
-    onCallStateChanged(0, QString(), QString(), false, QString(), false, 0, 0.0F, 0.0F);
-    emit commands_.requestDeclineCall(callId);
+    emit callChanged();
+    emit commands_.requestDeclineCall(call_.id);
 }
 
 void CoreAccount::endCall()
 {
+    if (callEnding_) {
+        return;
+    }
     callEndedLocally_ = true;
+    callEnding_ = true;
     callTones_.stop();
+    emit callChanged();
     emit commands_.requestEndCall();
+}
+
+void CoreAccount::onCallEndFailed(const bool declining, const QString& reason)
+{
+    callEndedLocally_ = false;
+    callEnding_ = false;
+    emit callChanged();
+    emit events_.callEndFailed();
+    emit events_.actionFailed(declining ? tr("The call was not declined: %1").arg(reason)
+                                        : tr("The call was not ended: %1").arg(reason));
 }
 
 }  // namespace bazarish::app

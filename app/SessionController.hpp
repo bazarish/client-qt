@@ -507,6 +507,7 @@ signals:
     void storageChanged();
     void deviceStorageChanged();
     void callChanged();
+    void callEndFailed();
     void callLevelsChanged();
     void openFailed(const QString& error);
     void historyOpened();

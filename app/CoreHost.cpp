@@ -363,7 +363,8 @@ void CoreHost::updateRinging()
     const CoreAccount* ringing = nullptr;
     if (notifications_) {
         for (const CoreAccount* const account : sessions_) {
-            if (account->callState() == client::Session::CallState::eIncoming) {
+            if (account->callState() == client::Session::CallState::eIncoming
+                && !account->callEnding()) {
                 ringing = account;
                 break;
             }

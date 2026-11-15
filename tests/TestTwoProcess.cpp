@@ -1,4 +1,6 @@
 // Bazarish project (c) 2026
+#include "AccountCommands.hpp"
+#include "AccountEvents.hpp"
 #include "AppCommands.hpp"
 #include "AppEvents.hpp"
 #include "CoreSocket.hpp"
@@ -37,6 +39,7 @@ constexpr int kCoreStartMs = 30000;
 constexpr int kSettleMs = 10000;
 constexpr const char* kLockedName = "locked";
 constexpr const char* kLockedPassphrase = "correct horse";
+constexpr const char* kNotDeclined = "The call was not declined";
 
 bool settleUntil(const std::function<bool()>& done, const int limitMs = kSettleMs)
 {
@@ -161,6 +164,20 @@ int main(int argc, char** argv)
 
         emit second.commands.openAccount(id, QLatin1String(kLockedPassphrase));
         CHECK(settleUntil([&]() { return open; }));
+
+        AccountCommands accountCommands;
+        AccountEvents accountEvents;
+        second.relay.sendFrom(id, accountCommands);
+        second.relay.deliverTo(id, accountEvents);
+        int endFailures = 0;
+        QStringList failures;
+        QObject::connect(&accountEvents, &AccountEvents::callEndFailed, [&]() { ++endFailures; });
+        QObject::connect(&accountEvents, &AccountEvents::actionFailed,
+            [&](const QString& reason) { failures << reason; });
+        emit accountCommands.declineCall();
+        CHECK(settleUntil([&]() { return endFailures == 1 && !failures.isEmpty(); }));
+        CHECK(failures.front().startsWith(QLatin1String(kNotDeclined)));
+        second.relay.forget(id);
     }
 
     Window third;

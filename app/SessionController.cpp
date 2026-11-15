@@ -390,6 +390,7 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
         &SessionController::onStorageUsageReady);
     connect(&events_, &AccountEvents::callStateChanged, this,
         &SessionController::onCallStateChanged);
+    connect(&events_, &AccountEvents::callEndFailed, this, &SessionController::callEndFailed);
 
     connect(&contacts_, &QAbstractItemModel::dataChanged, this,
         &SessionController::refreshUnreadTotal);
