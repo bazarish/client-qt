@@ -12,6 +12,7 @@ Item {
     property string pairLink: ""
 
     property string pendingBackupFile: ""
+    readonly property bool passphraseReserved: passField.text === App.reservedPassphrase
 
     IconButton {
         iconName: "back"
@@ -69,6 +70,14 @@ Item {
         FormField { id: confirmField; label: qsTr("Confirm passphrase"); echoMode: TextInput.Password }
 
         Label {
+            text: qsTr("This passphrase cannot be used")
+            color: Theme.warn
+            visible: root.passphraseReserved
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
+        }
+
+        Label {
             id: errorLabel
             color: Theme.danger
             visible: text.length > 0
@@ -82,7 +91,7 @@ Item {
             Layout.fillWidth: true
             text: qsTr("Create")
             hoverEnabled: true
-            enabled: nameField.displayText.trim().length > 0
+            enabled: nameField.displayText.trim().length > 0 && !root.passphraseReserved
             onClicked: {
                 if (passField.text !== confirmField.text) {
                     errorLabel.text = qsTr("Passphrases do not match")
@@ -103,6 +112,7 @@ Item {
             Layout.fillWidth: true
             text: qsTr("Restore from backup")
             hoverEnabled: true
+            enabled: !root.passphraseReserved
             onClicked: {
                 if (passField.text !== confirmField.text) {
                     errorLabel.text = qsTr("Passphrases do not match")
@@ -120,6 +130,7 @@ Item {
             Layout.fillWidth: true
             text: qsTr("Connect this device online")
             hoverEnabled: true
+            enabled: !root.passphraseReserved
             onClicked: {
                 if (passField.text !== confirmField.text) {
                     errorLabel.text = qsTr("Passphrases do not match")

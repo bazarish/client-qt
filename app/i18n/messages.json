@@ -2303,6 +2303,12 @@
       "zh": "密码（可选，用于加密磁盘上的密钥）",
       "ar": "كلمة سر (اختيارية، تشفّر المفاتيح على القرص)"
     },
+    "This passphrase cannot be used": {
+      "ru": "Этот пароль использовать нельзя",
+      "es": "Esta contraseña no se puede usar",
+      "zh": "不能使用此密码",
+      "ar": "لا يمكن استخدام كلمة المرور هذه"
+    },
     "Passphrases do not match": {
       "ru": "Пароли не совпадают",
       "es": "Las contraseñas no coinciden",

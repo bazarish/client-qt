@@ -6,6 +6,8 @@
 #include "Models.hpp"
 #include "SessionController.hpp"
 
+#include "AccountKey.hpp"
+
 #include <bazarish/Address.hpp>
 #include <bazarish/Limits.hpp>
 #include <bazarish/Reactions.hpp>
@@ -47,6 +49,7 @@ class AppController : public QObject {
     Q_PROPERTY(int unreadElsewhere READ unreadElsewhere NOTIFY accountsChanged)
     Q_PROPERTY(int maxGreetingBytes READ maxGreetingBytes CONSTANT)
     Q_PROPERTY(int maxAccountNameBytes READ maxAccountNameBytes CONSTANT)
+    Q_PROPERTY(QString reservedPassphrase READ reservedPassphrase CONSTANT)
     Q_PROPERTY(QString aliasSigil READ aliasSigil CONSTANT)
     Q_PROPERTY(int aliasWordMaxLength READ aliasWordMaxLength CONSTANT)
     Q_PROPERTY(int maxReactionChars READ maxReactionChars CONSTANT)
@@ -82,6 +85,10 @@ public:
     int unreadElsewhere() const;
     static int maxGreetingBytes() { return static_cast<int>(bazarish::kMaxContactGreetingBytes); }
     static int maxAccountNameBytes() { return static_cast<int>(bazarish::kMaxAccountNameBytes); }
+    static QString reservedPassphrase()
+    {
+        return QString::fromUtf8(bazarish::client::accountkey::kOpenSecret);
+    }
     static QString aliasSigil() { return QString(QChar(bazarish::kAliasSigil)); }
     static int aliasWordMaxLength() { return static_cast<int>(bazarish::kAliasWordMaxLength); }
     static int maxReactionChars() { return static_cast<int>(bazarish::kMaxReactionChars); }

@@ -1055,9 +1055,11 @@ Popup {
         header: Label { text: qsTr("Database password"); color: Theme.green
             font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         readonly property bool matched: newPass.text === newPassAgain.text
+        readonly property bool reserved: newPass.text === App.reservedPassphrase
+        readonly property bool choosable: matched && !reserved
         onAccepted: root.session.changePassphrase(newPass.text)
         footer: DialogButtons {
-            acceptEnabled: passwordDialog.matched
+            acceptEnabled: passwordDialog.choosable
             onAccepted: passwordDialog.accept()
             onRejected: passwordDialog.reject()
         }
@@ -1076,15 +1078,17 @@ Popup {
                 placeholderText: qsTr("repeat it")
                 color: Theme.text; placeholderTextColor: Theme.textDim
                 Layout.fillWidth: true; implicitWidth: 260
-                onAccepted: if (passwordDialog.matched) { passwordDialog.accept() }
+                onAccepted: if (passwordDialog.choosable) { passwordDialog.accept() }
             }
             Label {
-                text: passwordDialog.matched
+                text: passwordDialog.reserved
+                    ? qsTr("This passphrase cannot be used")
+                    : passwordDialog.matched
                     ? (newPass.displayText.length === 0
                         ? qsTr("Empty: this account will be kept unencrypted")
                         : qsTr("Asked for whenever this account is opened"))
                     : qsTr("The two do not match")
-                color: passwordDialog.matched ? Theme.textDim : Theme.warn
+                color: passwordDialog.choosable ? Theme.textDim : Theme.warn
                 font.pixelSize: Theme.fontSmall
                 wrapMode: Text.Wrap; Layout.fillWidth: true
             }
