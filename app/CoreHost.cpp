@@ -896,12 +896,12 @@ void CoreHost::submitPairCode(const QString& code)
                 wrongCode = true;
                 triesLeft = got.triesLeft;
             } else {
-                const bazarish::Bytes bundle = client::openPairBundle(key.bytes(), got.bundle);
-                if (const bazarish::AccountKind kind = client::Session::bundleKindOf(bundle);
+                const bazarish::SecretBytes bundle = client::openPairBundle(key.bytes(), got.bundle);
+                if (const bazarish::AccountKind kind = client::Session::bundleKindOf(bundle.bytes());
                     kind != bazarish::AccountKind::eUser) {
                     refusedKind = QString::fromUtf8(bazarish::accountKindName(kind));
                 } else {
-                    id = manager_->importBundle(std::string{}, bundle, atRest.toStdString()).id;
+                    id = manager_->importBundle(std::string{}, bundle.bytes(), atRest.toStdString()).id;
                 }
             }
         } catch (const std::exception& error) {
