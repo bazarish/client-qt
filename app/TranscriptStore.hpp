@@ -100,7 +100,7 @@ public:
 
     void close();
     bool isOpen() const { return core_->isOpen(); }
-    bool open(const QString& dbPath, const Bytes& key);
+    bool open(const QString& dbPath, const SecretBytes& key);
 
     QByteArray media(const QString& key) const;
     qint64 idForKey(const QString& peer, const QString& e2eId, bool outgoing) const;

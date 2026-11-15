@@ -235,10 +235,10 @@ int main(int argc, char** argv)
     CHECK(saw({}));
     CHECK(store.chatTimer(kClub) == client::kChatTimerOff);
 
-    const Bytes key = client::accountkey::keyFor(db.toStdString(), {});
+    const SecretBytes key = client::accountkey::keyFor(db.toStdString(), {});
     sqlite3* writer = nullptr;
     CHECK(sqlite3_open(db.toUtf8().constData(), &writer) == SQLITE_OK);
-    const std::string keying = "PRAGMA key = \"x'" + toHex(key) + "'\"";
+    const std::string keying = "PRAGMA key = \"x'" + toHex(key.bytes()) + "'\"";
     CHECK(sqlite3_exec(writer, keying.c_str(), nullptr, nullptr, nullptr) == SQLITE_OK);
     CHECK(sqlite3_exec(writer, "BEGIN EXCLUSIVE", nullptr, nullptr, nullptr) == SQLITE_OK);
     CHECK(!took(incoming(kBob, "text", "m9", "while the file is held")));

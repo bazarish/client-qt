@@ -726,8 +726,8 @@ void CoreAccount::open(const QString& file, const QString& passphrase, const boo
     unread_ = store_.unreadTotal();
     sweepExpired();
     expiryTimer_.start();
-    const Bytes key = client::accountkey::keyFor(toPath(file), passphrase.toStdString());
-    emit events_.transcriptOpened(file, toQByteArray(key));
+    const SecretBytes key = client::accountkey::keyFor(toPath(file), passphrase.toStdString());
+    emit events_.transcriptOpened(file, toQByteArray(key.bytes()));
     const QJsonDocument flashes = QJsonDocument::fromJson(
         QByteArray::fromStdString(accountDb().text("reactions-to-flash")));
     for (const QJsonValue& entry : flashes.array()) {

@@ -291,7 +291,7 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
         &SessionController::contactRetryExhausted);
     connect(&events_, &AccountEvents::transcriptOpened, this,
         [this](const QString& path, const QByteArray& key) {
-            if (!store_.open(path, Bytes(key.begin(), key.end()))) {
+            if (!store_.open(path, SecretBytes(Bytes(key.begin(), key.end())))) {
                 emit openFailed(tr("This profile could not be opened"));
                 return;
             }

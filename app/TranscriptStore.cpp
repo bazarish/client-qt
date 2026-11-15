@@ -119,7 +119,7 @@ void TranscriptReader::close()
     core_->close();
 }
 
-bool TranscriptReader::open(const QString& dbPath, const Bytes& key)
+bool TranscriptReader::open(const QString& dbPath, const SecretBytes& key)
 {
     return core_->open(toPath(dbPath), key);
 }

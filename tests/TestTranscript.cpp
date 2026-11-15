@@ -711,14 +711,14 @@ int main(int argc, char** argv)
         CHECK(store.append(first) > 0);
         CHECK(fs::exists(shared.toStdString() + "-wal"));
 
-        const Bytes key = client::accountkey::keyFor(shared.toStdString(), "pw");
+        const SecretBytes key = client::accountkey::keyFor(shared.toStdString(), "pw");
         TranscriptReader reader;
         CHECK(reader.open(shared, key));
         CHECK(reader.latestMessages("gus", 10).size() == 1);
 
         sqlite3* writer = nullptr;
         CHECK(sqlite3_open(shared.toUtf8().constData(), &writer) == SQLITE_OK);
-        const std::string keying = "PRAGMA key = \"x'" + toHex(key) + "'\"";
+        const std::string keying = "PRAGMA key = \"x'" + toHex(key.bytes()) + "'\"";
         CHECK(sqlite3_exec(writer, keying.c_str(), nullptr, nullptr, nullptr) == SQLITE_OK);
         CHECK(sqlite3_exec(writer, "BEGIN EXCLUSIVE", nullptr, nullptr, nullptr) == SQLITE_OK);
         StoredMessage second = first;
