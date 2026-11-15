@@ -11,6 +11,8 @@
 #include "CoreSocket.hpp"
 #include "Wire.hpp"
 
+#include <bazarish/SecretBytes.hpp>
+
 #include <QList>
 #include <QLocalServer>
 #include <QObject>
@@ -169,7 +171,7 @@ private:
     bool pairNeedsCode_ = false;
     bool pairing_ = false;
     QString pairDest_;
-    bazarish::Bytes pairKey_;
+    bazarish::SecretBytes pairKey_;
     QString pairAtRest_;
     std::shared_ptr<std::atomic<bool>> pairCancel_;
     std::shared_ptr<bazarish::i2p::Endpoint> pairEndpoint_;

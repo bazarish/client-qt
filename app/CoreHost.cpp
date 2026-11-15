@@ -865,7 +865,7 @@ void CoreHost::submitPairCode(const QString& code)
     const std::shared_ptr<bazarish::i2p::Endpoint> endpoint = pairEndpoint_;
     const std::shared_ptr<std::atomic<bool>> cancel = pairCancel_;
     const std::string dest = pairDest_.toStdString();
-    const bazarish::Bytes key = pairKey_;
+    const bazarish::SecretBytes key = pairKey_;
     const std::string want = code.toStdString();
     const QString atRest = pairAtRest_;
     inBackground([this, endpoint, cancel, dest, key, want, atRest]() {
@@ -891,12 +891,12 @@ void CoreHost::submitPairCode(const QString& code)
                           Qt::QueuedConnection);
                   };
             const client::PairFetchResult got
-                = client::fetchPairBundle(*endpoint, dest, want, key, onProgress, *cancel);
+                = client::fetchPairBundle(*endpoint, dest, want, key.bytes(), onProgress, *cancel);
             if (got.wrongCode) {
                 wrongCode = true;
                 triesLeft = got.triesLeft;
             } else {
-                const bazarish::Bytes bundle = client::openPairBundle(key, got.bundle);
+                const bazarish::Bytes bundle = client::openPairBundle(key.bytes(), got.bundle);
                 if (const bazarish::AccountKind kind = client::Session::bundleKindOf(bundle);
                     kind != bazarish::AccountKind::eUser) {
                     refusedKind = QString::fromUtf8(bazarish::accountKindName(kind));
