@@ -272,6 +272,7 @@ private:
     SessionController* sessionFor(const QString& id) const;
     void startSession(const QString& id);
     void endSession(const QString& id);
+    void changePassphrase(const QString& id, const QString& passphrase);
     void applyPendingLink();
 
     AppCommands commands_;

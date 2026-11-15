@@ -134,7 +134,6 @@ signals:
     void requestExport(const QString& path, const QString& password, bool primary);
     void requestStartPairing(bool primary);
     void requestStopPairing();
-    void requestChangePassphrase(const QString& passphrase);
     void requestActivateAliasServicing();
     void requestSetSync(bool on);
     void requestRebuildI2p();

@@ -25,6 +25,7 @@ signals:
     void deleteAccountAfterUnlock(const QString& id);
     void forgetAccountLocally(const QString& id);
     void lockAccount(const QString& id);
+    void changePassphrase(const QString& id, const QString& passphrase);
     void cancelUnlock();
     void setNotificationsEnabled(bool on);
     void setNotificationText(bool on);

@@ -1438,7 +1438,7 @@ QVariantMap SessionController::describeLoginChallenge(const QString& challenge) 
 
 void SessionController::changePassphrase(const QString& passphrase)
 {
-    emit commands_.requestChangePassphrase(passphrase);
+    emit passphraseChangeAsked(passphrase);
 }
 
 void SessionController::startPairing(const bool primary)

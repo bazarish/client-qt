@@ -122,7 +122,6 @@ public slots:
     void exportAccount(const QString& path, const QString& password, bool primary);
     void startPairing(bool primary);
     void stopPairing();
-    void changePassphrase(const QString& passphrase);
     void activateAliasServicing();
     void generatePersonalKey();
     void loadPersonalKey(const QString& path);

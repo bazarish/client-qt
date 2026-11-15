@@ -508,6 +508,7 @@ signals:
     void openFailed(const QString& error);
     void historyOpened();
     void actionOk(const QString& info);
+    void passphraseChangeAsked(const QString& passphrase);
     void botKeySettled(const QString& messageId, bool delivered);
     void actionFailed(const QString& error);
     void microphoneRefused();

@@ -2479,17 +2479,6 @@ void SessionWorker::drainAliasErrands()
     }
 }
 
-void SessionWorker::changePassphrase(const QString& passphrase)
-{
-    try {
-        openSession().changePassphrase(passphrase.toStdString());
-        emit actionOk(passphrase.isEmpty() ? tr("This account is no longer password-protected")
-                                           : tr("Password changed"));
-    } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
-}
-
 bazarish::client::Session& SessionWorker::openSession()
 {
     if (!session_) {

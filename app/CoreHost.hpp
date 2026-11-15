@@ -116,6 +116,9 @@ private:
     void deleteAccountAfterUnlock(const QString& id);
     void forgetAccountLocally(const QString& id);
     void lockAccount(const QString& id);
+    void changePassphrase(const QString& id, const QString& passphrase);
+    void reopenAfterPassphrase(const QString& id, const QString& passphrase, bool makeActive,
+        bool startOnline, const QString& note, bool changed);
     void cancelUnlock();
     void setDeleting(const QString& id);
     void setPortable(bool on);

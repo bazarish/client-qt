@@ -77,7 +77,6 @@ const char* commandTitle(const QByteArray& signalName)
         {"requestClearConnectionLog", QT_TR_NOOP("Clearing the connection log")},
         {"requestStartPairing", QT_TR_NOOP("Preparing a link for a new device")},
         {"requestStopPairing", QT_TR_NOOP("Closing the link for a new device")},
-        {"requestChangePassphrase", QT_TR_NOOP("Changing the database password")},
         {"requestCancelTransfer", QT_TR_NOOP("Cancelling a file transfer")},
         {"requestRetryRoutingTo", QT_TR_NOOP("Sending your address to a contact")},
         {"requestSetAcceptCalls", QT_TR_NOOP("Changing incoming calls")},
@@ -218,8 +217,6 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&commands_, &AccountCommands::requestStartPairing, worker_,
         &SessionWorker::startPairing);
     connect(&commands_, &AccountCommands::requestStopPairing, worker_, &SessionWorker::stopPairing);
-    connect(&commands_, &AccountCommands::requestChangePassphrase, worker_,
-        &SessionWorker::changePassphrase);
     connect(&commands_, &AccountCommands::requestActivateAliasServicing, worker_,
         &SessionWorker::activateAliasServicing);
     connect(&commands_, &AccountCommands::requestSetSync, worker_, &SessionWorker::setSyncEnabled);
@@ -287,8 +284,6 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         &CoreAccount::forgetReactionFlash);
     connect(&commands_, &AccountCommands::requestSetSendReceipts, this,
         [this](const bool on) { sendReceipts_ = on; });
-    connect(&commands_, &AccountCommands::requestChangePassphrase, this,
-        [this](const QString& passphrase) { passphrase_ = passphrase; });
 
     connect(worker_, &SessionWorker::connectProgress, &events_, &AccountEvents::connectProgress);
     connect(worker_, &SessionWorker::addressMismatch, &events_, &AccountEvents::addressMismatch);

@@ -43,6 +43,7 @@ namespace {
 
 const QString kAppScope = QStringLiteral("app");
 const QString kRestoreOperation = QStringLiteral("restore");
+const QString kPassphraseOperation = QStringLiteral("passphrase");
 constexpr qsizetype kNotificationTextChars = 200;
 
 QString shortened(const QString& text)
@@ -142,6 +143,7 @@ CoreHost::CoreHost(QObject* const parent)
     connect(&commands_, &AppCommands::forgetAccountLocally, this,
         &CoreHost::forgetAccountLocally);
     connect(&commands_, &AppCommands::lockAccount, this, &CoreHost::lockAccount);
+    connect(&commands_, &AppCommands::changePassphrase, this, &CoreHost::changePassphrase);
     connect(&commands_, &AppCommands::cancelUnlock, this, &CoreHost::cancelUnlock);
     connect(&commands_, &AppCommands::setNotificationsEnabled, this,
         &CoreHost::setNotificationsEnabled);
@@ -1069,6 +1071,67 @@ void CoreHost::lockAccount(const QString& id)
     if (CoreAccount* const account = sessionFor(id)) {
         removeSession(account);
     }
+}
+
+void CoreHost::changePassphrase(const QString& id, const QString& passphrase)
+{
+    CoreAccount* const account = sessionFor(id);
+    if (account == nullptr) {
+        return;
+    }
+    const QString oldPassphrase = account->passphrase();
+    const bool makeActive = activeId_ == id;
+    const bool startOnline = !offline_.contains(id);
+    const QString file = pathText(manager_->fileFor(id.toStdString()));
+    log_.begin(kPassphraseOperation, QStringLiteral("account"),
+        tr("Changing the database password"), tr("Waiting for this account…"));
+    connect(account, &QObject::destroyed, this,
+        [this, id, file, oldPassphrase, passphrase, makeActive, startOnline]() {
+            inBackground([this, id, file, oldPassphrase, passphrase, makeActive, startOnline]() {
+                QString failure;
+                try {
+                    client::Session::changePassphrase(
+                        toPath(file), oldPassphrase.toStdString(), passphrase.toStdString());
+                } catch (const std::exception& error) {
+                    failure = QString::fromUtf8(error.what());
+                }
+                QMetaObject::invokeMethod(
+                    this,
+                    [this, id, oldPassphrase, passphrase, makeActive, startOnline, failure]() {
+                        const bool changed = failure.isEmpty();
+                        const QString note = !changed ? failure
+                            : passphrase.isEmpty()
+                            ? tr("This account is no longer password-protected")
+                            : tr("Password changed");
+                        log_.finish(kPassphraseOperation, changed, note);
+                        reopenAfterPassphrase(id, changed ? passphrase : oldPassphrase,
+                            makeActive, startOnline, note, changed);
+                    },
+                    Qt::QueuedConnection);
+            });
+        });
+    removeSession(account);
+}
+
+void CoreHost::reopenAfterPassphrase(const QString& id, const QString& passphrase,
+    const bool makeActive, const bool startOnline, const QString& note, const bool changed)
+{
+    refreshAccountList();
+    openSession(id, passphrase, makeActive, startOnline);
+    CoreAccount* const account = sessionFor(id);
+    if (account == nullptr) {
+        return;
+    }
+    const auto connection = std::make_shared<QMetaObject::Connection>();
+    *connection = connect(&account->events(), &AccountEvents::opened, this,
+        [account, connection, note, changed]() {
+            disconnect(*connection);
+            if (changed) {
+                emit account->events().actionOk(note);
+            } else {
+                emit account->events().actionFailed(note);
+            }
+        });
 }
 
 void CoreHost::switchTo(const QString& id)

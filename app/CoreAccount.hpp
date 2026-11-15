@@ -48,6 +48,7 @@ public:
     AccountCommands& commands() { return commands_; }
     AccountEvents& events() { return events_; }
     QString accountId() const { return accountId_; }
+    QString passphrase() const { return passphrase_; }
     QString fingerprint() const { return contacts_.ownFingerprint(); }
     QString displayName() const { return displayName_; }
     bool online() const { return online_; }

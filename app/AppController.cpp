@@ -222,6 +222,8 @@ void AppController::startSession(const QString& id)
     connect(ctrl, &SessionController::openFailed, this, &AppController::accountOpenFailed);
     connect(ctrl, &SessionController::microphoneRefused, this, &AppController::microphoneRefused);
     connect(ctrl, &SessionController::callChanged, this, &AppController::refreshCallSession);
+    connect(ctrl, &SessionController::passphraseChangeAsked, this,
+        [this, id](const QString& passphrase) { changePassphrase(id, passphrase); });
     connect(ctrl, &SessionController::historyOpened, this, [this, id]() {
         if (pendingConversation_.first == id) {
             const auto [account, peer] = std::exchange(pendingConversation_, {});
@@ -232,6 +234,18 @@ void AppController::startSession(const QString& id)
     if (id == activeId_) {
         emit sessionChanged();
     }
+}
+
+void AppController::changePassphrase(const QString& id, const QString& passphrase)
+{
+    SessionController* const ctrl = sessionFor(id);
+    if (ctrl == nullptr) {
+        return;
+    }
+    // The core re-encrypts the database only once this window has let go of it.
+    connect(ctrl, &QObject::destroyed, this,
+        [this, id, passphrase]() { emit commands_.changePassphrase(id, passphrase); });
+    endSession(id);
 }
 
 void AppController::endSession(const QString& id)
