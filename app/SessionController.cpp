@@ -47,7 +47,6 @@
 #include <QMimeDatabase>
 #include <QQuickItemGrabResult>
 #include <chrono>
-#include <QTimer>
 #include <cstring>
 #include <QRegularExpression>
 #include <QUrl>
@@ -75,8 +74,6 @@ const QString kDayAndTime = QStringLiteral("dd.MM.yyyy HH:mm");
 
 constexpr int kPageSize = 25;
 constexpr qint64 kTypedEveryMs = 1000;
-
-constexpr int kBusyPaintDelayMs = 32;
 
 constexpr int kAvatarSide = 256;
 constexpr int kAvatarFallbackSide = 128;
@@ -1941,7 +1938,7 @@ void SessionController::beginStorageWork(const QString& what, const std::functio
     deviceStorage_[QStringLiteral("busy")] = true;
     deviceStorage_[QStringLiteral("busyWhat")] = what;
     emit deviceStorageChanged();
-    QTimer::singleShot(kBusyPaintDelayMs, this, work);
+    work();
 }
 
 void SessionController::endStorageWork()

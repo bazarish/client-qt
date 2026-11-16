@@ -1,10 +1,13 @@
 // Bazarish project (c) 2026
 #include "CoreAccount.hpp"
 
+#include "Background.hpp"
 #include "Documents.hpp"
 #include "SessionShared.hpp"
 
+#include <QCoreApplication>
 #include <QFileInfo>
+#include <QPointer>
 
 #include <algorithm>
 #include <exception>
@@ -30,6 +33,31 @@ QString downloadOpId(const qint64 token)
 double fractionOf(const qint64 done, const qint64 total, const double unknown)
 {
     return total > 0 ? static_cast<double>(done) / static_cast<double>(total) : unknown;
+}
+
+// Its own connection: the account's store stays free for the core's thread meanwhile.
+StoreUpkeep keepStore(const QString& path, const QString& passphrase, const QString& peer,
+    const std::optional<int> keep)
+{
+    StoreUpkeep done;
+    TranscriptStore store;
+    if (!store.open(path, passphrase)) {
+        done.problem = CoreAccount::tr("This profile could not be opened");
+        return done;
+    }
+    done.before = store.footprint().fileBytes;
+    if (keep.has_value()) {
+        try {
+            done.removed = peer.isEmpty() ? store.pruneEveryChatToLatest(*keep)
+                                          : store.pruneToLatest(peer, *keep);
+        } catch (const std::exception& error) {
+            done.problem = QString::fromUtf8(error.what());
+            return done;
+        }
+    }
+    done.rebuilt = store.rebuild(done.reason);
+    done.after = store.footprint().fileBytes;
+    return done;
 }
 
 }  // namespace
@@ -174,41 +202,56 @@ void CoreAccount::onDownloadFinished(const qint64 token, const bool ok, const QS
 
 void CoreAccount::compact()
 {
-    const qint64 before = store_.footprint().fileBytes;
-    QString reason;
-    const bool rebuilt = store_.rebuild(reason);
-    emit events_.storageWorkDone();
-    if (!rebuilt) {
-        emit events_.actionFailed(tr("The database was not compacted: %1").arg(reason));
-        return;
-    }
-    const qint64 after = store_.footprint().fileBytes;
-    emit events_.actionOk(tr("The database was compacted. %1 came back to the disk")
-                              .arg(humanBytes(std::max<qint64>(0, before - after))));
+    keepStoreInBackground({}, std::nullopt);
 }
 
 void CoreAccount::trim(const QString& peer, const int keep)
 {
-    qint64 removed = 0;
-    try {
-        removed = peer.isEmpty() ? store_.pruneEveryChatToLatest(keep)
-                                 : store_.pruneToLatest(peer, keep);
-    } catch (const std::exception& error) {
-        emit events_.storageWorkDone();
-        emit events_.actionFailed(QString::fromUtf8(error.what()));
+    keepStoreInBackground(peer, keep);
+}
+
+void CoreAccount::keepStoreInBackground(const QString& peer, const std::optional<int> keep)
+{
+    const QPointer<CoreAccount> account(this);
+    inBackground([account, path = accountPath_, passphrase = passphrase_, peer, keep]() {
+        const StoreUpkeep done = keepStore(path, passphrase, peer, keep);
+        QMetaObject::invokeMethod(
+            QCoreApplication::instance(),
+            [account, done, trimmed = keep.has_value()]() {
+                if (account) {
+                    account->finishStoreUpkeep(done, trimmed);
+                }
+            },
+            Qt::QueuedConnection);
+    });
+}
+
+void CoreAccount::finishStoreUpkeep(const StoreUpkeep& done, const bool trimmed)
+{
+    emit events_.storageWorkDone();
+    if (!trimmed) {
+        if (!done.problem.isEmpty() || !done.rebuilt) {
+            emit events_.actionFailed(tr("The database was not compacted: %1")
+                    .arg(done.problem.isEmpty() ? done.reason : done.problem));
+            return;
+        }
+        emit events_.actionOk(tr("The database was compacted. %1 came back to the disk")
+                .arg(humanBytes(std::max<qint64>(0, done.before - done.after))));
         return;
     }
-    QString reason;
-    const bool rebuilt = store_.rebuild(reason);
-    emit events_.storageWorkDone();
-    if (rebuilt) {
-        emit events_.actionOk(tr("Removed %1 messages and compacted the database").arg(removed));
+    if (!done.problem.isEmpty()) {
+        emit events_.actionFailed(done.problem);
+        return;
+    }
+    if (done.rebuilt) {
+        emit events_.actionOk(
+            tr("Removed %1 messages and compacted the database").arg(done.removed));
         return;
     }
     emit events_.actionFailed(tr("Removed %1 messages, but the space has not been returned to "
                                  "the disk: %2. Trimming again returns it.")
-            .arg(removed)
-            .arg(reason));
+            .arg(done.removed)
+            .arg(done.reason));
 }
 
 }  // namespace bazarish::app

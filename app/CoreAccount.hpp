@@ -36,6 +36,15 @@ namespace bazarish::app {
 
 class SessionWorker;
 
+struct StoreUpkeep {
+    QString problem;
+    qint64 removed = 0;
+    bool rebuilt = false;
+    QString reason;
+    qint64 before = 0;
+    qint64 after = 0;
+};
+
 class CoreAccount : public QObject {
     Q_OBJECT
 public:
@@ -201,6 +210,8 @@ private:
     void onDownloadFinished(qint64 token, bool ok, const QString& error);
     void compact();
     void trim(const QString& peer, int keep);
+    void keepStoreInBackground(const QString& peer, std::optional<int> keep);
+    void finishStoreUpkeep(const StoreUpkeep& done, bool trimmed);
     void restartDelivery(const QString& peer, qint64 localId);
     void bumpStatus(qint64 localId, int status);
     void onSendProgress(qint64 localId, int state);
