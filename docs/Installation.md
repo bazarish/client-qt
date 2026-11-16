@@ -67,13 +67,10 @@ at that path is allowed to decide how much memory the application takes at start
 ## The command line
 
 Accounts are created and opened in the application; it takes no account on the
-command line. Two flags exist, both for cases that are not the normal one:
+command line. One flag exists, for a case that is not the normal one:
 
 - `--console` - on Windows, take the console the application was started from, or
   open one, so the log can be read while it runs.
-- `--allow-facade-without-i2p-for-dev-purposes` - talk to a facade over clearnet.
-  The name is long because every request then leaves the machine in the clear;
-  the flag exists for a stand on a LAN with no I2P.
 
 `BAZARISH_ACCOUNTS_DIR` overrides the accounts directory, which is how a second
 copy runs beside the first.

@@ -209,8 +209,8 @@ port. When set, the following router traffic is directed through the proxy:
    connections. This is the expected condition for a client installation.
 4. **Only router traffic is proxied.** The application makes no clearnet request
    of its own: the API is spoken over I2P, and the reseed is fetched by the
-   engine. A facade reached over clearnet - on loopback, or under the developer
-   flag - is not proxied.
+   engine. A facade on loopback, dialled only by a process that serves its own
+   facade, is not proxied.
 
 ### Application of a change
 

@@ -36,7 +36,6 @@
 
 #include <bazarish/Links.hpp>
 #include <bazarish/Log.hpp>
-#include <bazarish/ServerDescriptor.hpp>
 #pragma pop_macro("emit")
 
 #include <QColor>
@@ -270,13 +269,6 @@ int main(int argc, char** argv)
     app.installEventFilter(&links);
     PressCommitsWord words;
     app.installEventFilter(&words);
-    for (int i = 1; i < argc; ++i) {
-        if (std::strcmp(argv[i], "--allow-facade-without-i2p-for-dev-purposes") == 0) {
-            bazarish::setAllowFacadeWithoutI2pForDevPurposes(true);
-            bazarish::log::warn("talking to facades without I2P: every request leaves this"
-                                " machine in the clear. Development only.");
-        }
-    }
     QGuiApplication::setApplicationName("Bazarish");
     QGuiApplication::setOrganizationName("Bazarish");
 
