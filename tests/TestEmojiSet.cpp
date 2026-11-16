@@ -80,7 +80,7 @@ QByteArray pictureOf(const QString& emoji)
 }  // namespace
 
 int main(int argc, char** argv)
-{
+try {
     QGuiApplication app(argc, argv);
     bazarish::app::installAppFont();
 
@@ -116,4 +116,6 @@ int main(int argc, char** argv)
     std::printf("TestEmojiSet: %d emoji in %d groups, each drawn apart by the emoji font\n", listed,
         groupCount);
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

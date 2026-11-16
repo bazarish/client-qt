@@ -32,12 +32,12 @@ constexpr int kWholeChat = 1000;
 }  // namespace
 
 int main(int argc, char** argv)
-{
+try {
     const QCoreApplication app(argc, argv);
     namespace fs = std::filesystem;
 
-    const fs::path dir = fs::temp_directory_path() / ("bz-transcript-" + toHex(randomBytes(8)));
-    fs::create_directories(dir);
+    const testutil::ScratchDir scratch("transcript");
+    const fs::path& dir = scratch.path();
     const QString db = QString::fromStdString((dir / "account.db").string());
 
     {
@@ -825,7 +825,8 @@ int main(int argc, char** argv)
         CHECK(store.botMenu("bot").isEmpty());
     }
 
-    fs::remove_all(dir);
     std::fprintf(stderr, "TestTranscript passed\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

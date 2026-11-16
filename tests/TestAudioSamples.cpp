@@ -15,7 +15,7 @@ constexpr std::int16_t kFirst = -3;
 }  // namespace
 
 int main()
-{
+try {
     using bazarish::app::kSampleBytes;
     std::array<char, kSamples * kSampleBytes + 2> buffer{};
     char* const odd = buffer.data() + 1;
@@ -36,4 +36,6 @@ int main()
     CHECK(ring.front() == kFirst);
     CHECK(ring.back() == static_cast<std::int16_t>(kFirst + static_cast<int>(kSamples) - 1));
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

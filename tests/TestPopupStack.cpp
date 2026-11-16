@@ -102,7 +102,7 @@ bool focusComesBack(QObject* const window, QQuickItem* const field)
 }  // namespace
 
 int main(int argc, char** argv)
-{
+try {
     QGuiApplication app(argc, argv);
     QQmlApplicationEngine engine;
     engine.loadData(kWindow);
@@ -143,4 +143,6 @@ int main(int argc, char** argv)
 
     std::printf("TestPopupStack: all checks passed\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

@@ -62,7 +62,7 @@ Pair connectPair(QLocalServer& server)
 }  // namespace
 
 int main(int argc, char** argv)
-{
+try {
     const QCoreApplication app(argc, argv);
     const QTemporaryDir dir;
     CHECK(dir.isValid());
@@ -149,4 +149,6 @@ int main(int argc, char** argv)
 
     std::fprintf(stderr, "TestSocketChannel passed\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

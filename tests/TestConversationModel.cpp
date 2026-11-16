@@ -107,7 +107,7 @@ void reactionsAndPicturesChangeOneRow()
 }  // namespace
 
 int main(int argc, char** argv)
-{
+try {
     QGuiApplication app(argc, argv);
     ConversationModel model;
     model.setMessages({row(2), row(3), row(4)});
@@ -143,4 +143,6 @@ int main(int argc, char** argv)
 
     std::printf("TestConversationModel: all checks passed\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

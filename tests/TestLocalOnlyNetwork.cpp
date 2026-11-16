@@ -37,7 +37,7 @@ QNetworkReply::NetworkError fetched(QNetworkAccessManager& manager, const QUrl& 
 }  // namespace
 
 int main(int argc, char** argv)
-{
+try {
     QCoreApplication app(argc, argv);
     LocalOnlyNetwork factory;
     const std::unique_ptr<QNetworkAccessManager> manager(factory.create(nullptr));
@@ -68,4 +68,6 @@ int main(int argc, char** argv)
 
     std::printf("TestLocalOnlyNetwork: ok\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

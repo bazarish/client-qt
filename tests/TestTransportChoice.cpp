@@ -29,9 +29,10 @@ constexpr std::string_view kGatewayRefusal = "bazarish::i2p: the gateway would n
 }  // namespace
 
 int main(int argc, char** argv)
-{
+try {
     QCoreApplication app(argc, argv);
-    const fs::path root = testutil::freshDir("transport-choice");
+    const testutil::ScratchDir scratch("transport-choice");
+    const fs::path& root = scratch.path();
     fs::create_directories(root / "accounts");
     const std::string accountsDir = (root / "accounts").string();
 #ifdef _WIN32
@@ -76,6 +77,7 @@ int main(int argc, char** argv)
         refusal = error.what();
     }
     CHECK(refusal.starts_with(kGatewayRefusal));
-    fs::remove_all(root);
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

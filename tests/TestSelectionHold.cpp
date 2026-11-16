@@ -46,7 +46,7 @@ QString heldAfterRelease(QQuickView& view, QPointingDevice& touch, QQuickItem* f
 }  // namespace
 
 int main(int argc, char** argv)
-{
+try {
     QGuiApplication app(argc, argv);
     QQuickView view;
     QQmlComponent component(view.engine());
@@ -75,4 +75,6 @@ int main(int argc, char** argv)
     CHECK(refused);
     std::printf("TestSelectionHold: ok\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

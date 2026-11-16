@@ -17,7 +17,7 @@ namespace fs = std::filesystem;
 using bazarish::app::AppSettings;
 
 int main(int argc, char** argv)
-{
+try {
     if (argc > 1) {
         const std::string mode = argv[1];
         const AppSettings& loaded = AppSettings::instance();
@@ -32,7 +32,8 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    const fs::path root = testutil::freshDir("settings");
+    const testutil::ScratchDir scratch("settings");
+    const fs::path& root = scratch.path();
     fs::create_directories(root / "accounts");
     const std::string accountsDir = (root / "accounts").string();
 #ifdef _WIN32
@@ -114,7 +115,8 @@ int main(int argc, char** argv)
     }
     CHECK(readsAs("expect-default"));
 
-    fs::remove_all(root);
     std::fprintf(stderr, "TestAppSettings passed\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

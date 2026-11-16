@@ -11,7 +11,7 @@
 #include <thread>
 
 int main(int argc, char** argv)
-{
+try {
     QCoreApplication app(argc, argv);
     std::mutex guard;
     QObject target;
@@ -37,4 +37,6 @@ int main(int argc, char** argv)
     QCoreApplication::processEvents();
     CHECK(calls == 1);
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

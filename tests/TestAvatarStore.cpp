@@ -30,7 +30,7 @@ QByteArray encoded(const int edge, const char* format)
 }  // namespace
 
 int main(int argc, char** argv)
-{
+try {
     QGuiApplication app(argc, argv);
     AvatarStore& store = AvatarStore::instance();
 
@@ -57,4 +57,6 @@ int main(int argc, char** argv)
     CHECK(!store.has(QStringLiteral("png")));
     CHECK(store.image(QStringLiteral("png")).isNull());
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

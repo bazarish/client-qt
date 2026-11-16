@@ -12,7 +12,7 @@
 using namespace bazarish::app;
 
 int main()
-{
+try {
     QSet<QRgb> distinct;
     for (const QColor& fill : letterPalette()) {
         distinct.insert(fill.rgb());
@@ -40,4 +40,6 @@ int main()
     CHECK(letterInk(QColor(Qt::white)).lightness() < letterInk(QColor(Qt::black)).lightness());
     std::printf("TestLetterAvatar passed\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

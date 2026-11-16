@@ -57,11 +57,11 @@ client::IncomingMessage ours(const QString& peer, const QString& type, const QSt
 }  // namespace
 
 int main(int argc, char** argv)
-{
+try {
     const QCoreApplication app(argc, argv);
     namespace fs = std::filesystem;
-    const fs::path dir = fs::temp_directory_path() / ("bz-ingest-" + toHex(randomBytes(8)));
-    fs::create_directories(dir);
+    const testutil::ScratchDir scratch("ingest");
+    const fs::path& dir = scratch.path();
     const QString db = QString::fromStdString((dir / "account.db").string());
 
     TranscriptStore store;
@@ -257,7 +257,8 @@ int main(int argc, char** argv)
     CHECK(saw({"added", "notify"}));
 
     store.close();
-    fs::remove_all(dir);
     std::fprintf(stderr, "TestIngest passed\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

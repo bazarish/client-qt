@@ -20,7 +20,7 @@ QValidator::State verdict(const bazarish::app::Utf8Limit& limit, QString text)
 }  // namespace
 
 int main()
-{
+try {
     bazarish::app::Utf8Limit limit;
     limit.setMaxBytes(kCap);
 
@@ -32,4 +32,6 @@ int main()
         == QValidator::Invalid);
     CHECK(verdict(limit, QString()) == QValidator::Acceptable);
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

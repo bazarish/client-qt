@@ -10,7 +10,7 @@ constexpr qint64 kTenKibibytes = 10 * kKibibyte;
 }  // namespace
 
 int main()
-{
+try {
     using bazarish::app::humanBytes;
     CHECK(humanBytes(0) == QStringLiteral("0 B"));
     CHECK(humanBytes(kKibibyte - 1) == QStringLiteral("1023 B"));
@@ -19,4 +19,6 @@ int main()
     CHECK(humanBytes(kTenKibibytes) == QStringLiteral("10 KB"));
     CHECK(humanBytes(kKibibyte * kKibibyte) == QStringLiteral("1.0 MB"));
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

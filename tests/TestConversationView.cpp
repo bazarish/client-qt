@@ -160,7 +160,7 @@ bool shownOnlyAtEnd(const std::vector<Frame>& frames)
 }  // namespace
 
 int main(int argc, char** argv)
-{
+try {
     QGuiApplication app(argc, argv);
     const QString viewFile
         = argc > 1 ? QString::fromLocal8Bit(argv[1]) : QStringLiteral(BAZARISH_CONVERSATION_VIEW);
@@ -252,6 +252,8 @@ int main(int argc, char** argv)
 
     std::printf("TestConversationView: %s\n", failures == 0 ? "all checks passed" : "FAILED");
     return failures == 0 ? 0 : 1;
+} catch (...) {
+    return testutil::failed();
 }
 
 #include "TestConversationView.moc"

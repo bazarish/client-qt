@@ -8,7 +8,7 @@
 using bazarish::app::emojiOnlyCount;
 
 int main()
-{
+try {
     CHECK(emojiOnlyCount(QStringLiteral("😀")) == 1);
     CHECK(emojiOnlyCount(QStringLiteral("❤️")) == 1);
     CHECK(emojiOnlyCount(QStringLiteral("👍🏽")) == 1);
@@ -28,4 +28,6 @@ int main()
 
     std::printf("TestEmojiText: all checks passed\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

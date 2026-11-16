@@ -239,7 +239,7 @@ signals:
 };
 
 int main(int argc, char** argv)
-{
+try {
     const QCoreApplication app(argc, argv);
     InProcessChannel channel;
     Relay left;
@@ -299,6 +299,8 @@ int main(int argc, char** argv)
 
     std::fprintf(stderr, "TestWire passed\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }
 
 #include "TestWire.moc"

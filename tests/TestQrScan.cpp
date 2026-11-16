@@ -64,7 +64,7 @@ QImage renderQr(const std::string& payload, const int modulePixels)
 constexpr std::size_t kNonceHexChars = 32;
 
 int main(int argc, char** argv)
-{
+try {
     QCoreApplication app(argc, argv);
     const bazarish::Descriptor descriptor{
         "dlkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq",
@@ -119,4 +119,6 @@ int main(int argc, char** argv)
 
     std::printf("TestQrScan ok\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

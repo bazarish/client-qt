@@ -241,7 +241,7 @@ void testPlainProjection()
 }  // namespace
 
 int main()
-{
+try {
     testStyles();
     testSendable();
     testLinks();
@@ -255,4 +255,6 @@ int main()
         < kLinearAllowance);
     std::fprintf(stderr, "TestMarkup passed\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

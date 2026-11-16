@@ -163,7 +163,7 @@ void hugeHeaderIsNotDecoded()
 }  // namespace
 
 int main(int argc, char** argv)
-{
+try {
     QGuiApplication app(argc, argv);
     decodedBudgetKeepsEveryPicture();
     keptBytesBudgetLetsTheOldestGoAndPutBringsItBack();
@@ -171,4 +171,6 @@ int main(int argc, char** argv)
     hugeHeaderIsNotDecoded();
     std::printf("TestPictureStore: ok\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

@@ -87,7 +87,7 @@ bool tookTheEvent(const Awaited& awaited, const MailWaitCause cause)
 }  // namespace
 
 int main()
-{
+try {
     {
         MailWaitGate gate(kStaleBound);
         CHECK(tookTheEvent(failedAsk(gate, [&gate]() { gate.serverAnswered(); }),
@@ -191,4 +191,6 @@ int main()
 
     std::printf("TestMailWaitGate ok\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

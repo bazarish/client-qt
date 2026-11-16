@@ -11,6 +11,7 @@
 
 #include <QCoreApplication>
 #include <QElapsedTimer>
+#include <QLocalServer>
 #include <QProcess>
 #include <QStringList>
 #include <QTemporaryDir>
@@ -24,22 +25,23 @@ using namespace bazarish::app;
 
 namespace {
 
-QProcess* gCore = nullptr;
-
-// A failed check exits; the core it started must not outlive it.
-void stopCore()
-{
-    if (gCore != nullptr) {
-        gCore->kill();
-        gCore->waitForFinished();
-    }
-}
-
 constexpr int kCoreStartMs = 30000;
 constexpr int kSettleMs = 10000;
 constexpr const char* kLockedName = "locked";
 constexpr const char* kLockedPassphrase = "correct horse";
 constexpr const char* kNotDeclined = "The call was not declined";
+
+// The core leaves with _Exit, so its socket file outlives it.
+struct LeftSocket {
+    const QString name;
+
+    ~LeftSocket()
+    {
+        if (!QLocalServer::removeServer(name)) {
+            std::fprintf(stderr, "the core socket %s stays\n", qPrintable(name));
+        }
+    }
+};
 
 bool settleUntil(const std::function<bool()>& done, const int limitMs = kSettleMs)
 {
@@ -90,7 +92,7 @@ struct Window {
 }  // namespace
 
 int main(int argc, char** argv)
-{
+try {
     const QCoreApplication app(argc, argv);
     CHECK(argc == 2);
     const QTemporaryDir home;
@@ -102,9 +104,9 @@ int main(int argc, char** argv)
     environment.insert(QStringLiteral("BAZARISH_ACCOUNTS_DIR"), accounts);
     environment.insert(QStringLiteral("QT_QPA_PLATFORM"), QStringLiteral("offscreen"));
 
+    const QString path = coreSocketName();
+    const LeftSocket left{path};
     QProcess core;
-    gCore = &core;
-    CHECK(std::atexit(stopCore) == 0);
     core.setProcessEnvironment(environment);
     bool listening = false;
     QObject::connect(&core, &QProcess::readyReadStandardError, [&core, &listening]() {
@@ -115,7 +117,6 @@ int main(int argc, char** argv)
     core.start(QString::fromLocal8Bit(argv[1]), {});
     CHECK(core.waitForStarted());
     CHECK(settleUntil([&]() { return listening; }, kCoreStartMs));
-    const QString path = coreSocketName();
 
     {
         Window first;
@@ -192,6 +193,7 @@ int main(int argc, char** argv)
     CHECK(third.closing);
 
     std::fprintf(stderr, "TestTwoProcess passed\n");
-    gCore = nullptr;
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

@@ -13,7 +13,7 @@ using Reachability = QNetworkInformation::Reachability;
 using Medium = QNetworkInformation::TransportMedium;
 
 int main()
-{
+try {
     int losses = 0;
     NetworkWatch watch(
         [&losses]() {
@@ -54,4 +54,6 @@ int main()
 
     std::printf("TestNetworkWatch ok\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

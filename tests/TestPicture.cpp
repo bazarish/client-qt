@@ -21,7 +21,7 @@ constexpr int kRedLeast = 200;
 }  // namespace
 
 int main(int argc, char** argv)
-{
+try {
     QGuiApplication app(argc, argv);
     QTemporaryDir folder;
     CHECK(folder.isValid());
@@ -45,4 +45,6 @@ int main(int argc, char** argv)
 
     std::printf("TestPicture: all checks passed\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

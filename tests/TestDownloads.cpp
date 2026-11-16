@@ -22,7 +22,7 @@ QByteArray readAll(const QString& path)
 }  // namespace
 
 int main()
-{
+try {
     const QTemporaryDir root;
     CHECK(root.isValid());
     const QDir downloads(root.filePath(QStringLiteral("Загрузки")));
@@ -36,4 +36,6 @@ int main()
     CHECK(readAll(downloads.filePath(QStringLiteral("Снимок (1).jpg"))) == second);
     std::fprintf(stderr, "TestDownloads passed\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }

@@ -22,7 +22,7 @@ QString previewOf(const char* const text, const char* const author = "")
 }  // namespace
 
 int main()
-{
+try {
     CHECK(previewOf("**loud** and *soft* and ~~gone~~")
         == QStringLiteral("loud and soft and gone"));
     CHECK(previewOf("press !!/help!! now") == QStringLiteral("press /help now"));
@@ -41,4 +41,6 @@ int main()
 
     std::printf("TestChatPreview: all checks passed\n");
     return 0;
+} catch (...) {
+    return testutil::failed();
 }
