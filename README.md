@@ -27,10 +27,8 @@ a submodule of `common`: it is built with the client, for the TLS of a private
 gateway's link alone ([docs/I2pRouter.md](docs/I2pRouter.md)). Everything else
 uses OpenSSL.
 
-Windows has no BoringSSL build yet. A Windows build is configured with
-`-DBAZARISH_GATEWAY_TLS_OPENSSL=ON` and fails without it; with it the gateway link
-runs over OpenSSL and shows OpenSSL's ClientHello, not a browser's. The switch
-exists on Windows only.
+On x86-64 Windows BoringSSL's assembly is NASM's, so the build there also needs
+NASM.
 
 An account is in the SQLCipher version-4 database format, which SQLCipher 3
 does not read ([docs/AccountStorage.md](docs/AccountStorage.md)).

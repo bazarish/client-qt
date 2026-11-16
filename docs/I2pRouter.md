@@ -93,9 +93,6 @@ Measured against Chrome 157.0.8103.78 on Linux (2026-11-12): JA4
 `t13d1517h1_8daaf6152771_c4a234726a38` for a WebSocket that resumes a page's
 session; the client gives the same three. `TestChromeTls` checks them.
 
-On Windows the link is built over OpenSSL (`BAZARISH_GATEWAY_TLS_OPENSSL`, README)
-and shows OpenSSL's ClientHello.
-
 ## Bootstrap
 
 A router with no netDb builds no tunnel, so the first thing it needs is a slice

@@ -68,6 +68,8 @@ jobs:
             # Windows ships, and it is what the arm64 environment uses too.
             msystem: UCRT64
             package: mingw-w64-ucrt-x86_64
+            # BoringSSL's x86-64 assembly for Windows is NASM's.
+            nasm: mingw-w64-ucrt-x86_64-nasm
           - arch: arm64
             runner: windows-11-arm
             msystem: CLANGARM64
@@ -87,6 +89,8 @@ jobs:
             ${{ matrix.package }}-opus
             ${{ matrix.package }}-qrencode
             ${{ matrix.package }}-boost
+            ${{ matrix.package }}-brotli
+            ${{ matrix.nasm }}
             ${{ matrix.package }}-qt6-base
             ${{ matrix.package }}-qt6-declarative
             ${{ matrix.package }}-qt6-multimedia

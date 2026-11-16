@@ -22,12 +22,6 @@ if [ "$(uname)" = "Darwin" ]; then
         "-DSQLCIPHER_INCLUDE_DIR=$(brew --prefix sqlcipher)/include"
     )
 fi
-case "$(uname)" in
-MINGW* | MSYS*)
-    # No BoringSSL build for Windows yet: the gateway link runs over OpenSSL there.
-    configure+=(-DBAZARISH_GATEWAY_TLS_OPENSSL=ON)
-    ;;
-esac
 
 {
     case "$stage" in
