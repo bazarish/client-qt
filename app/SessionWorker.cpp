@@ -1203,8 +1203,16 @@ void SessionWorker::declineCall(const QString& callId)
         emit callEndFailed(true, tr("No account is open"));
         return;
     }
+    bazarish::client::DeliveryWatch watch;
+    watch.onOutcome = [worker = QPointer<SessionWorker>(this)](
+                          const bazarish::client::OutboundCourier::Outcome& outcome) {
+        if (outcome.stored || worker.isNull()) {
+            return;
+        }
+        emit worker->callEndFailed(true, refusalText(outcome));
+    };
     try {
-        session_->declineCall(callId.toStdString());
+        session_->declineCall(callId.toStdString(), watch);
     } catch (const std::exception& error) {
         emit callEndFailed(true, QString::fromUtf8(error.what()));
     }
