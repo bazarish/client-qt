@@ -11,7 +11,7 @@ namespace bazarish::app {
 void SessionController::refreshChatRow(const QString& peer)
 {
     contacts_.touch(peer, peerName(peer), chatPreview(peer), store_.lastTime(peer));
-    contacts_.setUnread(peer, store_.unreadCount(peer));
+    contacts_.setUnread(peer, store_.unreadCount(peer), store_.unreadMentionCount(peer));
 }
 
 void SessionController::onRowAdded(const QString& peer, const qint64 id, const bool own)

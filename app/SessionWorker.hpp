@@ -87,6 +87,7 @@ public slots:
         const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void sendReceipt(const QString& peer, const QString& refId);
     void ackPending(const QString& pendingId);
+    void askGroupMembers(const QString& peer);
     void sendReaction(const QString& peer, const QString& refId, const QString& emoji);
     void sendCallback(
         const QString& opId, const QString& peer, const QString& data, const QString& ref);

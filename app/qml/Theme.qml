@@ -51,6 +51,10 @@ QtObject {
     readonly property color bubbleIn:  light ? "#ffffff" : "#1b2026"
     readonly property color bubbleOutHeld: light ? "#b3d9a6" : "#22442c"
     readonly property color bubbleInHeld: light ? "#d5ddd6" : "#303943"
+    readonly property color bubbleMention: light ? "#fbf0d9" : "#2e2716"
+    readonly property color mentionEdge: light ? "#a86400" : "#c98f2e"
+    readonly property color mentionInk: light ? "#7a4a00" : "#ffc56b"
+    readonly property color mentionMarkInk: light ? "#ffffff" : accentInk
     readonly property color authorName: light ? green : "#7fd36f"
     readonly property color reactionMine: light ? "#b9e3ad" : greenFill
     readonly property color reactionMineEdge: light ? greenFill : authorName

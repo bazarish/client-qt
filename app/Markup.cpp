@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #include "Markup.hpp"
 
+#include "MentionText.hpp"
+
 #include <bazarish/Address.hpp>
 
 #include <QLatin1String>
@@ -9,6 +11,7 @@
 
 #include <algorithm>
 #include <array>
+#include <map>
 #include <vector>
 
 namespace bazarish::app::markup {
@@ -101,11 +104,14 @@ bool matchesAt(const QString& text, const int at, const int to, const QLatin1Str
 
 class Parser {
 public:
-    explicit Parser(const QString& text)
+    Parser(const QString& text, const QVector<MentionRange>& mentions)
         : text_(text)
         , size_(static_cast<int>(text.size()))
         , lineEnds_(static_cast<std::size_t>(size_) + 1, size_)
     {
+        for (const MentionRange& mention : mentions) {
+            mentionEnds_.emplace(mention.from, mention.from + mention.length);
+        }
         for (int i = size_ - 1; i >= 0; --i) {
             lineEnds_[i] = text_[i] == QChar(u'\n') ? i : lineEnds_[i + 1];
         }
@@ -169,6 +175,13 @@ private:
             int contentTo = 0;
             int after = 0;
             StyleKind kind = StyleKind::eBold;
+            if (matchMention(i, to, after)) {
+                flush(buffer, style);
+                const QString mention = text_.sliced(i, after - i);
+                emitRun(mention, mention, Action::eMention, style);
+                i = after;
+                continue;
+            }
             if (allowStyles && matchStyle(i, to, kind, contentFrom, contentTo, after)) {
                 flush(buffer, style);
                 scan(contentFrom, contentTo, with(style, kind), false);
@@ -236,6 +249,16 @@ private:
             return true;
         }
         return false;
+    }
+
+    bool matchMention(const int at, const int to, int& after) const
+    {
+        const auto mention = mentionEnds_.find(at);
+        if (mention == mentionEnds_.end() || mention->second > to) {
+            return false;
+        }
+        after = mention->second;
+        return true;
     }
 
     bool matchCode(const int at, const int to, int& contentFrom, int& contentTo, int& after) const
@@ -387,6 +410,7 @@ private:
     const int size_;
     std::vector<int> lineEnds_;
     std::array<std::vector<int>, kStyleMarkers.size()> closers_;
+    std::map<int, int> mentionEnds_;
     std::vector<Run> runs_;
 };
 
@@ -474,6 +498,7 @@ QString href(const Run& run)
     case Action::eCopy:
         return kCopyScheme + QString::fromLatin1(QUrl::toPercentEncoding(run.target));
     case Action::eNone:
+    case Action::eMention:
         break;
     }
     return QString();
@@ -483,13 +508,18 @@ QString href(const Run& run)
 
 std::vector<Run> parse(const QString& text)
 {
-    return Parser(text).parse();
+    return Parser(text, {}).parse();
 }
 
-QString toHtml(const QString& text, const Colors& colors)
+std::vector<Run> parse(const QString& text, const QStringList& mentionNames)
+{
+    return Parser(text, mentionRanges(text, mentionNames)).parse();
+}
+
+QString toHtml(const QString& text, const Colors& colors, const QStringList& mentionNames)
 {
     QString out;
-    for (const Run& run : parse(text)) {
+    for (const Run& run : parse(text, mentionNames)) {
         if (run.action == Action::eCopy) {
             const QString style = QLatin1String("font-family:monospace;background-color:")
                 + colors.code + QLatin1String(";color:") + colors.codeText
@@ -511,6 +541,11 @@ QString toHtml(const QString& text, const Colors& colors)
         }
         if (run.action == Action::eNone) {
             out += body;
+            continue;
+        }
+        if (run.action == Action::eMention) {
+            out += QLatin1String("<span style=\"color:") + colors.mention
+                + QLatin1String(";font-weight:600;\">") + body + QLatin1String("</span>");
             continue;
         }
         QString style = QLatin1String("color:") + colors.action + QLatin1String(";");

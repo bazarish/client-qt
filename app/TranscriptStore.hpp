@@ -8,6 +8,7 @@
 #include <QByteArray>
 #include <QMap>
 #include <QString>
+#include <QStringList>
 #include <QPair>
 #include <QVariant>
 #include <QVector>
@@ -46,6 +47,7 @@ struct StoredMessage {
     QString author;
     bool contactable = false;
     bool fromHost = false;
+    bool mentionsMe = false;
 };
 
 struct RemovedRow {
@@ -140,6 +142,12 @@ public:
     qint64 firstUnreadId(const QString& peer) const;
     QVector<Reaction> reactionsFor(const QString& peer, const QString& target) const;
     std::optional<GroupState> groupState(const QString& peer) const;
+    QStringList groupMembers(const QString& peer) const;
+    client::MemberListState memberListState(const QString& peer) const;
+    QString ownGroupName(const QString& peer) const;
+    int unreadMentionCount(const QString& peer) const;
+    // 0 when no unread message mentions this account.
+    qint64 firstUnreadMentionId(const QString& peer) const;
     QMap<QString, qint64> groupReactionCounts(const QString& peer, const QString& target) const;
     QVector<ChatWeight> chatWeights() const;
     DatabaseFootprint footprint() const;

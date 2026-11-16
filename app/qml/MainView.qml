@@ -183,6 +183,11 @@ Item {
         id: contactInfo
         session: root.session
         onShareRequested: contactShare.open()
+        onMembersRequested: memberList.open()
+    }
+    MemberListSheet {
+        id: memberList
+        session: root.session
     }
     ContactShareSheet {
         id: contactShare

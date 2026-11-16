@@ -91,6 +91,11 @@ try {
     QObject::connect(&ingest, &MessageIngest::readElsewhere, [&] { note("read"); });
     QObject::connect(&ingest, &MessageIngest::editArrived, [&] { note("edit"); });
     QObject::connect(&ingest, &MessageIngest::messageArrived, [&] { note("notify"); });
+    QObject::connect(&ingest, &MessageIngest::memberListWanted, [&] { note("ask"); });
+    QObject::connect(&ingest, &MessageIngest::memberListChanged, [&] { note("members"); });
+    qint64 arrivedId = 0;
+    QObject::connect(&ingest, &MessageIngest::messageArrived,
+        [&](const QString&, const qint64 id) { arrivedId = id; });
     const auto took = [&](const client::IncomingMessage& message) {
         seen.clear();
         return ingest.takeIn(message);
@@ -156,9 +161,42 @@ try {
     post.author = "Ann";
     post.contactable = true;
     CHECK(took(post));
-    CHECK(saw({"group", "added", "notify"}));
+    CHECK(saw({"group", "ask", "added", "notify"}));
     CHECK(store.groupState(kClub).has_value());
     CHECK(store.messageByE2e("g1", kClub).author == QStringLiteral("Ann"));
+    CHECK(arrivedId == store.messageByE2e("g1", kClub).id);
+    CHECK(!store.messageById(arrivedId).mentionsMe);
+
+    client::IncomingMessage roster = incoming(kClub, "group.members", "gm1");
+    roster.group = post.group;
+    client::MemberListLetter letter;
+    letter.op = client::MemberListOp::eFull;
+    letter.names = {"Ann", "Me Too"};
+    letter.total = 2;
+    letter.part = 1;
+    letter.parts = 1;
+    letter.you = "Me Too";
+    roster.memberList = letter;
+    CHECK(took(roster));
+    CHECK(saw({"group", "members"}));
+    CHECK(store.memberListState(kClub) == client::MemberListState::eHeld);
+    CHECK(store.groupMembers(kClub) == QStringList({QStringLiteral("Ann"), QStringLiteral("Me Too")}));
+    CHECK(store.ownGroupName(kClub) == QStringLiteral("Me Too"));
+
+    client::IncomingMessage called = post;
+    called.e2eId = "g2";
+    called.text = "hi @Me_Too!";
+    CHECK(took(called));
+    CHECK(saw({"group", "added", "notify"}));
+    CHECK(arrivedId == store.messageByE2e("g2", kClub).id);
+    CHECK(store.messageById(arrivedId).mentionsMe);
+    CHECK(store.unreadMentionCount(kClub) == 1);
+    CHECK(store.firstUnreadMentionId(kClub) == arrivedId);
+    client::IncomingMessage named = post;
+    named.e2eId = "g3";
+    named.text = "hi Me Too";
+    CHECK(took(named));
+    CHECK(!store.messageById(arrivedId).mentionsMe);
 
     client::IncomingMessage future = incoming(kBob, "unsupported", "u1");
     future.rawType = "poll.vote";

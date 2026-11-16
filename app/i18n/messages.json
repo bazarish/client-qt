@@ -443,6 +443,12 @@
       "zh": "正在询问你的其他设备",
       "ar": "جارٍ سؤال أجهزتك الأخرى"
     },
+    "Asking for the member list": {
+      "ru": "Запрос списка участников",
+      "es": "Pidiendo la lista de miembros",
+      "zh": "正在请求成员列表",
+      "ar": "جارٍ طلب قائمة الأعضاء"
+    },
     "Asking your server…": {
       "ru": "Запрос к серверу…",
       "es": "Preguntando a tu servidor…",
@@ -4336,6 +4342,30 @@
       "es": "Miembros: %1",
       "zh": "成员：%1",
       "ar": "الأعضاء: ⁦%1⁩"
+    },
+    "Member list": {
+      "ru": "Список участников",
+      "es": "Lista de miembros",
+      "zh": "成员列表",
+      "ar": "قائمة الأعضاء"
+    },
+    "Search members": {
+      "ru": "Поиск участников",
+      "es": "Buscar miembros",
+      "zh": "搜索成员",
+      "ar": "البحث في الأعضاء"
+    },
+    "No member by that name": {
+      "ru": "Нет участника с таким именем",
+      "es": "Ningún miembro con ese nombre",
+      "zh": "没有这个名字的成员",
+      "ar": "لا يوجد عضو بهذا الاسم"
+    },
+    "First unread mention": {
+      "ru": "Первое непрочитанное упоминание",
+      "es": "Primera mención sin leer",
+      "zh": "第一条未读提及",
+      "ar": "أول إشارة غير مقروءة"
     },
     "Only you": {
       "ru": "Только вам",

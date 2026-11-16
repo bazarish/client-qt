@@ -137,6 +137,18 @@ try {
     chats.touch(peer, QStringLiteral("Peer"), QString(), 0);
     CHECK(chats.data(chats.index(0), ContactListModel::LastTextRole).toString().isEmpty());
     CHECK(chats.data(chats.index(0), ContactListModel::LastTimeRole).toLongLong() == 0);
+    CHECK(chats.data(chats.index(0), ContactListModel::MentionsRole).toInt() == 0);
+    chats.setUnread(peer, 2, 1);
+    CHECK(chats.data(chats.index(0), ContactListModel::UnreadRole).toInt() == 2);
+    CHECK(chats.data(chats.index(0), ContactListModel::MentionsRole).toInt() == 1);
+    CHECK(chats.roleNames().value(ContactListModel::MentionsRole) == "mentions");
+
+    StoredMessage calling = row(6);
+    calling.mentionsMe = true;
+    CHECK(model.appendMessage(calling) == model.rowCount() - 1);
+    CHECK(model.data(model.index(model.rowCount() - 1), ConversationModel::MentionsMeRole).toBool());
+    CHECK(!model.data(model.index(0), ConversationModel::MentionsMeRole).toBool());
+    CHECK(model.roleNames().value(ConversationModel::MentionsMeRole) == "mentionsMe");
 
     landingTravelsWithTheReset();
     reactionsAndPicturesChangeOneRow();

@@ -7,6 +7,7 @@
 #include "GatewayAddress.hpp"
 #include "MailboxFill.hpp"
 #include "MediaKeys.hpp"
+#include "MentionText.hpp"
 #include "SessionShared.hpp"
 #include "SystemNotes.hpp"
 
@@ -235,6 +236,11 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
     connect(&events_, &AccountEvents::groupChanged, this, [this](const QString& peer) {
         if (peer == activePeer_) {
             refreshActiveGroup();
+        }
+    });
+    connect(&events_, &AccountEvents::memberListChanged, this, [this](const QString& peer) {
+        if (peer == activePeer_) {
+            refreshActiveMembers();
         }
     });
     connect(&events_, &AccountEvents::chatTimerChanged, this,
@@ -472,6 +478,48 @@ void SessionController::refreshActiveGroup()
 {
     activeGroup_ = activePeer_.isEmpty() ? std::nullopt : store_.groupState(activePeer_);
     emit activeGroupChanged();
+    refreshActiveMembers();
+}
+
+void SessionController::refreshActiveMembers()
+{
+    const bool group = activeGroup_.has_value() && !activeIsChannel();
+    activeMemberListHeld_
+        = group && store_.memberListState(activePeer_) == client::MemberListState::eHeld;
+    activeMembers_ = activeMemberListHeld_ ? store_.groupMembers(activePeer_) : QStringList();
+    activeOwnName_ = activeMemberListHeld_ ? store_.ownGroupName(activePeer_) : QString();
+    emit activeMembersChanged();
+}
+
+QVariantMap SessionController::mentionAt(const QString& before) const
+{
+    return mentionOffer(before, activeMembers_, activeOwnName_);
+}
+
+QString SessionController::mentionText(const QString& name) const
+{
+    return bazarish::app::mentionText(name);
+}
+
+QStringList SessionController::membersInOrder(
+    const QStringList& names, const QString& language) const
+{
+    return namesInOrder(names, language);
+}
+
+QStringList SessionController::membersMatching(const QStringList& names, const QString& query) const
+{
+    return namesMatching(names, query);
+}
+
+void SessionController::openAtFirstMention(const QString& peer)
+{
+    const qint64 mention = store_.firstUnreadMentionId(peer);
+    if (mention == 0) {
+        openConversation(peer);
+        return;
+    }
+    openConversationAtMessage(peer, mention);
 }
 
 QString SessionController::letterOf(const QString& name) const
@@ -756,6 +804,7 @@ void SessionController::rebuildChatList()
     for (const QString& fp : book_.fingerprints()) {
         rows.push_back(ContactRow{fp, peerName(fp), chatPreview(fp), store_.lastTime(fp),
             store_.unreadCount(fp), store_.isPinned(fp)});
+        rows.back().mentions = store_.unreadMentionCount(fp);
         known.insert(fp);
     }
     for (const QString& peer : store_.conversationPeers()) {
@@ -764,6 +813,7 @@ void SessionController::rebuildChatList()
         }
         rows.push_back(ContactRow{peer, peerName(peer), chatPreview(peer),
             store_.lastTime(peer), store_.unreadCount(peer), store_.isPinned(peer)});
+        rows.back().mentions = store_.unreadMentionCount(peer);
     }
     contacts_.setContacts(std::move(rows));
 }

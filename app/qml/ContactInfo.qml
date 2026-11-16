@@ -12,9 +12,12 @@ Popup {
         && session.contactsRevision >= 0) ? session.contactInvite(session.activePeer) : ""
     readonly property bool saved: session !== null && session.isSavedChat(session.activePeer)
     readonly property bool inGroup: session !== null && session.activeIsGroup
+    readonly property bool bot: session !== null && session.contactsRevision >= 0
+        && session.contactKind(session.activePeer) === "bot"
     readonly property bool blocked: session !== null && session.contactsRevision >= 0
         && session.isBlocked(session.activePeer)
     signal shareRequested()
+    signal membersRequested()
 
     modal: true
     focus: true
@@ -30,7 +33,7 @@ Popup {
 
     onOpened: {
         nameField.text = (session ? session.contactName(session.activePeer) : "")
-        if (session) {
+        if (session && !root.bot && !root.inGroup) {
             session.refreshContactDevices(session.activePeer)
         }
     }
@@ -318,8 +321,17 @@ Popup {
             wrapMode: Text.Wrap
         }
 
+        MenuButton {
+            visible: !root.saved && root.inGroup && root.session !== null
+                && root.session.activeMemberListHeld
+            Layout.fillWidth: true
+            iconName: "people"
+            text: qsTr("Member list")
+            onClicked: { root.close(); root.membersRequested() }
+        }
+
         ColumnLayout {
-            visible: !root.saved && !root.inGroup && root.peerDevices.length > 0
+            visible: !root.saved && !root.inGroup && !root.bot && root.peerDevices.length > 0
             Layout.fillWidth: true
             spacing: 6
             Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border; Layout.topMargin: 4 }

@@ -2,6 +2,7 @@
 #pragma once
 
 #include <QString>
+#include <QStringList>
 
 #include <vector>
 
@@ -13,6 +14,7 @@ enum class Action {
     eSend,
     eAlias,
     eCopy,
+    eMention,
 };
 
 struct Run {
@@ -31,9 +33,12 @@ struct Colors {
     QString chip;
     QString code;
     QString codeText;
+    QString mention;
 };
 
-QString toHtml(const QString& text, const Colors& colors);
+std::vector<Run> parse(const QString& text, const QStringList& mentionNames);
+
+QString toHtml(const QString& text, const Colors& colors, const QStringList& mentionNames = {});
 
 QString toPlain(const QString& text);
 

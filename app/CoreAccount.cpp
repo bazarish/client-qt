@@ -92,6 +92,7 @@ const char* commandTitle(const QByteArray& signalName)
         {"requestDeclineCall", QT_TR_NOOP("Declining a call")},
         {"requestEndCall", QT_TR_NOOP("Ending a call")},
         {"requestSetCallMuted", QT_TR_NOOP("Switching the microphone on or off")},
+        {"requestAskGroupMembers", QT_TR_NOOP("Asking for the member list")},
     };
     const auto found = kNamed.constFind(signalName);
     if (found == kNamed.cend()) {
@@ -267,6 +268,8 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&commands_, &AccountCommands::requestSetCallMuted, worker_,
         &SessionWorker::setCallMuted);
     connect(&commands_, &AccountCommands::requestAckPending, worker_, &SessionWorker::ackPending);
+    connect(&commands_, &AccountCommands::requestAskGroupMembers, worker_,
+        &SessionWorker::askGroupMembers);
     connect(&commands_, &AccountCommands::requestForgetPendingAdd, worker_,
         &SessionWorker::forgetPendingAdd);
     connect(&commands_, &AccountCommands::requestRevokeDevice, worker_,
@@ -453,6 +456,10 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&ingest_, &MessageIngest::reactionsChanged, &events_,
         &AccountEvents::reactionsChanged);
     connect(&ingest_, &MessageIngest::groupChanged, &events_, &AccountEvents::groupChanged);
+    connect(&ingest_, &MessageIngest::memberListChanged, &events_,
+        &AccountEvents::memberListChanged);
+    connect(&ingest_, &MessageIngest::memberListWanted, &commands_,
+        &AccountCommands::requestAskGroupMembers);
     connect(&ingest_, &MessageIngest::accountRenamed, &events_, &AccountEvents::accountRenamed);
     connect(&ingest_, &MessageIngest::contactsRevised, &events_,
         &AccountEvents::contactsRevised);
@@ -472,12 +479,13 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
                 emit commands_.requestSendReceipt(peer, ref);
             }
         });
-    connect(&ingest_, &MessageIngest::messageArrived, this, [this](const QString& peer) {
-        if (contacts_.state(peer).notifications) {
-            emit messageNotification(
-                peer, contacts_.peerName(peer), chatPreviewOf(store_.lastMessage(peer)));
-        }
-    });
+    connect(&ingest_, &MessageIngest::messageArrived, this,
+        [this](const QString& peer, const qint64 id) {
+            if (contacts_.state(peer).notifications || store_.messageById(id).mentionsMe) {
+                emit messageNotification(
+                    peer, contacts_.peerName(peer), chatPreviewOf(store_.lastMessage(peer)));
+            }
+        });
     connect(&ingest_, &MessageIngest::reactionArrived, this,
         [this](const QString& peer, const QString& target, const QString& emoji) {
             noteReactionToFlash(peer, target);

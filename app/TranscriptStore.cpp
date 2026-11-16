@@ -55,6 +55,7 @@ StoredMessage toQt(const client::StoredMessage& m)
     out.author = qt(m.author);
     out.contactable = m.contactable;
     out.fromHost = m.fromHost;
+    out.mentionsMe = m.mentionsMe;
     return out;
 }
 
@@ -87,6 +88,7 @@ client::StoredMessage toCore(const StoredMessage& m)
     out.author = utf8(m.author);
     out.contactable = m.contactable;
     out.fromHost = m.fromHost;
+    out.mentionsMe = m.mentionsMe;
     return out;
 }
 
@@ -305,6 +307,35 @@ std::optional<GroupState> TranscriptReader::groupState(const QString& peer) cons
         return std::nullopt;
     }
     return GroupState{qt(state->kind), state->members, state->write, state->admin, state->at};
+}
+
+QStringList TranscriptReader::groupMembers(const QString& peer) const
+{
+    QStringList names;
+    for (const std::string& name : core_->groupMembers(utf8(peer))) {
+        names << qt(name);
+    }
+    return names;
+}
+
+client::MemberListState TranscriptReader::memberListState(const QString& peer) const
+{
+    return core_->memberListState(utf8(peer));
+}
+
+QString TranscriptReader::ownGroupName(const QString& peer) const
+{
+    return qt(core_->ownGroupName(utf8(peer)));
+}
+
+int TranscriptReader::unreadMentionCount(const QString& peer) const
+{
+    return core_->unreadMentionCount(utf8(peer));
+}
+
+qint64 TranscriptReader::firstUnreadMentionId(const QString& peer) const
+{
+    return core_->firstUnreadMentionId(utf8(peer));
 }
 
 QMap<QString, qint64> TranscriptReader::groupReactionCounts(

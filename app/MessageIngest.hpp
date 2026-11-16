@@ -35,13 +35,15 @@ signals:
     void deliveredThrough(const QString& peer, qint64 uptoId);
     void reactionsChanged(const QString& peer, const QString& e2eId);
     void groupChanged(const QString& peer);
+    void memberListWanted(const QString& peer);
+    void memberListChanged(const QString& peer);
     void accountRenamed(const QString& name);
     void contactsRevised();
     void settingsAsked();
     // throughMs is the send time of the newest message another device read.
     void readElsewhere(const QString& peer, qint64 throughMs);
     void editArrived(const QString& peer, qint64 localId, const QString& ref);
-    void messageArrived(const QString& peer);
+    void messageArrived(const QString& peer, qint64 id);
     void reactionArrived(const QString& peer, const QString& target, const QString& emoji);
 
 private:

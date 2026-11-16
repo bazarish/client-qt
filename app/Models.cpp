@@ -62,6 +62,7 @@ QVariant ContactListModel::data(const QModelIndex& index, int role) const
     case LastTextRole: return c.lastText;
     case LastTimeRole: return c.lastTime;
     case UnreadRole: return c.unread;
+    case MentionsRole: return c.mentions;
     case PinnedRole: return c.pinned;
     case SavedRole: return c.saved;
     default: return {};
@@ -73,7 +74,7 @@ QHash<int, QByteArray> ContactListModel::roleNames() const
     return {{SavedRole, "saved"}, {FingerprintRole, "fingerprint"}, {NameRole, "name"},
         {LastTextRole, "lastText"},
         {LastTimeRole, "lastTime"}, {UnreadRole, "unread"},
-        {PinnedRole, "pinned"}};
+        {PinnedRole, "pinned"}, {MentionsRole, "mentions"}};
 }
 
 namespace {
@@ -145,13 +146,14 @@ void ContactListModel::touch(const QString& fingerprint, const QString& name,
     resort();
 }
 
-void ContactListModel::setUnread(const QString& fingerprint, int count)
+void ContactListModel::setUnread(const QString& fingerprint, const int count, const int mentions)
 {
     const int i = indexOf(fingerprint);
-    if (i >= 0 && contacts_[i].unread != count) {
+    if (i >= 0 && (contacts_[i].unread != count || contacts_[i].mentions != mentions)) {
         contacts_[i].unread = count;
+        contacts_[i].mentions = mentions;
         const QModelIndex idx = index(i);
-        emit dataChanged(idx, idx, {UnreadRole});
+        emit dataChanged(idx, idx, {UnreadRole, MentionsRole});
     }
 }
 
@@ -205,6 +207,7 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case AuthorRole: return m.author;
     case ContactableRole: return m.contactable;
     case FromHostRole: return m.fromHost;
+    case MentionsMeRole: return m.mentionsMe;
     case DeviceRole: return m.device;
     case ReactionsRole: return reactions_.value(m.e2eId).summary;
     case FreshReactionsRole: return reactions_.value(m.e2eId).fresh;
@@ -232,7 +235,8 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
         {TransferStageRole, "transferStage"},
         {ReplyToRole, "replyTo"}, {AuthorRole, "author"}, {ContactableRole, "contactable"},
         {FromHostRole, "fromHost"}, {DeviceRole, "device"}, {ReactionsRole, "reactions"},
-        {FreshReactionsRole, "freshReactions"}, {PictureVersionRole, "pictureVersion"}};
+        {FreshReactionsRole, "freshReactions"}, {PictureVersionRole, "pictureVersion"},
+        {MentionsMeRole, "mentionsMe"}};
 }
 
 void ConversationModel::setMessages(QVector<StoredMessage> messages, const ViewLanding landing)

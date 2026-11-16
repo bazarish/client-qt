@@ -18,6 +18,9 @@ Rectangle {
         Math.max(minInputH, Math.round((Window.height > 0 ? Window.height : 600) * 0.30))
     readonly property int kAttachMenuGap: 8
     readonly property int kPairedButtonWidth: 32
+    readonly property int kMentionListWidth: 260
+    readonly property int kMentionRowPadding: 12
+    readonly property int kMentionRowSpacing: 7
     // The Basic style's text area padding, kept so the field looks the same.
     readonly property int kFieldPadding: 6
     readonly property var kForms: [
@@ -63,6 +66,21 @@ Rectangle {
         input.insert(from, open + chosen + close)
         input.select(from + open.length, from + open.length + chosen.length)
         input.forceActiveFocus()
+    }
+
+    // The word still being composed on a phone counts: the choices follow every letter.
+    readonly property var mention: root.session && root.session.activeMembers.length > 0
+        && input.activeFocus
+        ? root.session.mentionAt(input.text.substring(0, input.cursorPosition) + input.preeditText)
+        : ({})
+    readonly property var mentionChoices: root.mention.choices || []
+
+    function completeMention(name) {
+        const from = root.mention.from
+        const written = root.session.mentionText(name) + " "
+        input.remove(from, input.cursorPosition)
+        input.insert(from, written)
+        input.cursorPosition = from + written.length
     }
 
     property string draftPeer: ""
@@ -281,10 +299,58 @@ Rectangle {
             }
 
             Rectangle {
+                id: inputFrame
                 Layout.fillWidth: true
                 Layout.preferredHeight: root.inputH
                 radius: 18
                 color: Theme.bg
+
+                // Never takes the focus: a phone keyboard stays open while a name is chosen.
+                Popup {
+                    id: mentionList
+                    visible: root.mentionChoices.length > 0
+                    y: -height - root.kAttachMenuGap
+                    width: Math.min(inputFrame.width, root.kMentionListWidth)
+                    padding: 4
+                    modal: false
+                    focus: false
+                    closePolicy: Popup.NoAutoClose
+                    background: Rectangle {
+                        color: Theme.surface
+                        radius: Theme.radiusSmall
+                        border.color: Theme.border
+                        border.width: 1
+                    }
+                    contentItem: Column {
+                        Repeater {
+                            model: root.mentionChoices
+                            delegate: ItemDelegate {
+                                id: choice
+                                required property string modelData
+                                width: mentionList.availableWidth
+                                focusPolicy: Qt.NoFocus
+                                leftPadding: root.kMentionRowPadding
+                                rightPadding: root.kMentionRowPadding
+                                topPadding: root.kMentionRowSpacing
+                                bottomPadding: root.kMentionRowSpacing
+                                implicitHeight: implicitContentHeight + topPadding + bottomPadding
+                                contentItem: Label {
+                                    text: choice.modelData
+                                    color: Theme.text
+                                    elide: Text.ElideRight
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                                background: Rectangle {
+                                    radius: Theme.radiusSmall
+                                    color: choice.down || choice.hovered
+                                        || (!App.mobile && root.mentionChoices.length === 1)
+                                        ? Theme.surfaceAlt : "transparent"
+                                }
+                                onClicked: root.completeMention(choice.modelData)
+                            }
+                        }
+                    }
+                }
                 border.color: (input.activeFocus || root.editing) ? Theme.accent : Theme.controlEdge
 
                 ScrollView {
@@ -393,6 +459,13 @@ Rectangle {
                             } else {
                                 root.send()
                                 event.accepted = true
+                            }
+                        }
+                        Keys.onTabPressed: function(event) {
+                            const choices = root.mentionChoices
+                            event.accepted = choices.length > 0
+                            if (choices.length === 1) {
+                                root.completeMention(choices[0])
                             }
                         }
                         Keys.onPressed: function(event) {

@@ -103,6 +103,9 @@ class SessionController : public QObject {
     Q_PROPERTY(qint64 activeGroupMembers READ activeGroupMembers NOTIFY activeGroupChanged)
     Q_PROPERTY(bool activeGroupWrite READ activeGroupWrite NOTIFY activeGroupChanged)
     Q_PROPERTY(bool activeGroupAdmin READ activeGroupAdmin NOTIFY activeGroupChanged)
+    // In byte order; the member list window sorts them for the language.
+    Q_PROPERTY(QStringList activeMembers READ activeMembers NOTIFY activeMembersChanged)
+    Q_PROPERTY(bool activeMemberListHeld READ activeMemberListHeld NOTIFY activeMembersChanged)
     Q_PROPERTY(bool atNewest READ atNewest NOTIFY pagingChanged)
     Q_PROPERTY(bool hasMoreOlder READ hasMoreOlder NOTIFY pagingChanged)
     Q_PROPERTY(QString accountId READ accountId CONSTANT)
@@ -249,6 +252,13 @@ public:
     qint64 activeGroupMembers() const { return activeGroup_ ? activeGroup_->members : 0; }
     bool activeGroupWrite() const { return !activeGroup_ || activeGroup_->write; }
     bool activeGroupAdmin() const { return activeGroup_ && activeGroup_->admin; }
+    QStringList activeMembers() const { return activeMembers_; }
+    bool activeMemberListHeld() const { return activeMemberListHeld_; }
+    Q_INVOKABLE QVariantMap mentionAt(const QString& before) const;
+    Q_INVOKABLE QString mentionText(const QString& name) const;
+    Q_INVOKABLE QStringList membersInOrder(const QStringList& names, const QString& language) const;
+    Q_INVOKABLE QStringList membersMatching(const QStringList& names, const QString& query) const;
+    Q_INVOKABLE void openAtFirstMention(const QString& peer);
     Q_INVOKABLE QString linkFailureText(int failure) const;
     Q_INVOKABLE QString letterOf(const QString& name) const;
     Q_INVOKABLE QColor letterFill(const QString& name) const;
@@ -478,6 +488,7 @@ signals:
     void activePeerChanged();
     void activePeerNameChanged();
     void activeGroupChanged();
+    void activeMembersChanged();
     void activeChatTimerChanged();
     void activeBotMenuChanged();
     void pagingChanged();
@@ -612,6 +623,9 @@ private:
     QString typingTo_;
     QHash<QString, QString> drafts_;
     std::optional<GroupState> activeGroup_;
+    QStringList activeMembers_;
+    QString activeOwnName_;
+    bool activeMemberListHeld_ = false;
     qint64 activeChatTimer_ = 0;
     QVariantList activeBotMenu_;
     QVariantList aliasHoldings_;
@@ -645,6 +659,7 @@ private:
     bool scrollStick_ = true;
     void activateConversation(const QString& peer);
     void refreshActiveGroup();
+    void refreshActiveMembers();
     void refreshChatRow(const QString& peer);
     void onRowAdded(const QString& peer, qint64 id, bool own);
     void onRowChanged(const QString& peer, qint64 id);

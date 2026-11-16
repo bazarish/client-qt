@@ -1507,6 +1507,15 @@ void SessionWorker::ackPending(const QString& pendingId)
     queueAck(pendingId.toStdString());
 }
 
+void SessionWorker::askGroupMembers(const QString& peer)
+{
+    try {
+        openSession().askGroupMembers(peer.toStdString());
+    } catch (const std::exception& error) {
+        bazarish::log::warn("member list not asked for: {}", error.what());
+    }
+}
+
 void SessionWorker::sendReaction(const QString& peer, const QString& refId, const QString& emoji)
 {
     const QString op = beginOp(

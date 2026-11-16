@@ -46,6 +46,47 @@ member's own reaction from this device's table. Counts live in
 `group_reaction_counts` and go with the post when it is deleted or the chat is
 cleared.
 
+## Member list
+
+In a `group` the client keeps the host's `group.members` letters in the
+conversation database (`group_members`, with the list state and the own name in
+`group_rosters`). The core asks the host with `group.members.ask` once per run
+of the client for a group with no list, when the first message with a `group`
+block comes in, and again whenever a list arrives broken or a change leaves a
+count other than `total`.
+
+- Chat info shows a "Member list" button while the list is held. It is hidden
+  while the list is not known yet and in a channel (`op: none`).
+- The button opens a window with the names in the alphabetical order of the
+  interface language (`QCollator`, numbers by value). The search button filters
+  this local list by any part of a name or of its mention form.
+- Chat info shows no device list for a bot or a group: they have one device.
+
+## Mentions
+
+The composer, the bubbles and the chat list follow `docs-main/Groups.md`,
+Mentions, with the parser in common (`Mentions.hpp`).
+
+- Typing `@` and at least one character after white space, an opening bracket
+  or quote, or at the start of the text, shows up to 5 member names that start
+  with the typed characters, compared case-folded and with spaces as `_`. The
+  own name is not offered.
+- A chosen name is written as `@` and its mention form, followed by a space. On
+  a desktop Tab writes the name when only one is offered, and a click on a name
+  writes it; on a phone a name is chosen from the list.
+- A mention of a member in a post's text is drawn in `Theme.mentionInk`, bold.
+  Positions come from UTF-8 offsets and are converted to the text's UTF-16
+  positions (`MentionText.cpp`).
+- A post that mentions this member, or replies to one of their posts, has the
+  `Theme.bubbleMention` fill and a 1 px `Theme.mentionEdge` border. Every text
+  colour drawn in a bubble keeps 4.5:1 on that fill in both themes.
+- A group with unread mentions shows an `@` mark beside the unread count in the
+  chat list. A tap on the mark opens the chat at the first unread mention,
+  centred and highlighted; a tap elsewhere on the row opens it as before.
+- A post that mentions this member wakes a notification even when the chat's
+  notifications are off. The application's own notification switch still
+  applies.
+
 ## Member and admin actions
 
 From a post's menu:

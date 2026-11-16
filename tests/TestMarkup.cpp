@@ -47,7 +47,7 @@ double growthOf(const std::function<QString(int)>& build)
 const QString kOverlongAlias = QString(bazarish::kAliasMaxLength + 1, QChar(u'a'));
 
 const Colors kColors{QStringLiteral("#f2f4f2"), QStringLiteral("#232a31"),
-    QStringLiteral("#11151a"), QStringLiteral("#d7dbd8")};
+    QStringLiteral("#11151a"), QStringLiteral("#d7dbd8"), QStringLiteral("#ffc56b")};
 
 std::vector<Run> runsOf(const char* const text)
 {
@@ -238,6 +238,35 @@ void testPlainProjection()
     CHECK(plain("") == QString());
 }
 
+void testMentions()
+{
+    const QStringList members{QStringLiteral("Анна Мария"), QStringLiteral("Bob")};
+    const QString text = QString::fromUtf8("🙂 **hi** @Анна_Мария, and @Bob! and @Eve");
+    const std::vector<Run> runs = parse(text, members);
+    std::vector<QString> mentioned;
+    for (const Run& run : runs) {
+        if (run.action == Action::eMention) {
+            mentioned.push_back(run.text);
+        }
+    }
+    CHECK(mentioned.size() == 2);
+    CHECK(mentioned[0] == QString::fromUtf8("@Анна_Мария"));
+    CHECK(mentioned[1] == QStringLiteral("@Bob"));
+    CHECK(toPlain(text) == QString::fromUtf8("🙂 hi @Анна_Мария, and @Bob! and @Eve"));
+
+    const QString shown = toHtml(text, kColors, members);
+    CHECK(shown.contains(QString::fromUtf8(
+        "<span style=\"color:#ffc56b;font-weight:600;\">@Анна_Мария</span>,")));
+    CHECK(shown.contains(QStringLiteral("font-weight:600;\">@Bob</span>!")));
+    CHECK(!shown.contains(QStringLiteral("600;\">@Eve")));
+    CHECK(!toHtml(text, kColors).contains(QStringLiteral("font-weight:600")));
+
+    const std::vector<Run> styled = parse(QStringLiteral("*see @Bob now*"), members);
+    CHECK(styled.size() == 3);
+    CHECK(styled[1].action == Action::eMention && styled[1].italic);
+    CHECK(parse(QStringLiteral("mail@Bob"), members).size() == 1);
+}
+
 }  // namespace
 
 int main()
@@ -249,6 +278,7 @@ try {
     testHtmlIsOurs();
     testCodeBlocks();
     testPlainProjection();
+    testMentions();
     CHECK(growthOf([](const int n) { return QStringLiteral("*a").repeated(n); }) < kLinearAllowance);
     CHECK(growthOf([](const int n) { return QStringLiteral("~~a").repeated(n); }) < kLinearAllowance);
     CHECK(growthOf([](const int n) { return QStringLiteral("https://a") + QString(n, u')'); })

@@ -179,6 +179,7 @@ signals:
     void recentReactions(const QStringList& recent);
     void recentEmoji(const QStringList& recent);
     void groupChanged(const QString& peer);
+    void memberListChanged(const QString& peer);
     void accountRenamed(const QString& name);
     void contactsRevised();
     void opChanged(const OperationRow& row);

@@ -24,6 +24,7 @@ Item {
     readonly property int kSelectedMark: 3
     readonly property int kSelectedMarkInset: 12
     readonly property int kVisibleSettleMs: 300
+    readonly property int kMentionMarkReach: 6
     readonly property int kPreviewChars: 200
     readonly property int kMillisPerDay: 86400000
     readonly property int kDayTurnGraceMs: 1000
@@ -330,6 +331,28 @@ Item {
                                 font.pixelSize: Theme.fontSmall
                                 maximumLineCount: 1
                                 elide: Text.ElideRight
+                            }
+                            Rectangle {
+                                visible: model.mentions > 0
+                                radius: height / 2
+                                color: Theme.mentionInk
+                                implicitHeight: 18
+                                implicitWidth: 18
+                                Accessible.role: Accessible.Button
+                                Accessible.name: qsTr("First unread mention")
+                                Label {
+                                    anchors.centerIn: parent
+                                    text: "@"
+                                    color: Theme.mentionMarkInk
+                                    font.pixelSize: 11
+                                    font.weight: Font.DemiBold
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    anchors.margins: -root.kMentionMarkReach
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.session.openAtFirstMention(chatRow.peer)
+                                }
                             }
                             Rectangle {
                                 visible: model.unread > 0

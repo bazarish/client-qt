@@ -96,6 +96,7 @@ signals:
     void requestSendReceipt(const QString& peer, const QString& refId);
     void watchUnsent(const QVariantList& rows);
     void requestAckPending(const QString& pendingId);
+    void requestAskGroupMembers(const QString& peer);
     void requestSendReaction(const QString& peer, const QString& refId, const QString& emoji);
     void requestSendCallback(const QString& opId, const QString& peer, const QString& data,
         const QString& ref);

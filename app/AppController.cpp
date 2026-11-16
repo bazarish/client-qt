@@ -802,11 +802,13 @@ bool AppController::clipboardOffersPaste(const bool pictures) const
 }
 
 QString AppController::markupHtml(const QString& text, const QColor& actionColor,
-    const QColor& chipColor, const QColor& codeColor, const QColor& codeTextColor) const
+    const QColor& chipColor, const QColor& codeColor, const QColor& codeTextColor,
+    const QStringList& mentionNames, const QColor& mentionColor) const
 {
     return markup::toHtml(text,
         markup::Colors{actionColor.name(), chipColor.name(), codeColor.name(),
-            codeTextColor.name()});
+            codeTextColor.name(), mentionColor.name()},
+        mentionNames);
 }
 
 QString AppController::markupPlain(const QString& text) const

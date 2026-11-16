@@ -59,6 +59,7 @@ public:
 
     void rowAdded(const std::string& peer, const std::int64_t id, const bool own) override
     {
+        lastAddedId_ = id;
         emit owner_.rowAdded(qt(peer), id, own);
     }
     void rowChanged(const std::string& peer, const std::int64_t id) override
@@ -95,6 +96,14 @@ public:
         emit owner_.reactionsChanged(qt(peer), {});
     }
     void groupChanged(const std::string& peer) override { emit owner_.groupChanged(qt(peer)); }
+    void memberListWanted(const std::string& peer) override
+    {
+        emit owner_.memberListWanted(qt(peer));
+    }
+    void memberListChanged(const std::string& peer) override
+    {
+        emit owner_.memberListChanged(qt(peer));
+    }
     void accountRenamed(const std::string& name) override { emit owner_.accountRenamed(qt(name)); }
     void contactsRevised() override { emit owner_.contactsRevised(); }
     void settingsAsked() override { emit owner_.settingsAsked(); }
@@ -107,11 +116,16 @@ public:
     {
         emit owner_.editArrived(qt(peer), localId, qt(ref));
     }
-    void messageArrived(const std::string& peer) override { emit owner_.messageArrived(qt(peer)); }
+    // The ingest reports a message's row just before the message itself.
+    void messageArrived(const std::string& peer) override
+    {
+        emit owner_.messageArrived(qt(peer), lastAddedId_);
+    }
 
 private:
     MessageIngest& owner_;
     const ContactBook& contacts_;
+    std::int64_t lastAddedId_ = 0;
 };
 
 MessageIngest::MessageIngest(

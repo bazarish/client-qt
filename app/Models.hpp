@@ -36,6 +36,7 @@ struct ContactRow {
     int unread = 0;
     bool pinned = false;
     bool saved = false;
+    int mentions = 0;
 };
 
 class ContactListModel : public QAbstractListModel {
@@ -43,7 +44,7 @@ class ContactListModel : public QAbstractListModel {
 public:
     enum Roles {
         FingerprintRole = Qt::UserRole + 1, NameRole, LastTextRole, LastTimeRole, UnreadRole,
-        PinnedRole, SavedRole
+        PinnedRole, SavedRole, MentionsRole
     };
     using QAbstractListModel::QAbstractListModel;
 
@@ -54,7 +55,7 @@ public:
     void setContacts(QVector<ContactRow> contacts);
     void touch(const QString& fingerprint, const QString& name, const QString& lastText,
         qint64 lastTime);
-    void setUnread(const QString& fingerprint, int count);
+    void setUnread(const QString& fingerprint, int count, int mentions);
     int totalUnread() const;
     void remove(const QString& fingerprint);
 
@@ -99,7 +100,7 @@ public:
         DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole, SavedPathRole,
         TransferStageRole, ReplyToRole, PictureRole,
         DurationRole, WaveRole, AuthorRole, ContactableRole, FromHostRole, DeviceRole,
-        ReactionsRole, FreshReactionsRole, PictureVersionRole
+        ReactionsRole, FreshReactionsRole, PictureVersionRole, MentionsMeRole
     };
     using QAbstractListModel::QAbstractListModel;
 

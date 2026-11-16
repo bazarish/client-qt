@@ -63,6 +63,8 @@ if(Qt6_FOUND)
         app/ChatPreview.hpp
         app/Markup.cpp
         app/Markup.hpp
+        app/MentionText.cpp
+        app/MentionText.hpp
         app/LinkFailureText.cpp
         app/LinkFailureText.hpp
         app/Translations.cpp
@@ -312,6 +314,7 @@ if(Qt6_FOUND)
             app/qml/SignWithKeySheet.qml
             app/qml/ContactInfo.qml
             app/qml/ContactShareSheet.qml
+            app/qml/MemberListSheet.qml
             app/qml/CallScreen.qml
             app/qml/CallBar.qml
             app/qml/IncomingCallWindow.qml
@@ -405,11 +408,17 @@ target_compile_options(TestDataMove PRIVATE -Wall -Wextra -Werror)
 add_test(NAME TestDataMove COMMAND TestDataMove)
 
 if(Qt6_FOUND)
-    add_executable(TestMarkup tests/TestMarkup.cpp app/Markup.cpp)
+    add_executable(TestMarkup tests/TestMarkup.cpp app/Markup.cpp app/MentionText.cpp)
     target_include_directories(TestMarkup PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
     target_link_libraries(TestMarkup PRIVATE bazarish_test_util bazarish_client Qt6::Core)
     target_compile_options(TestMarkup PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestMarkup COMMAND TestMarkup)
+
+    add_executable(TestMentionText tests/TestMentionText.cpp app/MentionText.cpp)
+    target_include_directories(TestMentionText PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestMentionText PRIVATE bazarish_test_util bazarish_client Qt6::Core)
+    target_compile_options(TestMentionText PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestMentionText COMMAND TestMentionText)
 
     add_executable(TestQrScan tests/TestQrScan.cpp app/QrScanner.cpp)
     target_include_directories(TestQrScan PRIVATE
@@ -521,6 +530,18 @@ if(Qt6_FOUND)
         add_test(NAME TestConversationView COMMAND TestConversationView)
         set_tests_properties(TestConversationView PROPERTIES
             ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=Basic")
+
+        add_executable(TestMentionsUi tests/TestMentionsUi.cpp app/MentionText.cpp)
+        target_compile_definitions(TestMentionsUi PRIVATE
+            BAZARISH_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/app/qml"
+            BAZARISH_MENTION_STUBS="${CMAKE_CURRENT_SOURCE_DIR}/tests/MentionsUiStubs")
+        target_include_directories(TestMentionsUi PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+        target_link_libraries(TestMentionsUi PRIVATE bazarish_test_util bazarish_client
+            Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Test)
+        target_compile_options(TestMentionsUi PRIVATE -Wall -Wextra -Werror)
+        add_test(NAME TestMentionsUi COMMAND TestMentionsUi)
+        set_tests_properties(TestMentionsUi PROPERTIES
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=Basic")
     endif()
 
     add_executable(TestLetterAvatar tests/TestLetterAvatar.cpp app/LetterAvatar.cpp)
@@ -540,7 +561,7 @@ if(Qt6_FOUND)
     add_test(NAME TestTranscript COMMAND TestTranscript)
 
     add_executable(TestChatPreview tests/TestChatPreview.cpp app/ChatPreview.cpp app/Markup.cpp
-        app/SystemNotes.cpp)
+        app/MentionText.cpp app/SystemNotes.cpp)
     target_include_directories(TestChatPreview PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/app ${SQLCIPHER_INCLUDE_DIR})
     target_link_libraries(TestChatPreview PRIVATE bazarish_test_util bazarish_client Qt6::Core)

@@ -317,6 +317,7 @@ Item {
     readonly property bool fromMember: delegate.inGroup && (model.author || "").length > 0
     readonly property bool fromHost: delegate.inGroup && model.fromHost === true
     readonly property bool onlyForMe: delegate.inGroup && !delegate.fromMember && !delegate.fromHost
+    readonly property bool mentionsMe: delegate.inGroup && !model.outgoing && model.mentionsMe === true
     readonly property int letterSize: 30
     readonly property real kBubbleShare: 0.72
     readonly property int kBubbleInset: 20
@@ -475,15 +476,18 @@ Item {
         radius: 12
         color: delegate.sticker ? "transparent"
             : model.outgoing ? (delegate.held ? Theme.bubbleOutHeld : Theme.bubbleOut)
-            : (delegate.held ? Theme.bubbleInHeld : Theme.bubbleIn)
+            : (delegate.held ? Theme.bubbleInHeld
+                : (delegate.mentionsMe ? Theme.bubbleMention : Theme.bubbleIn))
         Behavior on color {
             enabled: !delegate.pooled
             ColorAnimation { duration: delegate.heldFadeMs }
         }
         border.width: delegate.highlighted ? 2
-            : (delegate.isContactRequestIncoming || delegate.onlyForMe ? 1 : 0)
+            : (delegate.isContactRequestIncoming || delegate.onlyForMe || delegate.mentionsMe ? 1 : 0)
         border.color: delegate.isContactRequestIncoming ? Theme.green
-            : (delegate.onlyForMe && !delegate.highlighted ? Theme.text : Theme.accent)
+            : delegate.highlighted ? Theme.accent
+            : delegate.onlyForMe ? Theme.text
+            : delegate.mentionsMe ? Theme.mentionEdge : Theme.accent
         Behavior on border.width {
             enabled: !delegate.pooled
             NumberAnimation { duration: 220 }
@@ -970,7 +974,9 @@ Item {
                 text: App.markupHtml(delegate.linkPlates.length > 0
                         ? delegate.session.withoutLinkPlates(model.text) : model.text,
                     Theme.accent, Theme.surfaceAlt, Theme.bg,
-                    delegate.isUnsupported ? Theme.danger : Theme.text)
+                    delegate.isUnsupported ? Theme.danger : Theme.text,
+                    delegate.session && delegate.session.activeIsGroup
+                        ? delegate.session.activeMembers : [], Theme.mentionInk)
                 color: delegate.isUnsupported ? Theme.danger : Theme.text
                 enabled: !App.mobile
                 readOnly: true
