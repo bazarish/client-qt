@@ -10,6 +10,7 @@
 #include "DevicePairing.hpp"
 #include "Documents.hpp"
 #include "I2pRouter.hpp"
+#include "LinkFailureText.hpp"
 #include "PathText.hpp"
 #include "Wire.hpp"
 #ifdef Q_OS_ANDROID
@@ -770,7 +771,8 @@ void CoreHost::startPairing(const QString& link, const QString& atRestPassphrase
     try {
         parsed = bazarish::parsePairLink(link.trimmed().toStdString());
     } catch (const std::exception& error) {
-        failPairing(QString::fromUtf8(error.what()));
+        bazarish::log::info("pairing link refused: {}", error.what());
+        failPairing(localFailureText(client::LocalFailure::eInvalidPairLink));
         return;
     }
 
@@ -832,7 +834,8 @@ void CoreHost::startPairing(const QString& link, const QString& atRestPassphrase
                 }
             }
         } catch (const std::exception& error) {
-            failure = QString::fromUtf8(error.what());
+            bazarish::log::warn("pairing: the other device was not reached: {}", error.what());
+            failure = failureText(error, FarSide::eDevice);
         }
         QMetaObject::invokeMethod(
             this,
@@ -906,7 +909,8 @@ void CoreHost::submitPairCode(const QString& code)
                 }
             }
         } catch (const std::exception& error) {
-            failure = QString::fromUtf8(error.what());
+            bazarish::log::warn("pairing: the account was not received: {}", error.what());
+            failure = failureText(error, FarSide::eDevice);
         }
         QMetaObject::invokeMethod(
             this,

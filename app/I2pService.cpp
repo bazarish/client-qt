@@ -10,6 +10,7 @@
 
 #include "GatewayAddress.hpp"
 #include "I2pRouter.hpp"
+#include "LinkFailureText.hpp"
 #include "SocksProxy.hpp"
 #include "AccountManager.hpp"
 #include "AppSettings.hpp"
@@ -212,8 +213,9 @@ void I2pService::checkAndSaveSam(const QString& host, const int port)
             address.host = wanted.toStdString();
             address.controlPort = static_cast<std::uint16_t>(port);
             (void)bazarish::sam::probe(address);
-        } catch (const std::exception& error) {
-            failure = QString::fromUtf8(error.what());
+        } catch (const bazarish::sam::ProbeFailed& error) {
+            bazarish::log::info("i2p: the router check failed: {}", error.what());
+            failure = samProbeText(error.failure());
         }
         QMetaObject::invokeMethod(
             this,

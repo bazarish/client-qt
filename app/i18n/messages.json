@@ -4751,6 +4751,168 @@
       "zh": "别名登记处的应答不正确",
       "ar": "ردّ سجل الأسماء المستعارة بشكل غير صحيح"
     },
+    "The contact's server is not answering": {
+      "ru": "Сервер контакта не отвечает",
+      "es": "El servidor del contacto no responde",
+      "zh": "联系人的服务器无响应",
+      "ar": "خادم جهة الاتصال لا يستجيب"
+    },
+    "The contact is not answering": {
+      "ru": "Контакт не отвечает",
+      "es": "El contacto no responde",
+      "zh": "联系人无响应",
+      "ar": "جهة الاتصال لا تستجيب"
+    },
+    "The other device is not answering": {
+      "ru": "Другое устройство не отвечает",
+      "es": "El otro dispositivo no responde",
+      "zh": "另一台设备无响应",
+      "ar": "الجهاز الآخر لا يستجيب"
+    },
+    "This invite is out of date": {
+      "ru": "Приглашение устарело",
+      "es": "Esta invitación está caducada",
+      "zh": "此邀请已过期",
+      "ar": "هذه الدعوة منتهية الصلاحية"
+    },
+    "The contact refused the transfer": {
+      "ru": "Контакт отклонил передачу",
+      "es": "El contacto rechazó la transferencia",
+      "zh": "联系人拒绝了传输",
+      "ar": "رفضت جهة الاتصال النقل"
+    },
+    "The other device refused the pairing": {
+      "ru": "Другое устройство отклонило подключение",
+      "es": "El otro dispositivo rechazó la vinculación",
+      "zh": "另一台设备拒绝了配对",
+      "ar": "رفض الجهاز الآخر الاقتران"
+    },
+    "The contact's server answered incorrectly": {
+      "ru": "Сервер контакта ответил некорректно",
+      "es": "El servidor del contacto respondió de forma incorrecta",
+      "zh": "联系人的服务器应答不正确",
+      "ar": "ردّ خادم جهة الاتصال بشكل غير صحيح"
+    },
+    "The file arrived damaged": {
+      "ru": "Файл пришёл повреждённым",
+      "es": "El archivo llegó dañado",
+      "zh": "文件到达时已损坏",
+      "ar": "وصل الملف تالفًا"
+    },
+    "The other device answered incorrectly": {
+      "ru": "Другое устройство ответило некорректно",
+      "es": "El otro dispositivo respondió de forma incorrecta",
+      "zh": "另一台设备的应答不正确",
+      "ar": "ردّ الجهاز الآخر بشكل غير صحيح"
+    },
+    "This alias is not valid": {
+      "ru": "Недопустимый алиас",
+      "es": "Este alias no es válido",
+      "zh": "此别名无效",
+      "ar": "هذا الاسم المستعار غير صالح"
+    },
+    "This pairing link is damaged": {
+      "ru": "Ссылка подключения повреждена",
+      "es": "Este enlace de vinculación está dañado",
+      "zh": "此配对链接已损坏",
+      "ar": "رابط الاقتران هذا تالف"
+    },
+    "This build has no alias registry": {
+      "ru": "В этой сборке нет реестра алиасов",
+      "es": "Esta compilación no tiene registro de alias",
+      "zh": "此版本没有别名登记处",
+      "ar": "لا يوجد سجل للأسماء المستعارة في هذا الإصدار"
+    },
+    "The account is too large to move to another device": {
+      "ru": "Аккаунт слишком велик для переноса на другое устройство",
+      "es": "La cuenta es demasiado grande para pasarla a otro dispositivo",
+      "zh": "账户太大，无法转移到另一台设备",
+      "ar": "الحساب أكبر من أن يُنقل إلى جهاز آخر"
+    },
+    "Another device is already being added": {
+      "ru": "Другое устройство уже добавляется",
+      "es": "Ya se está añadiendo otro dispositivo",
+      "zh": "已在添加另一台设备",
+      "ar": "تجري إضافة جهاز آخر بالفعل"
+    },
+    "The transfer was stopped": {
+      "ru": "Передача остановлена",
+      "es": "La transferencia se detuvo",
+      "zh": "传输已停止",
+      "ar": "توقف النقل"
+    },
+    "The contact stopped the transfer": {
+      "ru": "Контакт остановил передачу",
+      "es": "El contacto detuvo la transferencia",
+      "zh": "联系人停止了传输",
+      "ar": "أوقفت جهة الاتصال النقل"
+    },
+    "The contact no longer has this file": {
+      "ru": "У контакта больше нет этого файла",
+      "es": "El contacto ya no tiene este archivo",
+      "zh": "联系人已不再拥有此文件",
+      "ar": "لم يعد هذا الملف لدى جهة الاتصال"
+    },
+    "The file cannot be read": {
+      "ru": "Файл не читается",
+      "es": "No se puede leer el archivo",
+      "zh": "无法读取文件",
+      "ar": "تتعذر قراءة الملف"
+    },
+    "The file cannot be saved": {
+      "ru": "Файл не удаётся сохранить",
+      "es": "No se puede guardar el archivo",
+      "zh": "无法保存文件",
+      "ar": "يتعذر حفظ الملف"
+    },
+    "Internal error": {
+      "ru": "Внутренняя ошибка",
+      "es": "Error interno",
+      "zh": "内部错误",
+      "ar": "خطأ داخلي"
+    },
+    "The recipient was removed before delivery": {
+      "ru": "Получатель удалён до доставки",
+      "es": "El destinatario se eliminó antes de la entrega",
+      "zh": "收件人在送达前已被删除",
+      "ar": "حُذف المستلم قبل التسليم"
+    },
+    "The message went out of date before delivery": {
+      "ru": "Сообщение устарело до доставки",
+      "es": "El mensaje caducó antes de la entrega",
+      "zh": "消息在送达前已过期",
+      "ar": "انتهت صلاحية الرسالة قبل التسليم"
+    },
+    "The message could not be encrypted for the recipient": {
+      "ru": "Сообщение не удалось зашифровать для получателя",
+      "es": "No se pudo cifrar el mensaje para el destinatario",
+      "zh": "无法为收件人加密消息",
+      "ar": "تعذر تشفير الرسالة للمستلم"
+    },
+    "The router address must be a local IPv4 address": {
+      "ru": "Адрес роутера должен быть локальным адресом IPv4",
+      "es": "La dirección del router debe ser una dirección IPv4 local",
+      "zh": "路由地址必须是本地 IPv4 地址",
+      "ar": "يجب أن يكون عنوان الموجّه عنوان IPv4 محليًا"
+    },
+    "No router answers at this address": {
+      "ru": "По этому адресу роутер не отвечает",
+      "es": "Ningún router responde en esta dirección",
+      "zh": "此地址没有路由应答",
+      "ar": "لا يستجيب أي موجّه على هذا العنوان"
+    },
+    "The router refused the SAM connection": {
+      "ru": "Роутер отклонил подключение SAM",
+      "es": "El router rechazó la conexión SAM",
+      "zh": "路由拒绝了 SAM 连接",
+      "ar": "رفض الموجّه اتصال SAM"
+    },
+    "The router answered incorrectly": {
+      "ru": "Роутер ответил некорректно",
+      "es": "El router respondió de forma incorrecta",
+      "zh": "路由的应答不正确",
+      "ar": "ردّ الموجّه بشكل غير صحيح"
+    },
     "Cut": {
       "ru": "Вырезать",
       "es": "Cortar",

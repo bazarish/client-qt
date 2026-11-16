@@ -254,8 +254,8 @@ QString aliasHoldingsNote(const QVariantList& rows, const bool depositCovers)
 // The recipient's server answers in its own English; what it means is said in the app's language.
 QString refusalText(const bazarish::client::OutboundCourier::Outcome& outcome)
 {
-    if (outcome.errorCode.empty()) {
-        return QString::fromStdString(outcome.errorMessage);
+    if (outcome.reason != bazarish::client::NotStored::eRefused) {
+        return notStoredText(outcome.reason);
     }
     const std::optional<bazarish::ErrorCode> code
         = bazarish::errorCodeFromString(outcome.errorCode);
@@ -273,14 +273,27 @@ QString refusalText(const bazarish::client::OutboundCourier::Outcome& outcome)
 
 QString contactRefusalText(const bazarish::client::OutboundCourier::Outcome& outcome)
 {
-    if (outcome.errorCode.empty()) {
-        return QString::fromStdString(outcome.errorMessage);
+    if (outcome.reason != bazarish::client::NotStored::eRefused) {
+        return notStoredText(outcome.reason);
     }
     if (bazarish::errorCodeFromString(outcome.errorCode)
         == bazarish::ErrorCode::eContactRequestTooLarge) {
         return SessionWorker::tr("The contact request is too long");
     }
     return SessionWorker::tr("The contact's server refused the request");
+}
+
+FarSide cardStepSide(const bazarish::client::Session::CardStep step)
+{
+    using Step = bazarish::client::Session::CardStep;
+    switch (step) {
+    case Step::eLookingUpAlias:
+    case Step::eSolvingPuzzle:
+        return FarSide::eRegistry;
+    case Step::eFetchingCard:
+        return FarSide::eContactServer;
+    }
+    throw std::logic_error("no far side for this card step");
 }
 
 bazarish::client::DeliveryWatch watchFor(SessionWorker& owner, const qint64 localId)
@@ -862,7 +875,8 @@ void SessionWorker::openAccount(
             emit servedFinished(peer, id, true, {});
             break;
         case bazarish::client::TransferState::eFailed:
-            emit servedFinished(peer, id, false, QString::fromStdString(event.error));
+            bazarish::log::info("file transfer failed: {}", event.error);
+            emit servedFinished(peer, id, false, causeText(event.cause, FarSide::eContact));
             break;
         case bazarish::client::TransferState::eRequested:
             break;
@@ -1745,7 +1759,7 @@ void SessionWorker::drainResolvedAdds()
         if (!resolved.ok) {
             const QString error = resolved.aliasUnknown
                 ? tr("No such alias")
-                : QString::fromStdString(resolved.error);
+                : causeText(resolved.cause, cardStepSide(resolved.failedAt));
             if (resolved.aliasUnknown) {
                 emit contactAliasUnknown(entry.opId, error);
             } else {
@@ -2775,7 +2789,8 @@ void SessionWorker::reportPairing(const bazarish::client::Session::PairingEvent&
             tr("Wrong code %1 times. The address is closed.").arg(event.wrongCodes));
         break;
     case Stage::eFailed:
-        emit pairFinished(false, QString::fromStdString(event.error));
+        bazarish::log::warn("pairing failed: {}", event.error);
+        emit pairFinished(false, causeText(event.cause, FarSide::eDevice));
         break;
     }
 }
@@ -2794,7 +2809,8 @@ void SessionWorker::startPairing(const bool primary)
         emit pairOfferReady(
             QString::fromStdString(offer.uri), QString::fromStdString(offer.code));
     } catch (const std::exception& e) {
-        emit pairFinished(false, QString::fromUtf8(e.what()));
+        bazarish::log::warn("pairing did not start: {}", e.what());
+        emit pairFinished(false, failureText(e, FarSide::eDevice));
     }
 }
 
@@ -2895,7 +2911,8 @@ void SessionWorker::drainAliasErrands()
         aliasErrandByHand_ = false;
         if (!result.ok) {
             if (byHand) {
-                emit aliasActivationDone(false, QString::fromUtf8(result.error.c_str()));
+                bazarish::log::info("name servicing failed: {}", result.error);
+                emit aliasActivationDone(false, causeText(result.cause, FarSide::eRegistry));
             } else {
                 bazarish::log::info("name servicing will try again: {}", result.error);
             }

@@ -109,9 +109,29 @@ A failed connection or request to a server gives its reason in the same words;
 an answer that carries the server's own error code shows the server's word
 instead. Signing in to a site says *The site is not answering*, *The site
 refused the sign-in* or *The site answered incorrectly*. Changing an alias at
-the alias registry says *The alias registry is not answering* or *The alias
-registry answered incorrectly*. An error of this device, such as its storage,
-keeps its own text.
+the alias registry says *The alias registry is not answering*, *The alias
+registry refused the request* or *The alias registry answered incorrectly*.
+
+The same three causes - no answer, a refusal, an answer that does not read -
+are named for every other far side:
+
+| Far side | Where | No answer | Refusal | Answer that does not read |
+|---|---|---|---|---|
+| The alias registry | adding a contact by alias, alias servicing | *The alias registry is not answering* | *The alias registry refused the request* | *The alias registry answered incorrectly* |
+| The contact's server | fetching the card of an invite | *The contact's server is not answering* | *This invite is out of date* | *The contact's server answered incorrectly* |
+| The other device | adding a device, on either device | *The other device is not answering* | *The other device refused the pairing* | *The other device answered incorrectly* |
+| The contact | sending or receiving a file | *The contact is not answering* | *The contact refused the transfer* | *The file arrived damaged* |
+| An external router | checking a SAM address | *No router answers at this address* | *The router refused the SAM connection* | *The router answered incorrectly* |
+
+A cause on this side is named by what it is: *This invite link is damaged*,
+*This alias is not valid*, *This pairing link is damaged*, *This build has no
+alias registry*, *The account is too large to move to another device*,
+*Another device is already being added*, *The transfer was stopped*, *The
+contact stopped the transfer*, *The contact no longer has this file*, *The file
+cannot be read*, *The file cannot be saved*, *The router address must be a
+local IPv4 address*. A failure the core names no cause for says *Internal
+error*. The log keeps the full detail of every failure. An error of this
+device outside these paths, such as its storage, keeps its own text.
 
 ## Parameters
 

@@ -78,8 +78,9 @@ server admits one contact request per sending address a day and refuses the next
 | Final refusal (unknown pass, message too large, contact request too large) | The letter is settled with its reason |
 | Transient refusal (storage full, contact rate limit) | The letter is settled with its reason; a resend later may be accepted |
 | Signed confirmation | The letter is settled; the message is recorded as stored by the recipient's server |
-| A call signal or file letter outlived its time | The letter is settled as out of date |
-| The contact was removed | Its letters are settled as withdrawn |
+| A call signal or file letter outlived its time | The letter is settled as out of date: *The message went out of date before delivery* |
+| The contact was removed | Its letters are settled as withdrawn: *The recipient was removed before delivery* |
+| The recipient's key does not seal the letter | The letter is settled: *The message could not be encrypted for the recipient* |
 
 ## Reported states
 
