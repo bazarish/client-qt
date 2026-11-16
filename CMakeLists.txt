@@ -63,6 +63,8 @@ if(Qt6_FOUND)
         app/ChatPreview.hpp
         app/Markup.cpp
         app/Markup.hpp
+        app/LinkFailureText.cpp
+        app/LinkFailureText.hpp
         app/Translations.cpp
         app/Translations.hpp
         app/TranscriptStore.cpp

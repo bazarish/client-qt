@@ -101,11 +101,23 @@
       "zh": "短名称（别名）可以在注册处购买：",
       "ar": "يمكن شراء اسم قصير (اسم مستعار) من السجل:"
     },
-    "Could not connect to the server": {
-      "ru": "Не удалось подключиться к серверу",
-      "es": "No se pudo conectar con el servidor",
-      "zh": "无法连接到服务器",
-      "ar": "تعذّر الاتصال بالخادم"
+    "The server is not answering": {
+      "ru": "Сервер не отвечает",
+      "es": "El servidor no responde",
+      "zh": "服务器无响应",
+      "ar": "الخادم لا يستجيب"
+    },
+    "The server refused the connection": {
+      "ru": "Сервер отклонил подключение",
+      "es": "El servidor rechazó la conexión",
+      "zh": "服务器拒绝了连接",
+      "ar": "رفض الخادم الاتصال"
+    },
+    "The server answered incorrectly": {
+      "ru": "Сервер ответил некорректно",
+      "es": "El servidor respondió de forma incorrecta",
+      "zh": "服务器的应答不正确",
+      "ar": "ردّ الخادم بشكل غير صحيح"
     },
     "I2P": {
       "ru": "I2P",
@@ -130,12 +142,6 @@
       "es": "Los datos no se han movido: %1. Para conectarte, inicia Bazarish de nuevo.",
       "zh": "数据未迁移：%1。要联网，请重新启动 Bazarish。",
       "ar": "لم تُنقل البيانات: ⁦%1⁩. وللاتصال بالشبكة شغّل Bazarish من جديد."
-    },
-    "The server refused the request": {
-      "ru": "Сервер отклонил запрос",
-      "es": "El servidor rechazó la solicitud",
-      "zh": "服务器拒绝了请求",
-      "ar": "رفض الخادم الطلب"
     },
     "WWW": {
       "ru": "WWW",
@@ -4643,12 +4649,6 @@
       "zh": "正在连接网站…",
       "ar": "جارٍ الوصول إلى الموقع…"
     },
-    "The site refused it (HTTP %1)": {
-      "ru": "Сайт отказал (HTTP %1)",
-      "es": "El sitio lo rechazó (HTTP %1)",
-      "zh": "网站拒绝了（HTTP %1）",
-      "ar": "رفضه الموقع (HTTP ⁦%1⁩)"
-    },
     "This account is still opening": {
       "ru": "Аккаунт ещё открывается",
       "es": "La cuenta aún se está abriendo",
@@ -4685,11 +4685,23 @@
       "zh": "已过期",
       "ar": "منتهي الصلاحية"
     },
-    "The site did not answer over I2P": {
-      "ru": "Сайт не ответил через I2P",
-      "es": "El sitio no respondió por I2P",
-      "zh": "网站没有通过 I2P 回应",
-      "ar": "لم يستجب الموقع عبر I2P"
+    "The site is not answering": {
+      "ru": "Сайт не отвечает",
+      "es": "El sitio no responde",
+      "zh": "网站无响应",
+      "ar": "الموقع لا يستجيب"
+    },
+    "The site refused the sign-in": {
+      "ru": "Сайт отклонил вход",
+      "es": "El sitio rechazó el inicio de sesión",
+      "zh": "网站拒绝了登录",
+      "ar": "رفض الموقع تسجيل الدخول"
+    },
+    "The site answered incorrectly": {
+      "ru": "Сайт ответил некорректно",
+      "es": "El sitio respondió de forma incorrecta",
+      "zh": "网站的应答不正确",
+      "ar": "ردّ الموقع بشكل غير صحيح"
     },
     "Cut": {
       "ru": "Вырезать",
@@ -4984,12 +4996,6 @@
       "es": "Palabra fijada",
       "zh": "口令已设置",
       "ar": "عُيّنت الكلمة"
-    },
-    "The server did not answer over I2P, try again later": {
-      "ru": "Сервер не ответил по I2P, попробуйте позже",
-      "es": "El servidor no respondió por I2P, inténtalo más tarde",
-      "zh": "服务器没有通过 I2P 应答，请稍后再试",
-      "ar": "لم يستجب الخادم عبر I2P، حاول لاحقًا"
     },
     "%1 (%2)": {
       "ru": "%1 (%2)",

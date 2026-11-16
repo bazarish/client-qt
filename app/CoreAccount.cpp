@@ -4,6 +4,7 @@
 
 #include "ChatPreview.hpp"
 #include "DeliveryStatus.hpp"
+#include "LinkFailureText.hpp"
 #include "OperationLog.hpp"
 #include "PathText.hpp"
 #include "SessionShared.hpp"
@@ -12,6 +13,11 @@
 
 #include "AccountDb.hpp"
 #include "AccountKey.hpp"
+
+#pragma push_macro("emit")
+#undef emit
+#include <bazarish/Log.hpp>
+#pragma pop_macro("emit")
 
 #include <algorithm>
 #include <QCoreApplication>
@@ -126,13 +132,19 @@ void overI2p(Work work, Stage stage, Done done)
         try {
             result = work();
         } catch (const std::exception& error) {
-            problem = QString::fromUtf8(error.what());
+            bazarish::log::info("sign-in exchange failed: {}", error.what());
+            problem = failureText(error, FarSide::eSite);
         }
         client::tellFetchStages(nullptr);
         QMetaObject::invokeMethod(
             QCoreApplication::instance(), [done, result, problem]() { done(result, problem); },
             Qt::QueuedConnection);
     });
+}
+
+QString siteFailureText(const client::LinkFailure failure)
+{
+    return linkFailureText(static_cast<int>(failure), FarSide::eSite);
 }
 
 constexpr int kHttpAcceptedFirst = 200;
@@ -978,9 +990,9 @@ void CoreAccount::finishLoginSend(const QString& op, const QString& challenge,
     const bool accepted = problem.isEmpty() && status && *status >= kHttpAcceptedFirst
         && *status <= kHttpAcceptedLast;
     const QString said = !problem.isEmpty() ? problem
-        : !status                          ? tr("The site did not answer over I2P")
+        : !status                          ? siteFailureText(client::LinkFailure::eServerUnreachable)
         : accepted                         ? tr("Accepted")
-                                           : tr("The site refused it (HTTP %1)").arg(*status);
+                                           : siteFailureText(client::LinkFailure::eServerRefused);
     log_.finish(op, accepted, said);
     emit events_.loginSendState(
         challenge, accepted ? eLoginAccepted : eLoginRefused, said, startedAtMs);
@@ -1052,7 +1064,7 @@ void CoreAccount::finishLoginFetch(const QString& op, const QString& link,
     loginFetchCancelled_.reset();
     const bool received = problem.isEmpty() && challenge.has_value();
     const QString said = !problem.isEmpty() ? problem
-        : !challenge                       ? tr("The site did not answer over I2P")
+        : !challenge                       ? siteFailureText(client::LinkFailure::eServerUnreachable)
                                            : tr("Received");
     log_.finish(op, received, said);
     emit events_.loginFetchState(link, false, received ? QString() : said,

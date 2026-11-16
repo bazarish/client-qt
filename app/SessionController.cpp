@@ -12,6 +12,7 @@
 
 #include "I2pRouter.hpp"
 #include "Invite.hpp"
+#include "LinkFailureText.hpp"
 
 #include <QJsonDocument>
 
@@ -882,6 +883,11 @@ QVariantList SessionController::chatTimerChoices() const
         choices << static_cast<qint64>(seconds);
     }
     return choices;
+}
+
+QString SessionController::linkFailureText(const int failure) const
+{
+    return app::linkFailureText(failure, FarSide::eServer);
 }
 
 QString SessionController::chatTimerLabel(const qint64 seconds) const

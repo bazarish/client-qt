@@ -249,6 +249,7 @@ public:
     qint64 activeGroupMembers() const { return activeGroup_ ? activeGroup_->members : 0; }
     bool activeGroupWrite() const { return !activeGroup_ || activeGroup_->write; }
     bool activeGroupAdmin() const { return activeGroup_ && activeGroup_->admin; }
+    Q_INVOKABLE QString linkFailureText(int failure) const;
     Q_INVOKABLE QString letterOf(const QString& name) const;
     Q_INVOKABLE QColor letterFill(const QString& name) const;
     Q_INVOKABLE QColor letterInk(const QString& name) const;

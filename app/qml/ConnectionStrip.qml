@@ -16,27 +16,9 @@ Rectangle {
     readonly property bool refused: root.session !== null && root.session.approvalRefused
     readonly property int failure: root.session !== null ? root.session.linkFailure : LinkStatus.None
     readonly property bool noNetwork: root.isConnecting && root.failure === LinkStatus.NoNetwork
-    readonly property string whyNotReachable: {
-        switch (root.failure) {
-        case LinkStatus.Rebuilding:
-            return qsTr("The links to the server are being rebuilt")
-        case LinkStatus.I2pUnreachable:
-            return qsTr("No connection to the I2P network")
-        case LinkStatus.GatewayUnreachable:
-            return qsTr("No connection to the external gateway")
-        case LinkStatus.GatewayRefused:
-            return qsTr("The gateway refused a link to the server")
-        case LinkStatus.TunnelsBuilding:
-            return qsTr("The I2P tunnels are being built")
-        case LinkStatus.ServerUnreachable:
-            return qsTr("Could not connect to the server")
-        case LinkStatus.ServerDown:
-            return qsTr("No tunnel to the server")
-        case LinkStatus.ServerRefused:
-            return qsTr("The server refused the request")
-        }
-        return ""
-    }
+    readonly property string whyNotReachable: root.session !== null
+        && root.failure !== LinkStatus.NoNetwork && Tr.language.length >= 0
+        ? root.session.linkFailureText(root.failure) : ""
     readonly property int kPadding: 4
     readonly property int kSideMargin: 12
 

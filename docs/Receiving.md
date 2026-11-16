@@ -94,15 +94,20 @@ reason is the one the last failed wait gave:
 | No connection to the external gateway | The gateway does not answer, or the session with it is not ready |
 | The gateway refused a link to the server | The gateway answered and refused the stream |
 | The I2P tunnels are being built | The router is up and the tunnels of the wait are not |
-| Could not connect to the server | The facade's address was dialled and did not answer |
+| The server is not answering | The facade's address was dialled and no whole answer came back |
 | No tunnel to the server | The facade answered 502 `UPSTREAM_UNAVAILABLE`: it has no server behind it |
-| The server refused the request | The server answered with a refusal |
+| The server refused the connection | The facade or the server answered with a refusal: an error status, or noise in place of a tunnel |
+| The server answered incorrectly | An answer came that does not read: not HTTP, a server card that does not verify or names another server, or a tunnel answer that does not decode |
 | The links to the server are being rebuilt | The tunnel length changed and the account's links are being built again; it stays until the next wait is answered or fails |
 
 Before any wait has failed there is no reason, and the strip says only
 *Connecting*. An account its server holds for approval shows **Waiting for
 approval** in place of the state, and a declined or banned one **Not approved**
 (Waiting for approval, below).
+
+A failed connection to a server gives its reason in the same words. Signing in
+to a site says *The site is not answering*, *The site refused the sign-in* or
+*The site answered incorrectly*.
 
 ## Parameters
 
