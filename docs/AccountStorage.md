@@ -84,7 +84,7 @@ user saved them.
 pictures hold - content, not pages. The file is always larger: it also carries
 indexes, per-page overhead and free space, and no query can attribute a page back
 to a conversation. The free figure is the freelist counted at the plaintext page
-size, so it is a little under what a rewrite actually returns.
+size, so it is a little under what compacting actually returns.
 
 **Deletion takes the media with it.** A message is what names its media, so the
 media goes when the message does - read from the row before it is removed, in the
@@ -101,38 +101,38 @@ A trim is **local to this device**. The device-sync kinds are live echoes of wha
 is happening now, so a trimmed message does not come back from a sibling device,
 and nothing is asked of the person on the other side.
 
-**Compacting.** Freed pages stay inside the file until it is rewritten, so a trim
-is followed by `VACUUM` and the size on disk falls with it. The same operation is
-a button of its own in the storage window - "Compact the database" - because it
-removes nothing: it only hands back what earlier deletions already freed, which
-makes it the one non-destructive action there.
+**Compacting.** Deleted rows leave free pages inside the file, so a trim is
+followed by handing them back to the disk. The same operation is a button of its
+own in the storage window - "Compact the database" - because it removes nothing:
+it only hands back what earlier deletions already freed, which makes it the one
+non-destructive action there.
 
-That rewrite belongs to the storage window and to nothing else. Its cost is the
-size of what is **kept** - it reads and writes the whole database. An ordinary
+Every profile database is created in SQLite's incremental vacuum mode
+(`auto_vacuum = INCREMENTAL`), the copy a passphrase change re-encrypts into and
+an imported account included; SQLite takes the mode only while a file has no
+page yet. Compacting runs `PRAGMA incremental_vacuum` in steps of 256 pages, 1 MiB
+at 4 KiB pages, each step one short write lock. After each step it waits as long
+as the step took, so a writer the step held off gets its turn, and it goes on
+until no free page is left; then it checkpoints the write-ahead log. Incremental
+vacuum gives free pages back to the disk; it does not defragment the pages that
+stay. A database made without incremental mode is refused with that reason, and
+so is a step that leaves as many free pages as before.
+
+Handing pages back belongs to the storage window and to nothing else. An ordinary
 deletion, which also carries a correspondent's "delete for everyone" arriving
 without the user asking for anything, leaves its pages in the file to be reused,
 and the storage window is where the space is handed back.
 
-While either runs, the application is deliberately held: they take the database
-exclusively, and an arriving message is stored, not only shown. The window says
-what is running before it stops answering, and it shows no percentage, because
-SQLite reports none for a rewrite.
-
-`VACUUM` needs free disk space equal to the file, which is checked first, and it
-takes the database exclusively, so it can be refused while the account is busy. A
-refusal leaves the trim done: the messages are gone, only the space has not come
-back, and trimming again returns it. The client says both and reports no
-failure. The schema mark is written again afterwards, because an account carrying
-any other number is refused at open.
+A trim and a compaction run on a connection of their own, off the core's thread,
+so the account goes on receiving and sending meanwhile. There is no check of free
+disk space first and no exclusive lock. The storage window says what is running
+and holds until it ends, with no percentage. A failed compaction after a trim
+leaves the trim done: the messages are gone, only the space has not come back,
+and trimming again returns it. The client says both.
 
 Measured on an account holding 100 000 messages and 2 000 pictures (256 MB):
-reading every conversation's weight took 297 ms, trimming every conversation to
-the last 100 took 6.9 s, and the rewrite after it took 201 ms and left a 5.4 MB
-file.
-
-The rewrite is cheap there because almost nothing was kept: it copies what
-survives. On the same account with everything kept (148 MB) it takes 4.7 s, which
-is why it is the storage window's operation and not every deletion's.
+reading every conversation's weight took 297 ms, and trimming every conversation
+to the last 100 took 6.9 s.
 
 ## The backup bundle
 

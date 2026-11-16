@@ -165,6 +165,12 @@ waits in the outbox, and goes only when the correspondent's server has confirmed
 it holds the batch the acceptance carries. An acceptance their server refuses
 brings the button back.
 
+A request the recipient's server refuses with `CONTACT_RATE_LIMITED` (too many
+requests, too many waiting, a full mailbox, or one from this sending address
+already that day: `docs-main/Contacts.md`) is not sent again by itself. The
+conversation notes that the contact's server is busy and shows a button that
+sends the request again; only the user presses it.
+
 ## What rides inside a message
 
 A picture and a voice message travel inside the message: nothing is announced and nothing is fetched, so they arrive with the message even

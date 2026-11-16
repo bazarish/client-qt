@@ -33,11 +33,14 @@ puts it back.
 3. An item is acked only after the core has stored it. A store that fails leaves
    the item on the server and stops receiving for that account with the
    database's error, so a crash or a full disk between fetching and storing loses
-   nothing.
+   nothing. An ack the server did not take stays owed and is sent before the next
+   wait.
 4. The loop asks again once that pass has given back everything it took. A
    mailbox answers the next wait at once while it still holds what this device is
    carrying, and a pass that left items behind is exactly the case where
-   answering at once is what continues it.
+   answering at once is what continues it. Entries the account keeps waiting for
+   a key or for a contact's device list (`docs-main/Messages.md`, Encoding) are
+   named in the wait, so they alone do not answer it.
 5. A wait that fails, other than as in step 6, is asked again on a cause, never
    on a period of its own:
 
@@ -94,9 +97,12 @@ reason is the one the last failed wait gave:
 | Could not connect to the server | The facade's address was dialled and did not answer |
 | No tunnel to the server | The facade answered 502 `UPSTREAM_UNAVAILABLE`: it has no server behind it |
 | The server refused the request | The server answered with a refusal |
+| The links to the server are being rebuilt | The tunnel length changed and the account's links are being built again; it stays until the next wait is answered or fails |
 
 Before any wait has failed there is no reason, and the strip says only
-*Connecting*.
+*Connecting*. An account its server holds for approval shows **Waiting for
+approval** in place of the state, and a declined or banned one **Not approved**
+(Waiting for approval, below).
 
 ## Parameters
 
@@ -106,12 +112,17 @@ Before any wait has failed there is no reason, and the strip says only
 | A failed wait asked again | on a cause (step 5); without one, after 11 min (lease lifetime 10 min and 1 min of clock skew) |
 | A wait the facade answered with 502 asked again | after 1 s, 5 s, 10 s, then every 10 s (step 6) |
 | Items per pass | 5 |
-| Local upkeep tick | 2 s |
+| Local upkeep | at its next due duty, with no fixed tick; the delegation check at most once an hour, the alias registry when the account connects or registers and otherwise at most once an hour |
 
-The upkeep tick reads no mail. It carries what has no event of its own: contact
-adds whose card was resolved off-thread, call ring and answer timeouts, the
-echoes of this device's own sends to the account's other devices, and - on its
-own longer guard - the delegation check.
+The upkeep reads no mail. The account's worker sleeps until the soonest duty that
+is due and wakes early for each event handed to it: news from the outbox, a
+background errand that finished, a change of the account's own devices. Its
+duties are the settled deliveries and the echoes of this device's own sends to
+the account's other devices, file requests that run out, the account's epoch keys
+and presence schedules at their deadlines, the delegation check at most once an
+hour, and the alias registry, asked when the account connects or registers and
+otherwise at most once an hour. A duty that fails is tried again on the next
+event.
 
 Every answer to the mail wait also carries the mailbox's used and granted bytes.
 The client keeps the latest pair in the account database with the account

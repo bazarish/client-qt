@@ -48,6 +48,15 @@ one media destination at a time, so that lane carries one destination for the
 length of the call. With a single lane there is nothing to keep apart and
 everything shares it.
 
+## Declining and ending
+
+Declining or ending a call keeps the call screen on the session's own state until
+the core reports the call over. A decline or an end that fails says so - "The call
+was not declined" or "The call was not ended", with the reason - and the screen
+shows the call as it still is. A decline goes as a letter through the outbox
+(`docs-main/api/Calls.md`); one the caller's server refuses is reported the same
+way, as not declined.
+
 ## What a call leaves behind
 
 Nothing in the conversation. A call is not correspondence: no line in the

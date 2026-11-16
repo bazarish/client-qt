@@ -88,6 +88,13 @@ What the restored device then does, in order:
    into the backup and into the address book, so a restored or newly enrolled
    device holds the same one every other device does and needs to buy nothing.
 
+7. **Asks which other devices to revoke**, after a primary backup. A window
+   lists the account's other active devices with their role and the day each was
+   added; none is chosen, the user picks some or all and presses **Revoke**, or
+   with none picked **Keep all**. **Later** closes the window, and it opens again
+   the next time the device list changes, until it is answered
+   (`docs-main/DeviceSync.md`).
+
 ## When the address changes
 
 Publishing an address - at connect, or from either answer to the question above -

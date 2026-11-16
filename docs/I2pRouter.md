@@ -55,7 +55,9 @@ The proxy belongs to the in-process engine, so it is set on that engine's own
 tab in Global settings and can be set before the engine runs. The router window
 carries the tunnel length and reports the engine's live diagnostics (network
 database size, floodfills, tunnel counts, local destinations, active transport
-sessions); it sets nothing else.
+sessions); it sets nothing else. A transport thread that does not hand over its
+list of sessions within 2 s leaves the window saying that the list of direct
+connections could not be read, in place of the list.
 
 ### The gateway link's TLS
 

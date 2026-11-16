@@ -16,7 +16,7 @@ packaged build.
 | `text to Bob (a1b2c3), pass 3f2a91b4c0d5` | mail put in the outbox | `sending`, and a second line when the letter is settled: `stored` once the recipient's server signed for the envelope, or `failed: <code>`. Two lines because a letter can wait in the outbox long after it was written |
 | `POST /v1/messaging/self (device.account-name)` | a change mirrored to this account's other devices | the server's status, like any other call - the kind rides on the call itself, because from the outside every device sync is the same POST |
 | `receipt from Bob (a1b2c3)` | an item this account fetched | (none) |
-| `unreadable item` | a pending entry that could not be opened | `dropped` - it is acked so the mailbox unblocks |
+| `unreadable item`, `unreadable message` | a pending entry, or one message in it, that could not be opened | `dropped` - it is acked so the mailbox unblocks; a message from a contact leaves the note "A message could not be read" in that conversation, and an entry with no sender to name shows in the activity panel as "A message could not be read", marked Discarded (`BackgroundActivity.md`). An entry that waits for a key or for its author's device is not on this list: it stays unacknowledged until that arrives (`docs-main/Messages.md`, Encoding) |
 | `unsigned item`, `item signed by another key` | an item whose author could not be established | `dropped` - admission is not authorship, so it never reaches a chat |
 | `device message from a contact` | a device-sync type sent by somebody who is not one of this account's devices | `dropped`, with the type it claimed - these change settings and write into the address book, so only this account's own devices may send them |
 
@@ -40,8 +40,9 @@ is the **recipient's** server signing for the delivery.
 
 ## Its limits
 
-The log holds the last **100 events per account**, in memory only: switching
-accounts does not mix them, closing the application loses them, and nothing is
-written to disk. Clicking a line puts that one line on the clipboard, in the same
+The open window is told of each line as it is recorded, so a new line appears at
+once at the top. The log holds the last **100 events per account**, in memory
+only: switching accounts does not mix them, closing the application loses them,
+and nothing is written to disk. Clicking a line puts that one line on the clipboard, in the same
 shape "Copy all" writes it - a line carries no message text and no full
 fingerprint, so it is safe to paste into a bug report. "Clear" empties the ring.
