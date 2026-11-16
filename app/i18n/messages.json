@@ -3497,12 +3497,6 @@
       "zh": "对方设备正在响铃",
       "ar": "جهاز الطرف الآخر يرنّ"
     },
-    "Their server is busy. Trying again in %1 seconds (%2 left).": {
-      "ru": "Сервер контакта занят. Повтор через %1 с (осталось попыток: %2).",
-      "es": "Su servidor está ocupado. Se reintenta en %1 s (quedan %2).",
-      "zh": "对方的服务器正忙。%1 秒后重试（还剩 %2 次）。",
-      "ar": "خادم جهة الاتصال مشغول. إعادة المحاولة بعد ⁦%1⁩ ثانية (بقي ⁦%2⁩)."
-    },
     "There is no clipboard to copy to": {
       "ru": "Копировать некуда: буфера обмена нет",
       "es": "No hay portapapeles al que copiar",

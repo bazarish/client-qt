@@ -485,7 +485,7 @@ signals:
     void showPresenceChanged();
     void presenceChanged();
     void delegationDaysChanged();
-    void contactRetryExhausted(const QString& fingerprint);
+    void contactRequestBusy(const QString& fingerprint);
     void editingChanged();
     void replyingChanged();
     void contactsRevisionChanged();

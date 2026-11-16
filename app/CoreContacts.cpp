@@ -14,15 +14,7 @@
 #include <bazarish/Log.hpp>
 #pragma pop_macro("emit")
 
-#include <QTimer>
-
 namespace bazarish::app {
-
-namespace {
-constexpr int kContactRetryAttempts = 3;
-constexpr int kContactRetrySeconds = 20;
-constexpr int kMillisecondsPerSecond = 1000;
-}  // namespace
 
 void CoreAccount::addByInvite(const QString& uri, const QString& intro)
 {
@@ -93,8 +85,7 @@ void CoreAccount::trackContactAdd(
             emit events_.contactNamed(peer, name);
         }
         openContactProgress(peer, opId);
-        refusedRequests_.insert(peer,
-            PendingContactRequest{uri, intro, kContactRetryAttempts, requestId});
+        refusedRequests_.insert(peer, PendingContactRequest{uri, intro, requestId});
     } catch (const std::exception& error) {
         bazarish::log::warn("invite parsed for the chat but not for its peer: {}", error.what());
     }
@@ -110,19 +101,9 @@ void CoreAccount::onContactAddRateLimited(
     if (found != refusedRequests_.end() && found->requestId.isEmpty()) {
         found->requestId = requestId;
     }
-    if (found == refusedRequests_.end() || found->triesLeft <= 0) {
-        writeConversationNote(fingerprint,
-            encodeSystemNote(QT_TR_NOOP("The request was refused: the contact's server is busy")));
-        emit events_.contactRetryExhausted(fingerprint);
-        return;
-    }
-    --found->triesLeft;
     writeConversationNote(fingerprint,
-        encodeSystemNote(QT_TR_NOOP("Their server is busy. Trying again in %1 seconds (%2 left)."),
-            {QString::number(kContactRetrySeconds), QString::number(found->triesLeft + 1)}));
-    const QString peer = fingerprint;
-    QTimer::singleShot(kContactRetrySeconds * kMillisecondsPerSecond, this,
-        [this, peer]() { retryContactRequest(peer); });
+        encodeSystemNote(QT_TR_NOOP("The request was refused: the contact's server is busy")));
+    emit events_.contactRequestBusy(fingerprint);
 }
 
 void CoreAccount::retryContactRequest(const QString& fingerprint)
@@ -134,7 +115,6 @@ void CoreAccount::retryContactRequest(const QString& fingerprint)
     const PendingContactRequest pending = *found;
     repeatContactAdd(fingerprint, pending);
     if (const auto again = refusedRequests_.find(fingerprint); again != refusedRequests_.end()) {
-        again->triesLeft = pending.triesLeft;
         again->requestId = pending.requestId;
     }
 }
@@ -199,7 +179,7 @@ void CoreAccount::trackAliasAdd(const QString& opId, const QString& alias,
     }
     openContactProgress(chat, opId);
     refusedRequests_.insert(chat,
-        PendingContactRequest{alias, intro, kContactRetryAttempts, requestId});
+        PendingContactRequest{alias, intro, requestId});
 }
 
 void CoreAccount::writeConversationNote(const QString& peer, const QString& text)

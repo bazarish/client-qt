@@ -287,8 +287,8 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
             openConversation(peer);
         }
     });
-    connect(&events_, &AccountEvents::contactRetryExhausted, this,
-        &SessionController::contactRetryExhausted);
+    connect(&events_, &AccountEvents::contactRequestBusy, this,
+        &SessionController::contactRequestBusy);
     connect(&events_, &AccountEvents::transcriptOpened, this,
         [this](const QString& path, const QByteArray& key) {
             if (!store_.open(path, SecretBytes(Bytes(key.begin(), key.end())))) {

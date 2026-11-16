@@ -185,7 +185,7 @@ signals:
     void messageError(qint64 localId, const QString& error);
     void resendFilePickRequested();
     void showConversation(const QString& peer);
-    void contactRetryExhausted(const QString& fingerprint);
+    void contactRequestBusy(const QString& fingerprint);
     void contactNamed(const QString& peer, const QString& name);
     void storageWorkDone();
     void transcriptOpened(const QString& path, const QByteArray& key);

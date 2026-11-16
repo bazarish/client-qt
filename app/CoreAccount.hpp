@@ -152,7 +152,6 @@ private:
     struct PendingContactRequest {
         QString uri;
         QString intro;
-        int triesLeft = 0;
         QString requestId;
     };
     void repeatContactAdd(const QString& chat, const PendingContactRequest& pending);

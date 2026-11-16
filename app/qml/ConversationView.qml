@@ -131,7 +131,7 @@ Item {
     property string retryPeer: ""
     Connections {
         target: root.session
-        function onContactRetryExhausted(fingerprint) { root.retryPeer = fingerprint }
+        function onContactRequestBusy(fingerprint) { root.retryPeer = fingerprint }
         function onResendFilePickRequested() { resendPickDialog.open() }
         function onScrollToMessage(localId) {
             Qt.callLater(function() {
