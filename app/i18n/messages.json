@@ -1217,12 +1217,6 @@
       "zh": "正在等待回应…",
       "ar": "انتظار الرد…"
     },
-    "no answer, asking again…": {
-      "ru": "нет ответа, повторный запрос…",
-      "es": "sin respuesta, preguntando de nuevo…",
-      "zh": "无回应，正在重试…",
-      "ar": "لا رد، إعادة الطلب…"
-    },
     "Share gateway": {
       "ru": "Поделиться шлюзом",
       "es": "Compartir la pasarela",
@@ -2038,12 +2032,6 @@
       "es": "No hay ningún alias registrado en esta cuenta",
       "zh": "该账号未注册任何别名",
       "ar": "لا اسم مستعار مسجّل لهذا الحساب"
-    },
-    "No answer; asking again…": {
-      "ru": "Ответа нет. Повторный запрос…",
-      "es": "Sin respuesta; preguntando otra vez…",
-      "zh": "没有应答，正在重试…",
-      "ar": "لا جواب؛ إعادة السؤال…"
     },
     "No audio output device": {
       "ru": "Нет устройства вывода звука",

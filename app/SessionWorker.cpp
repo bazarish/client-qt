@@ -88,8 +88,6 @@ QString noteForFetchStage(const bazarish::client::FetchStage stage)
         return encodeSystemNote(QT_TR_NOOP("connecting over I2P…"));
     case bazarish::client::FetchStage::eWaiting:
         return encodeSystemNote(QT_TR_NOOP("waiting for an answer…"));
-    case bazarish::client::FetchStage::eAskingAgain:
-        return encodeSystemNote(QT_TR_NOOP("no answer, asking again…"));
     }
     throw std::logic_error("no note for this contact-card fetch stage");
 }

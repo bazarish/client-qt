@@ -109,8 +109,6 @@ QString loginStageText(const client::FetchStage stage)
         return CoreAccount::tr("Reaching the site…");
     case client::FetchStage::eWaiting:
         return CoreAccount::tr("Waiting for the site's answer…");
-    case client::FetchStage::eAskingAgain:
-        return CoreAccount::tr("No answer; asking again…");
     }
     throw std::logic_error("no words for this sign-in stage");
 }
