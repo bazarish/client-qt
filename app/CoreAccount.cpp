@@ -351,9 +351,12 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(worker_, &SessionWorker::i2pStatus, &events_, &AccountEvents::i2pStatus);
     connect(worker_, &SessionWorker::i2pKeyState, &events_, &AccountEvents::i2pKeyState);
     connect(worker_, &SessionWorker::i2pServedAddress, &events_, &AccountEvents::i2pServedAddress);
+    connect(worker_, &SessionWorker::destChangeSettled, &events_,
+        &AccountEvents::destChangeSettled);
     connect(worker_, &SessionWorker::storageUsageReady, &events_,
         &AccountEvents::storageUsageReady);
     connect(worker_, &SessionWorker::callStateChanged, this, &CoreAccount::onCallStateChanged);
+    connect(worker_, &SessionWorker::callLevels, &events_, &AccountEvents::callLevels);
     connect(worker_, &SessionWorker::callLogged, this, &CoreAccount::onCallLogged);
     connect(worker_, &SessionWorker::callEndFailed, this, &CoreAccount::onCallEndFailed);
     connect(worker_, &SessionWorker::commandFinished, this, &CoreAccount::onCommandFinished);

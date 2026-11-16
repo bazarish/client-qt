@@ -12,6 +12,7 @@
 #include <array>
 #include <cstddef>
 #include <stdexcept>
+#include <string>
 
 namespace bazarish::app {
 
@@ -85,22 +86,23 @@ void SessionController::setCallMuted(const bool muted)
     emit commands_.requestSetCallMuted(muted);
 }
 
-void SessionController::onCallStateChanged(const int state, const QString& peer,
-    const QString&, const bool muted, const QString& stage, const qint64 connectedAtMs,
-    const float inputLevel, const float outputLevel)
+void SessionController::onCallLevels(const float inputLevel, const float outputLevel)
 {
-    if (!qFuzzyCompare(static_cast<qreal>(callInputLevel_), static_cast<qreal>(inputLevel))
-        || !qFuzzyCompare(static_cast<qreal>(callOutputLevel_), static_cast<qreal>(outputLevel))) {
-        callInputLevel_ = inputLevel;
-        callOutputLevel_ = outputLevel;
-        emit callLevelsChanged();
-    }
+    callInputLevel_ = inputLevel;
+    callOutputLevel_ = outputLevel;
+    emit callLevelsChanged();
+}
+
+void SessionController::onCallStateChanged(const int state, const QString& peer,
+    const QString&, const bool muted, const QString& stage, const qint64 connectedAtMs)
+{
     static constexpr std::array<QLatin1StringView, kCallStates> kNames
         = {QLatin1StringView("idle"), QLatin1StringView("outgoing"),
             QLatin1StringView("incoming"), QLatin1StringView("active")};
-    const QString name = (state >= 0 && static_cast<std::size_t>(state) < kNames.size())
-        ? QString(kNames[static_cast<std::size_t>(state)])
-        : QStringLiteral("idle");
+    if (state < 0 || static_cast<std::size_t>(state) >= kNames.size()) {
+        throw std::logic_error("no call state " + std::to_string(state));
+    }
+    const QString name(kNames[static_cast<std::size_t>(state)]);
     if (callState_ == name && callPeer_ == peer && callMuted_ == muted
         && callStage_ == stage && callConnectedAtMs_ == connectedAtMs) {
         return;

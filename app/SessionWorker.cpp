@@ -197,8 +197,6 @@ constexpr qint64 kTransientCheckIntervalMs = 3600 * 1000;
 
 constexpr qint64 kApprovalCheckIntervalMs = 60 * 1000;
 
-constexpr qint64 kRegisterRetryIntervalMs = 60 * 1000;
-
 constexpr qint64 kAliasServiceIntervalMs = 60 * 1000;
 
 constexpr qint64 kRegistryRetryIntervalMs = 10 * 1000;
@@ -422,6 +420,7 @@ void SessionWorker::startEventWaiter()
         bool answered = false;
         // What the first answer after coming online lists is the backlog.
         bool caughtUp = false;
+        bool askedAfterRegistering = false;
         while (running->load()) {
             {
                 // A list taken before the last pass is acked would name what it already took in.
@@ -457,6 +456,7 @@ void SessionWorker::startEventWaiter()
                     bazarish::log::info("the server answered the mail wait");
                 }
                 answered = true;
+                askedAfterRegistering = false;
                 mailGate_.answered();
                 QMetaObject::invokeMethod(
                     this,
@@ -475,8 +475,13 @@ void SessionWorker::startEventWaiter()
                 if (const auto* apiError = dynamic_cast<const bazarish::client::ApiError*>(&error);
                     apiError != nullptr
                     && apiError->code == bazarish::ErrorCode::eClientUnregistered) {
-                    QMetaObject::invokeMethod(
-                        this, [this]() { registerThisDevice(); }, Qt::QueuedConnection);
+                    if (askedAfterRegistering) {
+                        bazarish::log::warn(
+                            "the server forgot this device right after registering it");
+                    } else {
+                        QMetaObject::invokeMethod(
+                            this, [this]() { registerThisDevice(); }, Qt::QueuedConnection);
+                    }
                 }
                 const QString refusal
                     = waiter ? QString::fromStdString(waiter->gatewayRefusal()) : QString();
@@ -496,6 +501,7 @@ void SessionWorker::startEventWaiter()
                 if (cause == bazarish::client::MailWaitCause::eStopped) {
                     return;
                 }
+                askedAfterRegistering = cause == bazarish::client::MailWaitCause::eRegistered;
                 bazarish::log::info("asking for mail again: {}",
                     bazarish::client::mailWaitCauseName(cause));
                 if (waiter && cause != bazarish::client::MailWaitCause::eStaleLeaseSet) {
@@ -582,11 +588,9 @@ void SessionWorker::beginStream(
 
 void SessionWorker::registerThisDevice()
 {
-    if (!session_ || !session_->isConnected()
-        || nowMillis() - lastRegisterAttemptMs_ < kRegisterRetryIntervalMs) {
+    if (!session_ || !session_->isConnected()) {
         return;
     }
-    lastRegisterAttemptMs_ = nowMillis();
     bazarish::log::info("this device is not registered with the server: registering it");
     try {
         session_->registerAccount();
@@ -677,6 +681,11 @@ void SessionWorker::openAccount(
         emit opDone(beginOp(tr("A message could not be read"), {}), false, tr("Discarded"));
     });
     session_->setAckSink([this](const std::string& pendingId) { queueAck(pendingId); });
+    const QPointer<SessionWorker> self(this);
+    session_->onCourierNews(
+        [self]() { QMetaObject::invokeMethod(self, "takeCourierNews", Qt::QueuedConnection); });
+    session_->onOwnDevicesChanged(
+        [this]() { QMetaObject::invokeMethod(this, "emitDeviceState", Qt::QueuedConnection); });
     emit loginSignerReady(session_->loginSigner());
     session_->onAddressDecision([this](const std::string& served, const std::string& ours) {
         emit addressMismatch(QString::fromStdString(served), QString::fromStdString(ours));
@@ -689,6 +698,7 @@ void SessionWorker::openAccount(
         QString::fromStdString(session_->displayName()), connected);
     toldDeviceState_.clear();
     emitDeviceState();
+    armDayTimer();
     emit accountSettings(
         session_->acceptCalls(), session_->sendReceipts(), session_->showPresence());
     {
@@ -781,6 +791,21 @@ void SessionWorker::emitDeviceState()
     }
     toldDeviceState_ = told;
     emit deviceState(deviceId, primary, own, reserveUntil, reserveLow);
+}
+
+void SessionWorker::armDayTimer()
+{
+    if (dayTimer_ == nullptr) {
+        dayTimer_ = new QTimer(this);
+        dayTimer_->setSingleShot(true);
+        connect(dayTimer_, &QTimer::timeout, this, [this]() {
+            emitDeviceState();
+            armDayTimer();
+        });
+    }
+    const qint64 now = QDateTime::currentSecsSinceEpoch();
+    const qint64 untilNextDay = bazarish::kSecondsPerDay - now % bazarish::kSecondsPerDay;
+    dayTimer_->start(std::chrono::seconds(untilNextDay));
 }
 
 void SessionWorker::readContactDevices(const QString& peer)
@@ -933,6 +958,8 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
     emit connectProgress(100, tr("Connected"));
     bazarish::client::setConnectProgressSink(progressAccount, {});
     emit connectionChanged(true, "active");
+    emitContacts();
+    emitDeviceState();
     if (session_->aliasServicingDue()) {
         startAliasErrand(/*byHand=*/false);
     }
@@ -1042,6 +1069,7 @@ void SessionWorker::drainMailbox()
         emit messageReceived(m);
     }
     emitContacts();
+    emitDeviceState();
     emitFacadeInfo();
     refreshCalls();
     takenBytes_ += chunkBytes;
@@ -1065,6 +1093,19 @@ void SessionWorker::refreshCalls()
     emitCallState();
 }
 
+void SessionWorker::takeCourierNews()
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->flushPendingEchoes();
+    } catch (const std::exception& error) {
+        bazarish::log::warn("self-sync of our own sends failed: {}", error.what());
+    }
+    emitContacts();
+}
+
 void SessionWorker::maintain()
 {
     if (!session_) {
@@ -1078,16 +1119,8 @@ void SessionWorker::maintain()
         bazarish::log::warn("self-sync of our own sends failed: {}", error.what());
     }
     session_->expireFileRequests(nowMillis());
-    emitContacts();
-    emitDeviceState();
     if (!session_->isConnected()) {
         return;
-    }
-    drainResolvedAdds();
-    drainAliasErrands();
-    {
-        const bazarish::log::Slow timedCalls("keeping the calls current", kSlowStretch);
-        refreshCalls();
     }
     if (session_->approvalState().pending
         && nowMillis() - lastApprovalCheckMs_ >= kApprovalCheckIntervalMs) {
@@ -1138,10 +1171,24 @@ void SessionWorker::emitCallState()
         return;
     }
     const Session::CallInfo call = session_->currentCall();
-    emit callStateChanged(static_cast<int>(call.state), QString::fromStdString(call.peerFingerprint),
-        QString::fromStdString(call.callId), call.muted, noteForCallStage(call.stage),
-        call.peerRinging, static_cast<qint64>(call.connectedAtMs), call.inputLevel,
-        call.outputLevel);
+    ToldCall told;
+    told.state = static_cast<int>(call.state);
+    told.peer = QString::fromStdString(call.peerFingerprint);
+    told.callId = QString::fromStdString(call.callId);
+    told.muted = call.muted;
+    told.stage = noteForCallStage(call.stage);
+    told.peerRinging = call.peerRinging;
+    told.connectedAtMs = static_cast<qint64>(call.connectedAtMs);
+    if (toldCall_ != told) {
+        toldCall_ = told;
+        emit callStateChanged(told.state, told.peer, told.callId, told.muted, told.stage,
+            told.peerRinging, told.connectedAtMs);
+    }
+    const std::pair<float, float> levels{call.inputLevel, call.outputLevel};
+    if (levels != toldLevels_) {
+        toldLevels_ = levels;
+        emit callLevels(levels.first, levels.second);
+    }
     reconcileCallTimer();
 }
 
@@ -1152,7 +1199,7 @@ void SessionWorker::reconcileCallTimer()
         if (callTimer_ == nullptr) {
             callTimer_ = new QTimer(this);
             callTimer_->setInterval(kCallWatchIntervalMs);
-            connect(callTimer_, &QTimer::timeout, this, &SessionWorker::emitCallState);
+            connect(callTimer_, &QTimer::timeout, this, &SessionWorker::refreshCalls);
         }
         if (!callTimer_->isActive()) {
             callTimer_->start();
@@ -1268,6 +1315,7 @@ void SessionWorker::sendText(const QString& peer, const QString& text, qint64 lo
     try {
         openSession().sendMessage(peer.toStdString(), text.toStdString(), e2eId.toStdString(),
             watchFor(*this, localId), replyTo.toStdString(), forwarded);
+        emitContacts();
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
     }
@@ -1279,6 +1327,7 @@ void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint
     try {
         openSession().sendFile(peer.toStdString(), localPath.toStdString(), e2eId.toStdString(),
             watchFor(*this, localId), replyTo.toStdString(), forwarded);
+        emitContacts();
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
     }
@@ -1292,6 +1341,7 @@ void SessionWorker::sendVoice(const QString& peer, const QByteArray& opus,
         const Bytes audio(opus.begin(), opus.end());
         openSession().sendVoice(peer.toStdString(), audio, durationMs, e2eId.toStdString(),
             watchFor(*this, localId), replyTo.toStdString(), forwarded);
+        emitContacts();
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
     }
@@ -1305,6 +1355,7 @@ void SessionWorker::sendFileBytes(const QString& peer, const QByteArray& bytes,
         openSession().sendFileBytes(peer.toStdString(), name.toStdString(),
             bazarish::Bytes(bytes.begin(), bytes.end()), e2eId.toStdString(),
             watchFor(*this, localId), replyTo.toStdString(), forwarded);
+        emitContacts();
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
     }
@@ -1318,6 +1369,7 @@ void SessionWorker::sendPicture(const QString& peer, const QByteArray& bytes,
         openSession().sendPicture(peer.toStdString(),
             bazarish::Bytes(bytes.begin(), bytes.end()), name.toStdString(), mime.toStdString(),
             e2eId.toStdString(), watchFor(*this, localId), replyTo.toStdString(), forwarded);
+        emitContacts();
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
     }
@@ -1378,6 +1430,7 @@ void SessionWorker::sendCallback(
     try {
         openSession().sendCallback(
             peer.toStdString(), data.toStdString(), ref.toStdString(), botActionWatch(opId));
+        emitContacts();
     } catch (const std::exception& e) {
         emit botActionDone(opId, false, QString::fromUtf8(e.what()));
     }
@@ -1389,6 +1442,7 @@ void SessionWorker::sendCommand(
     try {
         openSession().sendCommand(peer.toStdString(), command.toStdString(), args.toStdString(),
             {}, botActionWatch(opId));
+        emitContacts();
     } catch (const std::exception& e) {
         emit botActionDone(opId, false, QString::fromUtf8(e.what()));
     }
@@ -1503,11 +1557,18 @@ void SessionWorker::startContactAdd(const bool byAlias, const QString& uriOrAlia
     std::shared_ptr<ResolvedContactAddQueue> queue = resolvedAdds_;
     try {
         inBackground([context = std::move(context), request = std::move(request),
-                        queue = std::move(queue), opId, alias = uriOrAlias]() {
+                        queue = std::move(queue), opId, alias = uriOrAlias,
+                        self = QPointer<SessionWorker>(this)]() {
             Step step = request.byAlias ? Step::eLookingUpAlias : Step::eFetchingCard;
-            const auto tell = [&queue, &opId](const QString& note) {
-                const std::lock_guard<std::mutex> lock(queue->mutex);
-                queue->stages.push_back({opId, note});
+            const auto wake = [&self]() {
+                QMetaObject::invokeMethod(self, "drainResolvedAdds", Qt::QueuedConnection);
+            };
+            const auto tell = [&queue, &opId, &wake](const QString& note) {
+                {
+                    const std::lock_guard<std::mutex> lock(queue->mutex);
+                    queue->stages.push_back({opId, note});
+                }
+                wake();
             };
             bazarish::client::tellFetchStages(
                 [&step, &tell, &alias](const bazarish::client::FetchStage stage) {
@@ -1520,8 +1581,11 @@ void SessionWorker::startContactAdd(const bool byAlias, const QString& uriOrAlia
                         tell(noteForCardStep(step, alias, {}));
                     });
             bazarish::client::tellFetchStages(nullptr);
-            const std::lock_guard<std::mutex> lock(queue->mutex);
-            queue->results.push_back({opId, std::move(resolved)});
+            {
+                const std::lock_guard<std::mutex> lock(queue->mutex);
+                queue->results.push_back({opId, std::move(resolved)});
+            }
+            wake();
         });
     } catch (const std::exception& e) {
         emit contactAddDone(opId, false, QString::fromUtf8(e.what()));
@@ -1562,8 +1626,11 @@ void SessionWorker::drainResolvedAdds()
     std::vector<std::pair<QString, QString>> stages;
     {
         const std::lock_guard<std::mutex> lock(resolvedAdds_->mutex);
-        ready.swap(resolvedAdds_->results);
         stages.swap(resolvedAdds_->stages);
+        // A card found while offline is committed by the pass that follows the connect.
+        if (session_->isConnected()) {
+            ready.swap(resolvedAdds_->results);
+        }
     }
     for (const auto& [opId, stage] : stages) {
         emit contactAddStage(opId, stage);
@@ -1877,6 +1944,13 @@ void SessionWorker::shutdown()
     }
     if (callTimer_ != nullptr) {
         callTimer_->stop();
+    }
+    if (dayTimer_ != nullptr) {
+        dayTimer_->stop();
+    }
+    if (session_) {
+        session_->onCourierNews({});
+        session_->onOwnDevicesChanged({});
     }
     {
         const std::lock_guard<std::mutex> lock(sessionLife_);
@@ -2331,6 +2405,7 @@ void SessionWorker::cancelTransfer(const QString& e2eId)
 void SessionWorker::publishPersonalDest()
 {
     if (!session_) {
+        emit destChangeSettled();
         return;
     }
     {
@@ -2346,11 +2421,13 @@ void SessionWorker::publishPersonalDest()
         }
     }
     refreshI2pStatus();
+    emit destChangeSettled();
 }
 
 void SessionWorker::disablePersonalDest()
 {
     if (!session_) {
+        emit destChangeSettled();
         return;
     }
     try {
@@ -2360,6 +2437,7 @@ void SessionWorker::disablePersonalDest()
         emit actionFailed(QString::fromUtf8(e.what()));
     }
     refreshI2pStatus();
+    emit destChangeSettled();
 }
 
 void SessionWorker::saveAttachment(const QString& peer, const QString& e2eId,
@@ -2491,11 +2569,15 @@ void SessionWorker::startAliasErrand(const bool byHand)
     aliasErrandRunning_ = true;
     aliasErrandByHand_ = byHand;
     try {
-        inBackground([context = std::move(context), queue = std::move(queue)]() {
+        inBackground([context = std::move(context), queue = std::move(queue),
+                         self = QPointer<SessionWorker>(this)]() {
             bazarish::client::Session::AliasErrandResult result
                 = bazarish::client::Session::runAliasErrand(context);
-            const std::lock_guard<std::mutex> lock(queue->mutex);
-            queue->results.push_back(std::move(result));
+            {
+                const std::lock_guard<std::mutex> lock(queue->mutex);
+                queue->results.push_back(std::move(result));
+            }
+            QMetaObject::invokeMethod(self, "drainAliasErrands", Qt::QueuedConnection);
         });
     } catch (const std::exception& e) {
         aliasErrandRunning_ = false;

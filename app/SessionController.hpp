@@ -552,7 +552,8 @@ private slots:
     QVector<StoredMessage> chosenMessages(const QVariantList& localIds) const;
     void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
-        const QString& stage, qint64 connectedAtMs, float inputLevel, float outputLevel);
+        const QString& stage, qint64 connectedAtMs);
+    void onCallLevels(float inputLevel, float outputLevel);
     bool speakerPresent();
 
 private:
@@ -577,7 +578,6 @@ private:
     QString gatewayRefusal_;
     int linkFailure_ = LinkStatus::None;
     bool i2pBusy_ = false;
-    bool flashOnNextStatus_ = false;
     bool awaitingApproval_ = false;
     QString approvalNote_;
     QString activePeer_;

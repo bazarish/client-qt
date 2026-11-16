@@ -154,6 +154,7 @@ signals:
         const QString& serverState);
     void i2pKeyState(bool hasKey, const QString& address);
     void i2pServedAddress(const QString& address);
+    void destChangeSettled();
     void devicesReady(const QVariantList& devices);
     void devicesFailed();
     void deviceState(const QString& deviceId, bool primary, const QVariantList& ownDevices,
@@ -161,7 +162,8 @@ signals:
     void contactDevices(const QString& peer, const QVariantList& devices);
     void storageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,
-        const QString& stage, qint64 connectedAtMs, float inputLevel, float outputLevel);
+        const QString& stage, qint64 connectedAtMs);
+    void callLevels(float inputLevel, float outputLevel);
     void closed();
     void rowAdded(const QString& peer, qint64 id, bool own);
     void rowChanged(const QString& peer, qint64 id);

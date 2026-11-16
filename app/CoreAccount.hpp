@@ -185,8 +185,7 @@ private:
     void onContactRequestSent(const QString& fingerprint, const QString& intro,
         const QString& requestId, qint64 sentAtMs);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
-        const QString& stage, bool peerRinging, qint64 connectedAtMs, float inputLevel,
-        float outputLevel);
+        const QString& stage, bool peerRinging, qint64 connectedAtMs);
     void onCallLogged(const QString& peer, bool incoming, int outcome);
     void acceptCall();
     void declineCall();

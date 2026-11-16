@@ -369,6 +369,11 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
     connect(&events_, &AccountEvents::connectionLogReady, this,
         &SessionController::connectionLogUpdated);
     connect(&events_, &AccountEvents::i2pStatus, this, &SessionController::onI2pStatus);
+    connect(&events_, &AccountEvents::destChangeSettled, this, [this]() {
+        i2pBusy_ = false;
+        emit i2pStatusChanged();
+        emit i2pAnswered();
+    });
     connect(&events_, &AccountEvents::i2pKeyState, this, &SessionController::onI2pKeyState);
     connect(&events_, &AccountEvents::i2pServedAddress, this, [this](const QString& address) {
         if (i2pServedAddress_ == address) {
@@ -381,6 +386,7 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
         &SessionController::onStorageUsageReady);
     connect(&events_, &AccountEvents::callStateChanged, this,
         &SessionController::onCallStateChanged);
+    connect(&events_, &AccountEvents::callLevels, this, &SessionController::onCallLevels);
     connect(&events_, &AccountEvents::callEndFailed, this, &SessionController::callEndFailed);
 
     connect(&contacts_, &QAbstractItemModel::dataChanged, this,
@@ -1590,7 +1596,6 @@ void SessionController::setSendReceipts(const bool on)
 void SessionController::publishPersonalDest()
 {
     i2pBusy_ = true;
-    flashOnNextStatus_ = true;
     emit i2pStatusChanged();
     emit commands_.requestPublishPersonalDest();
 }
@@ -1598,7 +1603,6 @@ void SessionController::publishPersonalDest()
 void SessionController::disablePersonalDest()
 {
     i2pBusy_ = true;
-    flashOnNextStatus_ = true;
     emit i2pStatusChanged();
     emit commands_.requestDisablePersonalDest();
 }
@@ -1618,18 +1622,12 @@ void SessionController::onI2pKeyState(const bool hasKey, const QString& address)
 void SessionController::onI2pStatus(const bool hasKey, const bool delegated,
     const QString& address, const qint64 transientExpires, const QString& serverState)
 {
-    i2pBusy_ = false;
-    const bool flash = flashOnNextStatus_;
-    flashOnNextStatus_ = false;
     i2pServerState_ = serverState;
     i2pHasKey_ = hasKey;
     i2pEnabled_ = delegated;
     i2pAddress_ = address;
     i2pTransientExpires_ = transientExpires;
     emit i2pStatusChanged();
-    if (flash) {
-        emit i2pAnswered();
-    }
 }
 
 void SessionController::refreshStorageUsage()

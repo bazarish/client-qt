@@ -227,6 +227,7 @@ signals:
         const QString& serverState);
     void i2pKeyState(bool hasKey, const QString& address);
     void i2pServedAddress(const QString& address);
+    void destChangeSettled();
     void devicesReady(const QVariantList& devices);
     void devicesFailed();
     void deviceState(const QString& deviceId, bool primary, const QVariantList& ownDevices,
@@ -234,8 +235,8 @@ signals:
     void contactDevices(const QString& peer, const QVariantList& devices);
     void storageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,
-        const QString& stage, bool peerRinging, qint64 connectedAtMs, float inputLevel,
-        float outputLevel);
+        const QString& stage, bool peerRinging, qint64 connectedAtMs);
+    void callLevels(float inputLevel, float outputLevel);
     void callLogged(const QString& peer, bool incoming, int outcome);
     void callEndFailed(bool declining, const QString& reason);
 
@@ -251,10 +252,25 @@ private:
     QString lastInvite_;
     QString lastInviteProblem_;
     void emitContacts();
-    void emitDeviceState();
+    Q_INVOKABLE void emitDeviceState();
     QVariantList toldDeviceState_;
+    void armDayTimer();
+    QTimer* dayTimer_ = nullptr;
     void emitCallState();
     void reconcileCallTimer();
+    struct ToldCall {
+        int state = 0;
+        QString peer;
+        QString callId;
+        bool muted = false;
+        QString stage;
+        bool peerRinging = false;
+        qint64 connectedAtMs = 0;
+
+        friend bool operator==(const ToldCall&, const ToldCall&) = default;
+    };
+    std::optional<ToldCall> toldCall_;
+    std::pair<float, float> toldLevels_{0.0F, 0.0F};
     void flushCallLog();
     void startContactAdd(bool byAlias, const QString& uriOrAlias, const QString& intro,
         const QString& opId, const QString& requestId = {});
@@ -269,10 +285,11 @@ private:
         const bazarish::client::OutboundCourier::Outcome& outcome);
     void drainMailbox();
     void maintain();
+    Q_INVOKABLE void takeCourierNews();
     void refreshCalls();
-    void drainResolvedAdds();
+    Q_INVOKABLE void drainResolvedAdds();
     void startAliasErrand(bool byHand);
-    void drainAliasErrands();
+    Q_INVOKABLE void drainAliasErrands();
     std::unique_ptr<bazarish::client::Session> session_;
     std::mutex sessionLife_;
     std::shared_ptr<ResolvedContactAddQueue> resolvedAdds_;
@@ -319,7 +336,6 @@ private:
     qint64 lastTransientCheckMs_ = 0;
     qint64 lastAliasServiceMs_ = 0;
     qint64 lastApprovalCheckMs_ = 0;
-    qint64 lastRegisterAttemptMs_ = 0;
 };
 
 }  // namespace bazarish::app

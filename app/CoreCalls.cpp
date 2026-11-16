@@ -3,6 +3,9 @@
 
 #include "Session.hpp"
 
+#include <stdexcept>
+#include <string>
+
 namespace bazarish::app {
 
 namespace {
@@ -13,7 +16,7 @@ CallState callStateOf(const int state)
 {
     if (state < static_cast<int>(CallState::eIdle)
         || state > static_cast<int>(CallState::eActive)) {
-        return CallState::eIdle;
+        throw std::logic_error("no call state " + std::to_string(state));
     }
     return static_cast<CallState>(state);
 }
@@ -21,15 +24,13 @@ CallState callStateOf(const int state)
 }  // namespace
 
 void CoreAccount::onCallStateChanged(const int state, const QString& peer, const QString& callId,
-    const bool muted, const QString& stage, const bool peerRinging, const qint64 connectedAtMs,
-    const float inputLevel, const float outputLevel)
+    const bool muted, const QString& stage, const bool peerRinging, const qint64 connectedAtMs)
 {
     const CallState name = callStateOf(state);
     if (callEnding_ && (name == CallState::eIdle || callId != call_.id)) {
         callEnding_ = false;
     }
-    emit events_.callStateChanged(
-        state, peer, callId, muted, stage, connectedAtMs, inputLevel, outputLevel);
+    emit events_.callStateChanged(state, peer, callId, muted, stage, connectedAtMs);
     if (call_.state == name && call_.peer == peer && call_.id == callId && call_.stage == stage
         && call_.connectedAtMs == connectedAtMs) {
         return;
