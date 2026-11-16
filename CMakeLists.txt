@@ -568,6 +568,12 @@ if(Qt6_FOUND)
     target_compile_options(TestChatPreview PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestChatPreview COMMAND TestChatPreview)
 
+    add_executable(TestLinkFailureText tests/TestLinkFailureText.cpp app/LinkFailureText.cpp)
+    target_include_directories(TestLinkFailureText PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestLinkFailureText PRIVATE bazarish_test_util bazarish_client Qt6::Core)
+    target_compile_options(TestLinkFailureText PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestLinkFailureText COMMAND TestLinkFailureText)
+
     add_executable(TestDownloads tests/TestDownloads.cpp app/Documents.cpp)
     target_include_directories(TestDownloads PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
     target_link_libraries(TestDownloads PRIVATE bazarish_test_util bazarish_client Qt6::Core)

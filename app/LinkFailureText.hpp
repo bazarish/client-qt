@@ -7,7 +7,7 @@
 
 namespace bazarish::app {
 
-enum class FarSide { eServer, eSite };
+enum class FarSide { eServer, eSite, eRegistry };
 
 // failure: a client::LinkFailure or kLinkRebuilding.
 QString linkFailureText(int failure, FarSide side);

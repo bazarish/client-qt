@@ -6,6 +6,7 @@
 #include "AccountDb.hpp"
 #include "I2pRouter.hpp"
 #include "LinkFailure.hpp"
+#include "LinkFailureText.hpp"
 #include "MailWaitGate.hpp"
 #include "OverviewWatch.hpp"
 
@@ -61,9 +62,10 @@ private:
         try {
             work();
         } catch (const std::exception& error) {
-            emit actionFailed(QString::fromUtf8(error.what()));
+            emit actionFailed(loggedFailureText(error));
         }
     }
+    QString loggedFailureText(const std::exception& error);
 
 public slots:
     void openAccount(const QString& dir, const QString& passphrase, bool startOnline);
@@ -150,7 +152,8 @@ public slots:
     void refreshI2pStatus();
     // A failure is also reported as a failed action.
     void runOp(const QString& id, const QString& kind, const QString& title,
-        const QString& status, const std::function<QString()>& work);
+        const QString& status, const std::function<QString()>& work,
+        FarSide side = FarSide::eServer);
     void emitAliasHoldings();
     void refreshContacts();
     void publishThisDeviceAddress();

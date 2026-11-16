@@ -4733,6 +4733,24 @@
       "zh": "网站的应答不正确",
       "ar": "ردّ الموقع بشكل غير صحيح"
     },
+    "The alias registry is not answering": {
+      "ru": "Реестр алиасов не отвечает",
+      "es": "El registro de alias no responde",
+      "zh": "别名登记处无响应",
+      "ar": "سجل الأسماء المستعارة لا يستجيب"
+    },
+    "The alias registry refused the request": {
+      "ru": "Реестр алиасов отклонил запрос",
+      "es": "El registro de alias rechazó la solicitud",
+      "zh": "别名登记处拒绝了请求",
+      "ar": "رفض سجل الأسماء المستعارة الطلب"
+    },
+    "The alias registry answered incorrectly": {
+      "ru": "Реестр алиасов ответил некорректно",
+      "es": "El registro de alias respondió de forma incorrecta",
+      "zh": "别名登记处的应答不正确",
+      "ar": "ردّ سجل الأسماء المستعارة بشكل غير صحيح"
+    },
     "Cut": {
       "ru": "Вырезать",
       "es": "Cortar",

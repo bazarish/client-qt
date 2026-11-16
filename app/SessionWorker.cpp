@@ -1793,7 +1793,7 @@ bazarish::client::DeliveryWatch SessionWorker::botActionWatch(const QString& opI
             this,
             [this, opId, outcome]() {
                 emit botActionDone(
-                    opId, outcome.stored, QString::fromStdString(outcome.errorMessage));
+                    opId, outcome.stored, outcome.stored ? QString() : refusalText(outcome));
             },
             Qt::QueuedConnection);
     };
@@ -2134,15 +2134,23 @@ void SessionWorker::signLogin(const QString& challenge)
 }
 
 void SessionWorker::runOp(const QString& id, const QString& kind, const QString& title,
-    const QString& status, const std::function<QString()>& work)
+    const QString& status, const std::function<QString()>& work, const FarSide side)
 {
     WorkerOp op(*this, id, kind, title, status);
     try {
         op.succeed(work());
     } catch (const std::exception& error) {
-        op.fail(QString::fromUtf8(error.what()));
-        emit actionFailed(QString::fromUtf8(error.what()));
+        bazarish::log::warn("{} operation failed: {}", kind.toStdString(), error.what());
+        const QString reason = failureText(error, side);
+        op.fail(reason);
+        emit actionFailed(reason);
     }
+}
+
+QString SessionWorker::loggedFailureText(const std::exception& error)
+{
+    bazarish::log::warn("account action failed: {}", error.what());
+    return failureText(error, FarSide::eServer);
 }
 
 void SessionWorker::emitAliasHoldings()
@@ -2496,11 +2504,15 @@ void SessionWorker::closeAccountOnServer()
             emit accountClosed(true, {});
             return;
         }
-        op.fail(QString::fromUtf8(error.what()));
-        emit accountClosed(false, QString::fromUtf8(error.what()));
+        bazarish::log::warn("the account was not deleted on the server: {}", error.what());
+        const QString reason = failureText(error, FarSide::eServer);
+        op.fail(reason);
+        emit accountClosed(false, reason);
     } catch (const std::exception& error) {
-        op.fail(QString::fromUtf8(error.what()));
-        emit accountClosed(false, QString::fromUtf8(error.what()));
+        bazarish::log::warn("the account was not deleted on the server: {}", error.what());
+        const QString reason = failureText(error, FarSide::eServer);
+        op.fail(reason);
+        emit accountClosed(false, reason);
     }
 }
 
@@ -2559,7 +2571,8 @@ void SessionWorker::setAliasBinding(const QString& alias, const bool on)
         tr("Asking the alias registry…"), [this, &alias, on]() {
             session_->setAliasBinding(alias.toStdString(), on);
             return on ? tr("Points here") : tr("Points nowhere");
-        });
+        },
+        FarSide::eRegistry);
     emitAliasHoldings();
 }
 
@@ -2574,7 +2587,8 @@ void SessionWorker::setAliasWord(const QString& alias, const QString& word)
         tr("Asking the alias registry…"), [this, &alias, &word]() {
             session_->setAliasWord(alias.toStdString(), word.toStdString());
             return word.isEmpty() ? tr("No word") : tr("Word set");
-        });
+        },
+        FarSide::eRegistry);
     emitAliasHoldings();
 }
 
@@ -2688,8 +2702,10 @@ void SessionWorker::publishPersonalDest()
             op.succeed(tr("Published"));
             emit actionOk(tr("Routing published: your card now carries this destination"));
         } catch (const std::exception& e) {
-            op.fail(QString::fromUtf8(e.what()));
-            emit actionFailed(QString::fromUtf8(e.what()));
+            bazarish::log::warn("routing not published: {}", e.what());
+            const QString reason = failureText(e, FarSide::eServer);
+            op.fail(reason);
+            emit actionFailed(reason);
         }
     }
     refreshI2pStatus();
@@ -2707,7 +2723,8 @@ void SessionWorker::disablePersonalDest()
         session_->disableI2pDest();
         emit actionOk(tr("I2P destination revoked"));
     } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
+        bazarish::log::warn("the I2P destination was not revoked: {}", e.what());
+        emit actionFailed(failureText(e, FarSide::eServer));
     }
     refreshI2pStatus();
     emit destChangeSettled();

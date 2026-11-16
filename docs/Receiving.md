@@ -105,9 +105,13 @@ Before any wait has failed there is no reason, and the strip says only
 approval** in place of the state, and a declined or banned one **Not approved**
 (Waiting for approval, below).
 
-A failed connection to a server gives its reason in the same words. Signing in
-to a site says *The site is not answering*, *The site refused the sign-in* or
-*The site answered incorrectly*.
+A failed connection or request to a server gives its reason in the same words;
+an answer that carries the server's own error code shows the server's word
+instead. Signing in to a site says *The site is not answering*, *The site
+refused the sign-in* or *The site answered incorrectly*. Changing an alias at
+the alias registry says *The alias registry is not answering* or *The alias
+registry answered incorrectly*. An error of this device, such as its storage,
+keeps its own text.
 
 ## Parameters
 
