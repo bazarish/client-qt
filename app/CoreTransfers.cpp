@@ -55,7 +55,7 @@ StoreUpkeep keepStore(const QString& path, const QString& passphrase, const QStr
             return done;
         }
     }
-    done.rebuilt = store.rebuild(done.reason);
+    done.compacted = store.compact(done.reason);
     done.after = store.footprint().fileBytes;
     return done;
 }
@@ -230,7 +230,7 @@ void CoreAccount::finishStoreUpkeep(const StoreUpkeep& done, const bool trimmed)
 {
     emit events_.storageWorkDone();
     if (!trimmed) {
-        if (!done.problem.isEmpty() || !done.rebuilt) {
+        if (!done.problem.isEmpty() || !done.compacted) {
             emit events_.actionFailed(tr("The database was not compacted: %1")
                     .arg(done.problem.isEmpty() ? done.reason : done.problem));
             return;
@@ -243,7 +243,7 @@ void CoreAccount::finishStoreUpkeep(const StoreUpkeep& done, const bool trimmed)
         emit events_.actionFailed(done.problem);
         return;
     }
-    if (done.rebuilt) {
+    if (done.compacted) {
         emit events_.actionOk(
             tr("Removed %1 messages and compacted the database").arg(done.removed));
         return;

@@ -489,12 +489,12 @@ qint64 TranscriptStore::pruneEveryChatToLatest(const int keep)
     return store().pruneEveryChatToLatest(keep);
 }
 
-bool TranscriptStore::rebuild(QString& reason)
+bool TranscriptStore::compact(QString& reason)
 {
     std::string why;
-    const bool rebuilt = store().rebuild(why);
+    const bool compacted = store().compact(why);
     reason = qt(why);
-    return rebuilt;
+    return compacted;
 }
 
 }  // namespace bazarish::app

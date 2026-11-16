@@ -90,7 +90,7 @@ Popup {
                         MenuButton {
                             Layout.fillWidth: true
                             iconName: "disk"
-                            text: qsTr("Compact the database (VACUUM)")
+                            text: qsTr("Compact the database")
                             enabled: !root.busy && root.session !== null
                             onClicked: root.session.compactDatabase()
                         }

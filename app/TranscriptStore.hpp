@@ -187,7 +187,7 @@ public:
         const QString& peer, const QString& target, const QMap<QString, qint64>& counts);
     qint64 pruneToLatest(const QString& peer, int keep);
     qint64 pruneEveryChatToLatest(int keep);
-    bool rebuild(QString& reason);
+    bool compact(QString& reason);
 
 private:
     client::TranscriptStore& store();

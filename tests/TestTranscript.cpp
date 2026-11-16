@@ -394,7 +394,7 @@ int main(int argc, char** argv)
         CHECK(store.footprint().freeBytes > 0);
         {
             QString reason;
-            CHECK(store.rebuild(reason));
+            CHECK(store.compact(reason));
         }
         CHECK(store.footprint().fileBytes < beforeTrim);
         CHECK(store.footprint().freeBytes == 0);

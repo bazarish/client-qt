@@ -39,7 +39,7 @@ class SessionWorker;
 struct StoreUpkeep {
     QString problem;
     qint64 removed = 0;
-    bool rebuilt = false;
+    bool compacted = false;
     QString reason;
     qint64 before = 0;
     qint64 after = 0;

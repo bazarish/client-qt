@@ -965,11 +965,11 @@
       "zh": "新设备的验证码",
       "ar": "رمز الجهاز الجديد"
     },
-    "Compact the database (VACUUM)": {
-      "ru": "Сжать базу (VACUUM)",
-      "es": "Compactar la base de datos (VACUUM)",
-      "zh": "压缩数据库（VACUUM）",
-      "ar": "ضغط قاعدة البيانات (VACUUM)"
+    "Compact the database": {
+      "ru": "Сжать базу",
+      "es": "Compactar la base de datos",
+      "zh": "压缩数据库",
+      "ar": "ضغط قاعدة البيانات"
     },
     "Compacting the database": {
       "ru": "Сжатие базы данных",
