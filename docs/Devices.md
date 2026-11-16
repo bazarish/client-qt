@@ -121,6 +121,23 @@ The account window lists every device of the account by its id, with its role,
 `(this device)` beside the one it runs on and the queue the server holds for
 each other one. A revoked device stays on the list in red, marked **Revoked**.
 
+## What the account window shows of the server
+
+The server's side of the account window - the state of the address, the
+delegation's expiry, the mailbox usage and the device queues - comes from one
+request, `GET /v1/messaging/overview`. Opening the window asks it at once; while
+the window stays open the client keeps one held request with the version of the
+last answer, which the server answers when anything on it changes. Closing the
+window sends one plain overview request, which ends the held one. The held
+request runs on a connection of its own, so sends and mail never wait behind it.
+
+The last answer is kept in the account database. The window opens on it at once,
+drawn in grey (`Theme.textStale`, 4.5:1 on every background in both themes) until
+the server answers, then in the usual colours. A request that fails replaces the
+values with **Unknown**; the next answer brings them back. A failed request is
+asked again once the mail wait has been answered again, or when the window is
+opened again.
+
 ## Revoking a device
 
 A primary device shows **Revoke** beside every other active device. It asks

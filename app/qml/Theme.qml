@@ -21,6 +21,8 @@ QtObject {
     readonly property color text:      light ? "#16191c" : "#d7dbd8"
     readonly property color textDim:   light ? "#4c554f" : "#9ea59e"
     readonly property color textFaint: light ? "#5d665f" : "#879195"
+    // A value kept from before, not yet confirmed: grey, and still 4.5:1 on bg, surface and surfaceAlt.
+    readonly property color textStale: light ? "#6b6b6b" : "#949494"
 
     readonly property color green:     light ? "#1f7a14" : "#2aa61b"
     // A filled area: the lightest green under white ink that still holds 4.5:1.

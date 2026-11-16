@@ -785,18 +785,6 @@
       "zh": "正在检查你的目的地",
       "ar": "جارٍ فحص وجهتك"
     },
-    "Checking your devices": {
-      "ru": "Проверка устройств",
-      "es": "Comprobando tus dispositivos",
-      "zh": "正在检查你的设备",
-      "ar": "جارٍ فحص أجهزتك"
-    },
-    "Checking your mailbox": {
-      "ru": "Проверка почтового ящика",
-      "es": "Comprobando tu buzón",
-      "zh": "正在检查你的信箱",
-      "ar": "جارٍ فحص صندوق بريدك"
-    },
     "Checking…": {
       "ru": "Проверка…",
       "es": "Comprobando…",
@@ -1343,12 +1331,6 @@
       "zh": "委托至 %1",
       "ar": "مفوَّض حتى ⁦%1⁩"
     },
-    "Delegated — your server is bringing the destination up": {
-      "ru": "Делегировано — сервер поднимает назначение",
-      "es": "Delegado: tu servidor está levantando el destino",
-      "zh": "已委派 — 服务器正在启用该目的地",
-      "ar": "تم التفويض — يعمل خادمك على تشغيل الوجهة"
-    },
     "Delegating it to your server…": {
       "ru": "Делегирование серверу…",
       "es": "Delegándolo a tu servidor…",
@@ -1474,12 +1456,6 @@
       "es": "La clave de destino está lista. Conéctate para publicarla.",
       "zh": "目的地密钥已就绪。请连接以发布它。",
       "ar": "مفتاح الوجهة جاهز. اتصل لنشره."
-    },
-    "Devices: %1": {
-      "ru": "Устройств: %1",
-      "es": "Dispositivos: %1",
-      "zh": "设备数：%1",
-      "ar": "الأجهزة: ⁦%1⁩"
     },
     "Direct network connections: %1": {
       "ru": "Прямых сетевых соединений: %1",
@@ -1888,12 +1864,6 @@
       "es": "Buscando la dirección I2P del servidor",
       "zh": "正在查找服务器的 I2P 地址",
       "ar": "جارٍ البحث عن عنوان I2P للخادم"
-    },
-    "Mailbox: %1 of %2": {
-      "ru": "Почтовый ящик: %1 из %2",
-      "es": "Buzón: %1 de %2",
-      "zh": "信箱：%1 / %2",
-      "ar": "صندوق البريد: ⁦%1⁩ من ⁦%2⁩"
     },
     "Making a new address": {
       "ru": "Создание нового адреса",
@@ -3995,12 +3965,6 @@
       "zh": "你的新联系资料没有送到对方",
       "ar": "لم تصل بيانات تواصلك الجديدة إليهم"
     },
-    "Your server did not answer": {
-      "ru": "Сервер не ответил",
-      "es": "Tu servidor no respondió",
-      "zh": "服务器没有响应",
-      "ar": "لم يجب خادمك"
-    },
     "Your server did not answer, so the account was not ended:": {
       "ru": "Сервер не ответил. Аккаунт не закрыт:",
       "es": "Tu servidor no ha respondido, así que la cuenta no se ha cerrado:",
@@ -5272,6 +5236,36 @@
       "es": "Descartado",
       "zh": "已丢弃",
       "ar": "تم الحذف"
+    },
+    "Not approved": {
+      "ru": "Не одобрен",
+      "es": "No aprobado",
+      "zh": "未获批准",
+      "ar": "لم تتم الموافقة"
+    },
+    "The server operator declined this account": {
+      "ru": "Оператор сервера отклонил этот аккаунт",
+      "es": "El operador del servidor rechazó esta cuenta",
+      "zh": "服务器运营者拒绝了此账户",
+      "ar": "رفض مشغل الخادم هذا الحساب"
+    },
+    "The server mailbox is almost full": {
+      "ru": "Ящик на сервере почти заполнен",
+      "es": "El buzón del servidor está casi lleno",
+      "zh": "服务器上的邮箱快满了",
+      "ar": "صندوق البريد على الخادم ممتلئ تقريبًا"
+    },
+    "The server mailbox is full, new messages are not accepted": {
+      "ru": "Ящик на сервере заполнен, новые сообщения не принимаются",
+      "es": "El buzón del servidor está lleno, no se aceptan mensajes nuevos",
+      "zh": "服务器上的邮箱已满，不再接收新消息",
+      "ar": "صندوق البريد على الخادم ممتلئ، ولا تُقبل رسائل جديدة"
+    },
+    "Unknown": {
+      "ru": "Неизвестно",
+      "es": "Desconocido",
+      "zh": "未知",
+      "ar": "غير معروف"
     }
   }
 }

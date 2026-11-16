@@ -16,8 +16,8 @@ inline const QSet<QByteArray> kSelfDescribingCommands = {
     "requestSendPicture", "requestSendVoice", "requestSendCallback", "requestSendCommand",
     "requestAddByInvite", "requestAddByAlias", "requestAcceptContact",
     "requestExport", "requestSaveAttachment", "requestActivateAliasServicing",
-    "requestPublishThisDeviceAddress", "requestPublishFreshAddress", "requestRefreshI2pStatus",
-    "requestRefreshStorageUsage", "requestRefreshDevices", "requestRevokeDevice", "requestReviewDevices",
+    "requestPublishThisDeviceAddress", "requestPublishFreshAddress",
+    "requestRevokeDevice", "requestReviewDevices",
     "requestCloseAccountOnServer", "requestGeneratePersonalKey", "requestLoadPersonalKey",
     "requestReplacePersonalKey", "requestPublishPersonalDest", "requestSetAliasBinding",
     "requestSetAliasWord",
@@ -148,14 +148,12 @@ signals:
     void requestSetSendReceipts(bool on);
     void requestSetShowPresence(bool on);
     void watchPresence(const QStringList& peers);
+    void watchOverview(bool open);
     void presenceTyped(const QString& peer);
     void presenceStoppedTyping(const QString& peer);
     void requestSetDelegationDays(int days);
     void requestPublishPersonalDest();
     void requestDisablePersonalDest();
-    void requestRefreshI2pStatus();
-    void requestRefreshStorageUsage();
-    void requestRefreshDevices();
     void requestRevokeDevice(const QString& deviceId);
     void requestReviewDevices(const QStringList& revoke);
     void readContactDevices(const QString& peer);

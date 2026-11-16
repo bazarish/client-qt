@@ -94,9 +94,9 @@ inline constexpr Latch kAccountLatches[] = {
     {"contactsRefreshed"},
     {"accountSettings"},
     {"approvalState"},
-    {"i2pStatus"},
+    {"overviewReady"},
+    {"mailboxUsage"},
     {"i2pKeyState"},
-    {"i2pServedAddress"},
     {"callStateChanged"},
     {"reactionsToFlash"},
     {"recentReactions"},
@@ -147,20 +147,17 @@ signals:
     void loginFetchState(
         const QString& link, bool fetching, const QString& status, const QString& challenge);
     void connectionLogReady(const QVariantList& lines);
-    void approvalState(bool pending, const QString& note);
+    void approvalState(bool pending, bool refused, const QString& note);
     void facadeInfo(const QString& activeAddress, const QStringList& configured,
         const QString& serverFp, const QStringList& reseeds);
-    void i2pStatus(bool hasKey, bool delegated, const QString& address, qint64 transientExpires,
-        const QString& serverState);
     void i2pKeyState(bool hasKey, const QString& address);
-    void i2pServedAddress(const QString& address);
     void destChangeSettled();
-    void devicesReady(const QVariantList& devices);
-    void devicesFailed();
+    void overviewReady(const QVariantMap& overview, bool fresh);
+    void overviewFailed();
+    void mailboxUsage(qulonglong usedBytes, qulonglong quotaBytes);
     void deviceState(const QString& deviceId, bool primary, const QVariantList& ownDevices,
         qint64 epochReserveUntil, bool epochReserveLow);
     void contactDevices(const QString& peer, const QVariantList& devices);
-    void storageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         const QString& stage, qint64 connectedAtMs);
     void callLevels(float inputLevel, float outputLevel);

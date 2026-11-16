@@ -44,6 +44,11 @@ Item {
             session: root.session
             onTapped: settings.open()
         }
+        StorageStrip {
+            width: strips.width
+            session: root.session
+            onTapped: settings.open()
+        }
     }
     CallBar {
         id: callBar

@@ -7,6 +7,7 @@
 #include "I2pRouter.hpp"
 #include "LinkFailure.hpp"
 #include "MailWaitGate.hpp"
+#include "OverviewWatch.hpp"
 
 #include <QObject>
 #include <QString>
@@ -150,8 +151,8 @@ public slots:
     void refreshContacts();
     void publishThisDeviceAddress();
     void publishFreshAddress();
-    void refreshStorageUsage();
-    void refreshDevices();
+    // While the Account page is open one held request keeps its overview current.
+    void watchOverview(bool open);
     void revokeDevice(const QString& deviceId);
     void reviewDevices(const QStringList& revoke);
     void readContactDevices(const QString& peer);
@@ -220,20 +221,18 @@ signals:
     void linksRebuilding();
     // shown: the backlog is more than one pass of items.
     void syncProgress(bool syncing, bool shown, qint64 takenBytes, qint64 totalBytes);
-    void approvalState(bool pending, const QString& note);
+    void approvalState(bool pending, bool refused, const QString& note);
     void facadeInfo(const QString& activeAddress, const QStringList& configured,
         const QString& serverFp, const QStringList& reseeds);
-    void i2pStatus(bool hasKey, bool delegated, const QString& address, qint64 transientExpires,
-        const QString& serverState);
     void i2pKeyState(bool hasKey, const QString& address);
-    void i2pServedAddress(const QString& address);
     void destChangeSettled();
-    void devicesReady(const QVariantList& devices);
-    void devicesFailed();
+    // fresh: the server answered it now; otherwise it is the one kept from before.
+    void overviewReady(const QVariantMap& overview, bool fresh);
+    void overviewFailed();
+    void mailboxUsage(qulonglong usedBytes, qulonglong quotaBytes);
     void deviceState(const QString& deviceId, bool primary, const QVariantList& ownDevices,
         qint64 epochReserveUntil, bool epochReserveLow);
     void contactDevices(const QString& peer, const QVariantList& devices);
-    void storageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         const QString& stage, bool peerRinging, qint64 connectedAtMs);
     void callLevels(float inputLevel, float outputLevel);
@@ -309,11 +308,26 @@ private:
     void beginStream(bool catchUp, std::uint64_t totalBytes, std::size_t items);
     void registerThisDevice();
     void stopEventWaiter();
+    std::unique_ptr<bazarish::client::OverviewWatch> overview_;
+    bool overviewOpen_ = false;
+    void stopOverview();
+    Q_INVOKABLE void releaseOverviewHold();
+    void emitKeptOverview();
+    void takeMailboxUsage(const bazarish::client::MailboxUsage& usage);
+    std::optional<bazarish::client::MailboxUsage> toldUsage_;
+    std::thread approvalWaiter_;
+    bazarish::client::MailWaitGate approvalGate_;
+    std::shared_ptr<std::atomic<bool>> approvalWaiterRunning_;
+    void startApprovalWaiter();
+    void stopApprovalWaiter();
+    void approvalAnswered(const bazarish::client::I2pDestStatus& status);
+    void approvalRefused(const std::string& reason);
     std::thread errands_;
     std::mutex errandMutex_;
     std::condition_variable errandWake_;
     struct Errand {
         std::string pendingId;
+        bool releaseOverview = false;
     };
     std::deque<Errand> errandQueue_;
     bool errandsRunning_ = false;
@@ -335,7 +349,6 @@ private:
     std::uint64_t takenBytes_ = 0;
     qint64 lastTransientCheckMs_ = 0;
     qint64 lastAliasServiceMs_ = 0;
-    qint64 lastApprovalCheckMs_ = 0;
 };
 
 }  // namespace bazarish::app

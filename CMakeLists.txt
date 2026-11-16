@@ -331,6 +331,7 @@ if(Qt6_FOUND)
             app/qml/OperationRow.qml
             app/qml/ConnectionStrip.qml
             app/qml/EpochReserveStrip.qml
+            app/qml/StorageStrip.qml
             app/qml/components/Avatar.qml
             app/qml/components/AvatarViewer.qml
             app/qml/components/SavedMark.qml
@@ -389,6 +390,11 @@ target_include_directories(TestAppSettings PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/a
 target_link_libraries(TestAppSettings PRIVATE bazarish_test_util bazarish_client)
 target_compile_options(TestAppSettings PRIVATE -Wall -Wextra)
 add_test(NAME TestAppSettings COMMAND TestAppSettings)
+
+add_executable(TestMailboxFill tests/TestMailboxFill.cpp app/MailboxFill.hpp)
+target_include_directories(TestMailboxFill PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+target_compile_options(TestMailboxFill PRIVATE -Wall -Wextra -Werror)
+add_test(NAME TestMailboxFill COMMAND TestMailboxFill)
 
 add_executable(TestDataMove tests/TestDataMove.cpp app/DataMove.cpp app/DataMove.hpp)
 target_include_directories(TestDataMove PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)

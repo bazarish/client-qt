@@ -195,9 +195,10 @@ constexpr std::chrono::milliseconds kSlowStretch{200};
 
 constexpr qint64 kTransientCheckIntervalMs = 3600 * 1000;
 
-constexpr qint64 kApprovalCheckIntervalMs = 60 * 1000;
-
 constexpr qint64 kAliasServiceIntervalMs = 60 * 1000;
+
+constexpr int kFirstClientError = 400;
+constexpr int kFirstServerError = 500;
 
 constexpr qint64 kRegistryRetryIntervalMs = 10 * 1000;
 
@@ -305,11 +306,34 @@ bazarish::client::DeliveryWatch watchFor(SessionWorker& owner, const qint64 loca
     return watch;
 }
 
+QVariantMap overviewMap(const bazarish::client::AccountOverview& overview)
+{
+    QVariantList devices;
+    for (const bazarish::client::OverviewDevice& device : overview.devices) {
+        devices.append(QVariantMap{
+            {QStringLiteral("deviceId"), QString::fromStdString(device.device)},
+            {QStringLiteral("current"), device.current},
+            {QStringLiteral("queue"), static_cast<qulonglong>(device.queued)},
+        });
+    }
+    return {
+        {QStringLiteral("known"), !overview.version.empty()},
+        {QStringLiteral("dest"), QString::fromStdString(overview.dest)},
+        {QStringLiteral("state"), QString::fromStdString(overview.state)},
+        {QStringLiteral("transientExpires"), static_cast<qint64>(overview.transientExpires)},
+        {QStringLiteral("usedBytes"), static_cast<qulonglong>(overview.usage.usedBytes)},
+        {QStringLiteral("quotaBytes"), static_cast<qulonglong>(overview.usage.quotaBytes)},
+        {QStringLiteral("devices"), devices},
+    };
+}
+
 }  // namespace
 
 SessionWorker::~SessionWorker()
 {
     stopEventWaiter();
+    stopOverview();
+    stopApprovalWaiter();
     stopErrands();
 }
 
@@ -328,8 +352,13 @@ void SessionWorker::startMaintenance()
 void SessionWorker::startReceiving()
 {
     startMaintenance();
-    if (!session_->approvalState().pending) {
+    if (session_->approvalState().pending) {
+        startApprovalWaiter();
+    } else {
         startEventWaiter();
+    }
+    if (overviewOpen_) {
+        watchOverview(true);
     }
 }
 
@@ -351,6 +380,7 @@ void SessionWorker::startErrands()
             = bazarish::client::Session::makeEventClient(context);
         while (true) {
             std::vector<std::string> acks;
+            bool releaseOverview = false;
             {
                 std::unique_lock<std::mutex> lock(errandMutex_);
                 errandWake_.wait(
@@ -358,10 +388,24 @@ void SessionWorker::startErrands()
                 if (!errandsRunning_ && errandQueue_.empty()) {
                     return;
                 }
-                while (!errandQueue_.empty() && acks.size() < bazarish::kMaxAckIdsPerRequest) {
+                if (errandQueue_.front().releaseOverview) {
+                    releaseOverview = true;
+                    errandQueue_.pop_front();
+                }
+                while (!releaseOverview && !errandQueue_.empty()
+                    && !errandQueue_.front().releaseOverview
+                    && acks.size() < bazarish::kMaxAckIdsPerRequest) {
                     acks.push_back(std::move(errandQueue_.front().pendingId));
                     errandQueue_.pop_front();
                 }
+            }
+            if (releaseOverview) {
+                try {
+                    (void)errands->overview();
+                } catch (const std::exception& error) {
+                    bazarish::log::info("the held overview was not released: {}", error.what());
+                }
+                continue;
             }
             try {
                 errands->ack(acks);
@@ -458,6 +502,19 @@ void SessionWorker::startEventWaiter()
                 answered = true;
                 askedAfterRegistering = false;
                 mailGate_.answered();
+                const std::optional<bazarish::client::MailboxUsage> usage
+                    = waiter->lastMailboxUsage();
+                QMetaObject::invokeMethod(
+                    this,
+                    [this, usage]() {
+                        if (usage.has_value()) {
+                            takeMailboxUsage(*usage);
+                        }
+                        if (overview_) {
+                            overview_->linkBack();
+                        }
+                    },
+                    Qt::QueuedConnection);
                 QMetaObject::invokeMethod(
                     this,
                     [this]() {
@@ -674,6 +731,7 @@ void SessionWorker::openAccount(
         []() -> std::unique_ptr<bazarish::AudioSink> { return std::make_unique<CallSink>(); });
     session_->onServerAnswered([this]() {
         mailGate_.serverAnswered();
+        approvalGate_.serverAnswered();
         emit syncReachable(true, {}, bazarish::client::LinkFailure::eNone);
     });
     session_->openOutboxWhenAnswered(mailGate_);
@@ -687,6 +745,7 @@ void SessionWorker::openAccount(
     session_->onOwnDevicesChanged(
         [this]() { QMetaObject::invokeMethod(this, "emitDeviceState", Qt::QueuedConnection); });
     emit loginSignerReady(session_->loginSigner());
+    emitKeptOverview();
     session_->onAddressDecision([this](const std::string& served, const std::string& ours) {
         emit addressMismatch(QString::fromStdString(served), QString::fromStdString(ours));
     });
@@ -920,6 +979,8 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
             throw std::runtime_error(tr("Enter at least one facade address").toStdString());
         }
         stopEventWaiter();
+        stopOverview();
+        stopApprovalWaiter();
         stopErrands();
         session_->connectServer(endpoint);
         emitFacadeInfo();
@@ -979,6 +1040,8 @@ void SessionWorker::setSyncEnabled(bool on)
         sync();
     } else {
         stopEventWaiter();
+        stopOverview();
+        stopApprovalWaiter();
         if (maintenanceTimer_ != nullptr) {
             maintenanceTimer_->stop();
         }
@@ -1121,26 +1184,6 @@ void SessionWorker::maintain()
     session_->expireFileRequests(nowMillis());
     if (!session_->isConnected()) {
         return;
-    }
-    if (session_->approvalState().pending
-        && nowMillis() - lastApprovalCheckMs_ >= kApprovalCheckIntervalMs) {
-        lastApprovalCheckMs_ = nowMillis();
-        try {
-            (void)session_->i2pDestStatus();
-        } catch (const std::exception& error) {
-            bazarish::log::warn("approval check failed: {}", error.what());
-        }
-        if (!session_->approvalState().pending) {
-            try {
-                session_->registerAccount();
-            } catch (const std::exception& error) {
-                bazarish::log::warn("registering after approval failed: {}", error.what());
-            }
-            startEventWaiter();
-            refreshI2pStatus();
-        }
-        const Session::ApprovalState approval = session_->approvalState();
-        emit approvalState(approval.pending, QString::fromStdString(approval.message));
     }
     if (nowMillis() - lastTransientCheckMs_ >= kTransientCheckIntervalMs) {
         lastTransientCheckMs_ = nowMillis();
@@ -1938,6 +1981,8 @@ void SessionWorker::sendChatTimer(const QString& peer, const qint64 seconds)
 void SessionWorker::shutdown()
 {
     stopEventWaiter();
+    stopOverview();
+    stopApprovalWaiter();
     stopErrands();
     if (maintenanceTimer_ != nullptr) {
         maintenanceTimer_->stop();
@@ -2086,26 +2131,10 @@ void SessionWorker::refreshI2pStatus()
     emit i2pKeyState(hasKey, address);
     WorkerOp op(*this, QStringLiteral("i2p-status"), QStringLiteral("status"),
         tr("Checking your destination"), tr("Asking your server…"));
-    bool delegated = false;
-    bool live = false;
-    qint64 transientExpires = 0;
     QString summary;
-    QString serverState;
     try {
         const bazarish::client::I2pDestStatus s = session_->i2pDestStatus();
-        try {
-            const bazarish::client::DestinationInfo served = session_->serverDestination();
-            serverState = QString::fromStdString(served.state);
-            emit i2pServedAddress(QString::fromStdString(served.dest));
-        } catch (const std::exception& error) {
-            bazarish::log::warn("destination state unavailable: {}", error.what());
-        }
-        transientExpires = static_cast<qint64>(s.transientExpires);
-        delegated = transientExpires != 0;
-        live = s.approved() && delegated;
-        if (live && serverState == QStringLiteral("building")) {
-            summary = tr("Delegated — your server is bringing the destination up");
-        } else if (live) {
+        if (s.approved() && s.transientExpires != 0) {
             summary = tr("Published — your destination is live");
         } else if (s.approval == "pending") {
             summary = s.registrationMessage.empty()
@@ -2123,51 +2152,229 @@ void SessionWorker::refreshI2pStatus()
     }
     op.succeed(summary);
     const Session::ApprovalState approval = session_->approvalState();
-    emit approvalState(approval.pending, QString::fromStdString(approval.message));
-    emit i2pStatus(hasKey, delegated, address, transientExpires, serverState);
+    emit approvalState(approval.pending, approval.refused, QString::fromStdString(approval.message));
 }
 
-void SessionWorker::refreshStorageUsage()
+void SessionWorker::watchOverview(const bool open)
 {
+    overviewOpen_ = open;
     if (!session_) {
         return;
     }
-    WorkerOp op(*this, QStringLiteral("storage-usage"), QStringLiteral("status"),
-        tr("Checking your mailbox"), tr("Asking your server…"));
-    const bazarish::client::StorageUsage u = session_->storageUsage();
-    if (u.mailboxOk) {
-        op.succeed(tr("Mailbox: %1 of %2")
-                       .arg(humanBytes(static_cast<qint64>(u.mailboxUsedBytes)),
-                           humanBytes(static_cast<qint64>(u.mailboxQuotaBytes))));
-    } else {
-        op.fail(tr("Your server did not answer"));
-    }
-    emit storageUsageReady(u.mailboxOk, static_cast<qulonglong>(u.mailboxUsedBytes),
-        static_cast<qulonglong>(u.mailboxQuotaBytes));
-}
-
-void SessionWorker::refreshDevices()
-{
-    if (!session_) {
-        return;
-    }
-    WorkerOp op(*this, QStringLiteral("devices"), QStringLiteral("status"),
-        tr("Checking your devices"), tr("Asking your server…"));
-    try {
-        QVariantList devices;
-        for (const bazarish::client::Client::DeviceEntry& device : session_->devices()) {
-            devices.append(QVariantMap{
-                {QStringLiteral("deviceId"), QString::fromStdString(device.device)},
-                {QStringLiteral("current"), device.current},
-                {QStringLiteral("queue"), static_cast<qulonglong>(device.queued)},
-            });
+    if (!open) {
+        if (overview_) {
+            overview_->close();
         }
-        op.succeed(tr("Devices: %1").arg(devices.size()));
-        emit devicesReady(devices);
-    } catch (const std::exception& error) {
-        op.fail(QString::fromUtf8(error.what()));
-        emit devicesFailed();
+        return;
     }
+    emitKeptOverview();
+    if (!session_->isConnected() || session_->switchedOff()) {
+        return;
+    }
+    if (!overview_) {
+        bazarish::client::Session::ContactFetchContext context;
+        try {
+            context = session_->contactFetchContext();
+        } catch (const std::exception& error) {
+            bazarish::log::warn("no overview: {}", error.what());
+            return;
+        }
+        const std::shared_ptr<bazarish::client::Client> asker
+            = bazarish::client::Session::makeEventClient(context);
+        overview_ = std::make_unique<bazarish::client::OverviewWatch>(
+            bazarish::client::OverviewWatch::Hooks{
+                [asker](const std::string& since) { return asker->overview(since); },
+                [this]() {
+                    QMetaObject::invokeMethod(this, "releaseOverviewHold", Qt::QueuedConnection);
+                },
+                [this](const bazarish::client::AccountOverview& overview) {
+                    QMetaObject::invokeMethod(
+                        this,
+                        [this, overview]() {
+                            if (!session_) {
+                                return;
+                            }
+                            session_->keepOverview(overview);
+                            toldUsage_ = overview.usage;
+                            emit overviewReady(overviewMap(overview), true);
+                        },
+                        Qt::QueuedConnection);
+                },
+                [this](const std::string&) {
+                    QMetaObject::invokeMethod(
+                        this, [this]() { emit overviewFailed(); }, Qt::QueuedConnection);
+                },
+            });
+    }
+    overview_->open();
+}
+
+void SessionWorker::stopOverview()
+{
+    overview_.reset();
+}
+
+void SessionWorker::releaseOverviewHold()
+{
+    if (!session_) {
+        return;
+    }
+    Errand errand;
+    errand.releaseOverview = true;
+    queueErrand(std::move(errand));
+}
+
+void SessionWorker::emitKeptOverview()
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        if (const std::optional<bazarish::client::AccountOverview> kept = session_->keptOverview()) {
+            toldUsage_ = kept->usage;
+            emit overviewReady(overviewMap(*kept), false);
+        }
+    } catch (const std::exception& error) {
+        bazarish::log::warn("the kept overview is unreadable: {}", error.what());
+    }
+}
+
+void SessionWorker::takeMailboxUsage(const bazarish::client::MailboxUsage& usage)
+{
+    if (!session_ || toldUsage_ == usage) {
+        return;
+    }
+    toldUsage_ = usage;
+    session_->keepMailboxUsage(usage);
+    emit mailboxUsage(static_cast<qulonglong>(usage.usedBytes),
+        static_cast<qulonglong>(usage.quotaBytes));
+}
+
+void SessionWorker::startApprovalWaiter()
+{
+    if (approvalWaiter_.joinable() || !session_) {
+        return;
+    }
+    bazarish::client::Session::ContactFetchContext context;
+    try {
+        context = session_->contactFetchContext();
+    } catch (const std::exception& error) {
+        bazarish::log::warn("no approval waiter: {}", error.what());
+        return;
+    }
+    approvalWaiterRunning_ = std::make_shared<std::atomic<bool>>(true);
+    approvalGate_.restart();
+    approvalWaiter_ = std::thread([this, context, running = approvalWaiterRunning_]() {
+        std::unique_ptr<bazarish::client::Client> waiter;
+        while (running->load()) {
+            approvalGate_.asking();
+            try {
+                if (!waiter) {
+                    waiter = bazarish::client::Session::makeEventClient(context);
+                }
+                const bazarish::client::I2pDestStatus status
+                    = waiter->awaitApprovalChange(bazarish::client::kApprovalPending);
+                if (!running->load()) {
+                    return;
+                }
+                approvalGate_.answered();
+                QMetaObject::invokeMethod(
+                    this, [this, status]() { approvalAnswered(status); }, Qt::QueuedConnection);
+                if (status.approval != bazarish::client::kApprovalPending) {
+                    return;
+                }
+            } catch (const bazarish::client::ApiError& error) {
+                if (!running->load()) {
+                    return;
+                }
+                if (error.httpStatus >= kFirstClientError && error.httpStatus < kFirstServerError) {
+                    const std::string reason = error.what();
+                    QMetaObject::invokeMethod(
+                        this, [this, reason]() { approvalRefused(reason); }, Qt::QueuedConnection);
+                    return;
+                }
+                bazarish::log::info("approval wait failed: {}", error.what());
+                const bazarish::client::MailWaitCause cause = waiter->serverBehindFacadeDown()
+                    ? approvalGate_.awaitServer()
+                    : approvalGate_.awaitCause([&waiter]() { return waiter->facadePublishedAnew(); });
+                if (cause == bazarish::client::MailWaitCause::eStopped) {
+                    return;
+                }
+                if (cause != bazarish::client::MailWaitCause::eStaleLeaseSet) {
+                    waiter->liftStandOff();
+                }
+            } catch (const std::exception& error) {
+                if (!running->load()) {
+                    return;
+                }
+                bazarish::log::info("approval wait failed: {}", error.what());
+                const bazarish::client::MailWaitCause cause = approvalGate_.awaitCause(
+                    [&waiter]() { return waiter && waiter->facadePublishedAnew(); });
+                if (cause == bazarish::client::MailWaitCause::eStopped) {
+                    return;
+                }
+            }
+        }
+    });
+}
+
+void SessionWorker::stopApprovalWaiter()
+{
+    if (approvalWaiterRunning_) {
+        approvalWaiterRunning_->store(false);
+    }
+    approvalGate_.stop();
+    if (approvalWaiter_.joinable()) {
+        // Only taking its link down ends a held wait before the server answers it.
+        if (session_) {
+            session_->releaseI2pLinks();
+        }
+        approvalWaiter_.join();
+    }
+    approvalWaiter_ = std::thread();
+    approvalWaiterRunning_.reset();
+}
+
+void SessionWorker::approvalAnswered(const bazarish::client::I2pDestStatus& status)
+{
+    if (!session_) {
+        return;
+    }
+    if (status.approval == bazarish::client::kApprovalPending) {
+        session_->takeApproval(status);
+    } else if (status.approved()) {
+        session_->takeApproval(status);
+        if (approvalWaiter_.joinable()) {
+            approvalWaiter_.join();
+        }
+        approvalWaiter_ = std::thread();
+        try {
+            session_->registerAccount();
+        } catch (const std::exception& error) {
+            bazarish::log::warn("registering after approval failed: {}", error.what());
+        }
+        startEventWaiter();
+        refreshI2pStatus();
+    } else {
+        approvalRefused({});
+        return;
+    }
+    const Session::ApprovalState approval = session_->approvalState();
+    emit approvalState(approval.pending, approval.refused, QString::fromStdString(approval.message));
+}
+
+void SessionWorker::approvalRefused(const std::string& reason)
+{
+    if (!session_) {
+        return;
+    }
+    if (approvalWaiter_.joinable()) {
+        approvalWaiter_.join();
+    }
+    approvalWaiter_ = std::thread();
+    bazarish::log::info("the server declined this account");
+    session_->refuseApproval(reason);
+    emit approvalState(false, true, QString::fromStdString(reason));
 }
 
 void SessionWorker::revokeDevice(const QString& deviceId)
@@ -2182,7 +2389,6 @@ void SessionWorker::revokeDevice(const QString& deviceId)
             return tr("Revoked");
         });
     emitDeviceState();
-    refreshDevices();
 }
 
 void SessionWorker::reviewDevices(const QStringList& revoke)
@@ -2200,7 +2406,6 @@ void SessionWorker::reviewDevices(const QStringList& revoke)
             return revoke.isEmpty() ? tr("Done") : tr("Revoked");
         });
     emitDeviceState();
-    refreshDevices();
 }
 
 void SessionWorker::closeAccountOnServer()

@@ -13,6 +13,7 @@ Rectangle {
     readonly property bool isConnecting: root.session !== null && root.session.online
         && !root.session.reachable
     readonly property bool heldForApproval: root.session !== null && root.session.awaitingApproval
+    readonly property bool refused: root.session !== null && root.session.approvalRefused
     readonly property int failure: root.session !== null ? root.session.linkFailure : LinkStatus.None
     readonly property bool noNetwork: root.isConnecting && root.failure === LinkStatus.NoNetwork
     readonly property string whyNotReachable: {
@@ -40,7 +41,7 @@ Rectangle {
     readonly property int kSideMargin: 12
 
     visible: root.session !== null && root.session.connected
-        && (root.isOffline || root.isConnecting || root.heldForApproval)
+        && (root.isOffline || root.isConnecting || root.heldForApproval || root.refused)
     implicitHeight: line.implicitHeight + 2 * root.kPadding
     color: Theme.warnFill
 
@@ -53,7 +54,8 @@ Rectangle {
         anchors.rightMargin: root.kSideMargin
         spacing: 8
         Label {
-            text: root.heldForApproval ? qsTr("Waiting for approval")
+            text: root.refused ? qsTr("Not approved")
+                : root.heldForApproval ? qsTr("Waiting for approval")
                 : root.isOffline ? qsTr("Disconnected")
                 : root.noNetwork ? qsTr("No network")
                 : qsTr("Connecting…")
@@ -62,7 +64,11 @@ Rectangle {
             font.weight: Font.DemiBold
         }
         Label {
-            text: root.heldForApproval
+            text: root.refused
+                ? (root.session.approvalNote.length > 0
+                    ? root.session.approvalNote
+                    : qsTr("The server operator declined this account"))
+                : root.heldForApproval
                 ? (root.session.approvalNote.length > 0
                     ? root.session.approvalNote
                     : qsTr("Your server holds this account until its operator approves it — you cannot send or receive yet"))

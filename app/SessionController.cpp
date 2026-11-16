@@ -5,6 +5,7 @@
 #include "ChatPreview.hpp"
 #include "Documents.hpp"
 #include "GatewayAddress.hpp"
+#include "MailboxFill.hpp"
 #include "MediaKeys.hpp"
 #include "SessionShared.hpp"
 #include "SystemNotes.hpp"
@@ -321,13 +322,8 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
             }
         });
     connect(&events_, &AccountEvents::approvalState, this, &SessionController::onApprovalState);
-    connect(&events_, &AccountEvents::devicesReady, this, &SessionController::onDevicesReady);
     connect(&events_, &AccountEvents::deviceState, this, &SessionController::onDeviceState);
     connect(&events_, &AccountEvents::contactDevices, this, &SessionController::onContactDevices);
-    connect(&events_, &AccountEvents::devicesFailed, this, [this]() {
-        devicesFailed_ = true;
-        emit devicesChanged();
-    });
     connect(&events_, &AccountEvents::facadeInfo, this, &SessionController::onFacadeInfo);
     connect(&events_, &AccountEvents::actionOk, this, &SessionController::actionOk);
     connect(&events_, &AccountEvents::botKeySettled, this, &SessionController::botKeySettled);
@@ -368,22 +364,15 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
         });
     connect(&events_, &AccountEvents::connectionLogReady, this,
         &SessionController::connectionLogUpdated);
-    connect(&events_, &AccountEvents::i2pStatus, this, &SessionController::onI2pStatus);
+    connect(&events_, &AccountEvents::overviewReady, this, &SessionController::onOverviewReady);
+    connect(&events_, &AccountEvents::overviewFailed, this, &SessionController::onOverviewFailed);
+    connect(&events_, &AccountEvents::mailboxUsage, this, &SessionController::onMailboxUsage);
     connect(&events_, &AccountEvents::destChangeSettled, this, [this]() {
         i2pBusy_ = false;
         emit i2pStatusChanged();
         emit i2pAnswered();
     });
     connect(&events_, &AccountEvents::i2pKeyState, this, &SessionController::onI2pKeyState);
-    connect(&events_, &AccountEvents::i2pServedAddress, this, [this](const QString& address) {
-        if (i2pServedAddress_ == address) {
-            return;
-        }
-        i2pServedAddress_ = address;
-        emit i2pStatusChanged();
-    });
-    connect(&events_, &AccountEvents::storageUsageReady, this,
-        &SessionController::onStorageUsageReady);
     connect(&events_, &AccountEvents::callStateChanged, this,
         &SessionController::onCallStateChanged);
     connect(&events_, &AccountEvents::callLevels, this, &SessionController::onCallLevels);
@@ -1607,9 +1596,9 @@ void SessionController::disablePersonalDest()
     emit commands_.requestDisablePersonalDest();
 }
 
-void SessionController::refreshI2pStatus()
+void SessionController::watchOverview(const bool open)
 {
-    emit commands_.requestRefreshI2pStatus();
+    emit commands_.watchOverview(open);
 }
 
 void SessionController::onI2pKeyState(const bool hasKey, const QString& address)
@@ -1619,25 +1608,62 @@ void SessionController::onI2pKeyState(const bool hasKey, const QString& address)
     emit i2pStatusChanged();
 }
 
-void SessionController::onI2pStatus(const bool hasKey, const bool delegated,
-    const QString& address, const qint64 transientExpires, const QString& serverState)
+void SessionController::onOverviewReady(const QVariantMap& overview, const bool fresh)
 {
-    i2pServerState_ = serverState;
-    i2pHasKey_ = hasKey;
-    i2pEnabled_ = delegated;
-    i2pAddress_ = address;
-    i2pTransientExpires_ = transientExpires;
+    overviewKnown_ = overview.value(QStringLiteral("known")).toBool();
+    overviewFresh_ = fresh && overviewKnown_;
+    overviewFailed_ = overviewFailed_ && !fresh;
+    if (overviewKnown_) {
+        i2pServerState_ = overview.value(QStringLiteral("state")).toString();
+        i2pServedAddress_ = overview.value(QStringLiteral("dest")).toString();
+        i2pTransientExpires_ = overview.value(QStringLiteral("transientExpires")).toLongLong();
+        i2pEnabled_ = i2pTransientExpires_ != 0;
+        devices_ = overview.value(QStringLiteral("devices")).toList();
+    }
+    const quint64 quota = overview.value(QStringLiteral("quotaBytes")).toULongLong();
+    if (quota > 0) {
+        storageKnown_ = true;
+        storageFresh_ = fresh;
+        storageMailboxUsed_ = overview.value(QStringLiteral("usedBytes")).toULongLong();
+        storageMailboxQuota_ = quota;
+    }
     emit i2pStatusChanged();
+    emit devicesChanged();
+    emit storageChanged();
+    if (overviewFresh_) {
+        emit i2pAnswered();
+    }
 }
 
-void SessionController::refreshStorageUsage()
+void SessionController::onOverviewFailed()
 {
-    emit commands_.requestRefreshStorageUsage();
+    overviewKnown_ = false;
+    overviewFresh_ = false;
+    overviewFailed_ = true;
+    storageKnown_ = false;
+    storageFresh_ = false;
+    emit i2pStatusChanged();
+    emit devicesChanged();
+    emit storageChanged();
 }
 
-void SessionController::refreshDevices()
+void SessionController::onMailboxUsage(const qulonglong usedBytes, const qulonglong quotaBytes)
 {
-    emit commands_.requestRefreshDevices();
+    storageKnown_ = true;
+    storageFresh_ = true;
+    storageMailboxUsed_ = usedBytes;
+    storageMailboxQuota_ = quotaBytes;
+    emit storageChanged();
+}
+
+bool SessionController::storageNearlyFull() const
+{
+    return mailboxNearlyFull(storageMailboxUsed_, storageMailboxQuota_);
+}
+
+bool SessionController::storageFull() const
+{
+    return mailboxFull(storageMailboxUsed_, storageMailboxQuota_);
 }
 
 void SessionController::reviewDevices(const QStringList& revoke)
@@ -1808,13 +1834,6 @@ QUrl SessionController::defaultPictureSaveUrl(const QString& e2eId, const QStrin
     return defaultSaveUrl(base + suffix);
 }
 
-void SessionController::onDevicesReady(const QVariantList& devices)
-{
-    devices_ = devices;
-    devicesFailed_ = false;
-    emit devicesChanged();
-}
-
 QVariantList SessionController::ownDevices() const
 {
     QHash<QString, QVariant> queues;
@@ -1863,30 +1882,13 @@ void SessionController::onContactDevices(const QString& peer, const QVariantList
     emit contactDevicesChanged();
 }
 
-void SessionController::onStorageUsageReady(
-    const bool mailboxOk, const qulonglong mailboxUsed, const qulonglong mailboxQuota)
-{
-    storageFailed_ = !mailboxOk;
-    if (!mailboxOk) {
-        emit storageChanged();
-        return;
-    }
-    storageMailboxOk_ = true;
-    storageMailboxUsed_ = mailboxUsed;
-    storageMailboxQuota_ = mailboxQuota;
-    storageUpdatedAtMs_ = nowMillis();
-    emit storageChanged();
-}
-
 QVariantMap SessionController::storageInfo() const
 {
     QVariantMap m;
-    m[QStringLiteral("mailboxOk")] = storageMailboxOk_;
+    m[QStringLiteral("mailboxOk")] = storageKnown_;
+    m[QStringLiteral("fresh")] = storageFresh_;
     m[QStringLiteral("mailboxUsed")] = static_cast<qulonglong>(storageMailboxUsed_);
     m[QStringLiteral("mailboxQuota")] = static_cast<qulonglong>(storageMailboxQuota_);
-    m[QStringLiteral("updatedAt")] = storageUpdatedAtMs_;
-    m[QStringLiteral("everFetched")] = (storageUpdatedAtMs_ > 0);
-    m[QStringLiteral("failed")] = storageFailed_;
     return m;
 }
 
@@ -1983,12 +1985,13 @@ void SessionController::onConnectionChanged(bool connected, const QString& conne
     emit connectedChanged();
 }
 
-void SessionController::onApprovalState(const bool pending, const QString& note)
+void SessionController::onApprovalState(const bool pending, const bool refused, const QString& note)
 {
-    if (awaitingApproval_ == pending && approvalNote_ == note) {
+    if (awaitingApproval_ == pending && approvalRefused_ == refused && approvalNote_ == note) {
         return;
     }
     awaitingApproval_ = pending;
+    approvalRefused_ = refused;
     approvalNote_ = note;
     emit approvalChanged();
 }

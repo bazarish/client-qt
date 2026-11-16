@@ -22,29 +22,14 @@ Popup {
     height: Math.min(parent ? parent.height - 40 : 600, 640)
     padding: 0
 
-    function awaitingText(failed) {
-        if (!session || !session.reachable) {
-            return qsTr("Connecting…")
-        }
-        return failed ? qsTr("Your server did not answer") : qsTr("Asking your server…")
-    }
-    function awaitingColor(failed) {
-        return session && session.reachable && failed ? Theme.warn : Theme.textDim
+    readonly property bool overviewFailed: session !== null && session.overviewFailed
+    readonly property string awaitingText: overviewFailed ? qsTr("Unknown") : qsTr("Asking your server…")
+    function shownColor(fresh, color) {
+        return fresh ? color : Theme.textStale
     }
 
-    onOpened: if (session) { session.refreshI2pStatus(); session.refreshStorageUsage();
-        session.refreshDevices(); delegationDaysBox.value = session.delegationDays }
-
-    Timer {
-        running: root.visible && root.session
-        interval: 10000
-        repeat: true
-        onTriggered: {
-            root.session.refreshI2pStatus()
-            root.session.refreshStorageUsage()
-            root.session.refreshDevices()
-        }
-    }
+    onOpened: if (session) { session.watchOverview(true); delegationDaysBox.value = session.delegationDays }
+    onClosed: if (session) { session.watchOverview(false) }
 
     background: DialogFrame { }
 
@@ -229,24 +214,17 @@ Popup {
                         spacing: 3
                         readonly property var info: root.session ? root.session.storageInfo : ({})
                         readonly property bool ok: info.mailboxOk === true
+                        readonly property bool fresh: info.fresh === true
+                        readonly property bool nearlyFull: root.session !== null
+                            && root.session.storageNearlyFull
+                        readonly property bool full: root.session !== null && root.session.storageFull
                         readonly property double used: info.mailboxUsed !== undefined
                             ? info.mailboxUsed : 0
                         readonly property double quota: info.mailboxQuota !== undefined
                             ? info.mailboxQuota : 0
-                        Rectangle {
-                            id: storageBox
+                        Item {
                             Layout.fillWidth: true
-                            radius: Theme.radiusSmall
-                            color: "transparent"
                             implicitHeight: storageRow.implicitHeight + 10
-                            SequentialAnimation {
-                                id: storageFlash
-                                PropertyAction { target: storageBox; property: "color"
-                                    value: Qt.rgba(0.12, 0.48, 0.08, 0.5) }
-                                PauseAnimation { duration: 550 }
-                                ColorAnimation { target: storageBox; property: "color"
-                                    to: "transparent"; duration: 500 }
-                            }
                             ColumnLayout {
                                 id: storageRow
                                 anchors.left: parent.left
@@ -266,13 +244,16 @@ Popup {
                                         text: storageSection.ok
                                             ? (App.humanBytes(storageSection.used) + " / "
                                                 + App.humanBytes(storageSection.quota))
-                                            : root.awaitingText(storageSection.info.failed === true)
-                                        color: storageSection.ok ? Theme.textDim
-                                            : root.awaitingColor(storageSection.info.failed === true)
+                                            : root.awaitingText
+                                        color: storageSection.ok && storageSection.nearlyFull
+                                            ? Theme.danger
+                                            : root.shownColor(storageSection.ok && storageSection.fresh,
+                                                Theme.textDim)
                                         font.pixelSize: Theme.fontSmall
                                     }
                                 }
                                 ProgressBar {
+                                    id: storageBar
                                     visible: storageSection.ok
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: 5
@@ -281,17 +262,27 @@ Popup {
                                     value: (storageSection.ok && storageSection.quota > 0)
                                         ? Math.min(1, storageSection.used / storageSection.quota)
                                         : 0
-                                }
-                            }
-                            TapHandler {
-                                onTapped: {
-                                    if (root.session) {
-                                        root.session.refreshStorageUsage()
+                                    contentItem: Item {
+                                        Rectangle {
+                                            width: storageBar.visualPosition * parent.width
+                                            height: parent.height
+                                            radius: height / 2
+                                            color: storageSection.nearlyFull ? Theme.danger
+                                                : (storageSection.fresh ? Theme.green : Theme.textStale)
+                                        }
                                     }
-                                    storageFlash.restart()
+                                }
+                                Label {
+                                    visible: storageSection.ok && storageSection.nearlyFull
+                                    text: storageSection.full
+                                        ? qsTr("The server mailbox is full, new messages are not accepted")
+                                        : qsTr("The server mailbox is almost full")
+                                    color: Theme.danger
+                                    font.pixelSize: Theme.fontSmall
+                                    wrapMode: Text.Wrap
+                                    Layout.fillWidth: true
                                 }
                             }
-                            HoverHandler { cursorShape: Qt.PointingHandCursor }
                         }
                     }
                     RowLayout {
@@ -356,12 +347,16 @@ Popup {
                                 font.pixelSize: Theme.fontSmall
                             }
                             Label {
+                                readonly property bool showsQueue: !deviceRow.modelData.revoked
+                                    && !deviceRow.modelData.current && deviceRow.modelData.queue > 0
+                                    && root.session !== null && root.session.overviewKnown
                                 text: deviceRow.modelData.revoked ? qsTr("Revoked")
                                     : (deviceRow.modelData.current ? qsTr("(this device)")
-                                        : (deviceRow.modelData.queue > 0
+                                        : (showsQueue
                                             ? qsTr(" (queue: %1)").arg(deviceRow.modelData.queue)
                                             : ""))
-                                color: deviceRow.ink
+                                color: showsQueue ? root.shownColor(root.session.overviewFresh, deviceRow.ink)
+                                    : deviceRow.ink
                                 font.pixelSize: Theme.fontSmall
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
@@ -426,6 +421,15 @@ Popup {
                             anchors.margins: 6
                             spacing: 4
                             Label {
+                                visible: !(root.session && root.session.overviewKnown)
+                                text: root.awaitingText
+                                color: Theme.textDim
+                                font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                visible: root.session !== null && root.session.overviewKnown
                                 readonly property bool delegated: root.session
                                     && root.session.i2pTransientExpires > 0
                                 readonly property string serverState: root.session
@@ -444,7 +448,8 @@ Popup {
                                                 : (serverState.length > 0
                                                     ? qsTr("nothing on the server")
                                                     : qsTr("no answer from the server")))))
-                                color: serverState === "active" ? Theme.success : Theme.warn
+                                color: root.shownColor(root.session !== null && root.session.overviewFresh,
+                                    serverState === "active" ? Theme.success : Theme.warn)
                                 font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap
                                 Layout.fillWidth: true

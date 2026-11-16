@@ -110,8 +110,24 @@ Before any wait has failed there is no reason, and the strip says only
 
 The upkeep tick reads no mail. It carries what has no event of its own: contact
 adds whose card was resolved off-thread, call ring and answer timeouts, the
-echoes of this device's own sends to the account's other devices, and - each on
-its own longer guard - the approval and delegation checks.
+echoes of this device's own sends to the account's other devices, and - on its
+own longer guard - the delegation check.
+
+Every answer to the mail wait also carries the mailbox's used and granted bytes.
+The client keeps the latest pair in the account database with the account
+overview (`Devices.md`) and asks for them nothing else. At 85% of the quota a red
+strip at the top of the window says the mailbox is almost full, and at 100% that
+new messages are not accepted; tapping it opens the account window.
+
+## Waiting for approval
+
+An account its server holds for approval does not wait for mail. It keeps one
+held `GET /v1/account/i2p-status?hold=1&since=pending` on a connection of its own,
+which the node answers when the operator approves, declines or bans the account.
+Approved, the device registers and starts the mail wait. Declined or banned, the
+connection strip says **Not approved** with the operator's reason, and nothing is
+asked again. A failed wait is asked again on the same causes as a failed mail
+wait (step 5).
 
 ## Service messages
 

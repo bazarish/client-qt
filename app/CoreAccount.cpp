@@ -243,16 +243,13 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&commands_, &AccountCommands::requestSetShowPresence, worker_,
         &SessionWorker::setShowPresence);
     connect(&commands_, &AccountCommands::watchPresence, worker_, &SessionWorker::watchPresence);
+    connect(&commands_, &AccountCommands::watchOverview, worker_, &SessionWorker::watchOverview);
     connect(&commands_, &AccountCommands::presenceTyped, worker_, &SessionWorker::presenceTyped);
     connect(&commands_, &AccountCommands::presenceStoppedTyping, worker_,
         &SessionWorker::presenceStoppedTyping);
     connect(worker_, &SessionWorker::peerPresence, &events_, &AccountEvents::peerPresence);
     connect(&commands_, &AccountCommands::requestDisablePersonalDest, worker_,
         &SessionWorker::disablePersonalDest);
-    connect(&commands_, &AccountCommands::requestRefreshI2pStatus, worker_,
-        &SessionWorker::refreshI2pStatus);
-    connect(&commands_, &AccountCommands::requestRefreshStorageUsage, worker_,
-        &SessionWorker::refreshStorageUsage);
     connect(&commands_, &AccountCommands::requestStartCall, worker_, &SessionWorker::startCall);
     connect(&commands_, &AccountCommands::requestAcceptCall, worker_, &SessionWorker::acceptCall);
     connect(&commands_, &AccountCommands::requestDeclineCall, worker_, &SessionWorker::declineCall);
@@ -262,8 +259,6 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&commands_, &AccountCommands::requestAckPending, worker_, &SessionWorker::ackPending);
     connect(&commands_, &AccountCommands::requestForgetPendingAdd, worker_,
         &SessionWorker::forgetPendingAdd);
-    connect(&commands_, &AccountCommands::requestRefreshDevices, worker_,
-        &SessionWorker::refreshDevices);
     connect(&commands_, &AccountCommands::requestRevokeDevice, worker_,
         &SessionWorker::revokeDevice);
     connect(&commands_, &AccountCommands::requestReviewDevices, worker_,
@@ -327,8 +322,9 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
             const QString& status) { log_.begin(id, kind, title, status); });
     connect(worker_, &SessionWorker::opDone, &log_, &OperationLog::finish);
     connect(worker_, &SessionWorker::approvalState, &events_, &AccountEvents::approvalState);
-    connect(worker_, &SessionWorker::devicesReady, &events_, &AccountEvents::devicesReady);
-    connect(worker_, &SessionWorker::devicesFailed, &events_, &AccountEvents::devicesFailed);
+    connect(worker_, &SessionWorker::overviewReady, &events_, &AccountEvents::overviewReady);
+    connect(worker_, &SessionWorker::overviewFailed, &events_, &AccountEvents::overviewFailed);
+    connect(worker_, &SessionWorker::mailboxUsage, &events_, &AccountEvents::mailboxUsage);
     connect(worker_, &SessionWorker::deviceState, &events_, &AccountEvents::deviceState);
     connect(worker_, &SessionWorker::contactDevices, &events_, &AccountEvents::contactDevices);
     connect(worker_, &SessionWorker::accountClosed, &events_, &AccountEvents::accountClosed);
@@ -348,13 +344,9 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(worker_, &SessionWorker::loginSigned, &events_, &AccountEvents::loginSigned);
     connect(worker_, &SessionWorker::connectionLogReady, &events_,
         &AccountEvents::connectionLogReady);
-    connect(worker_, &SessionWorker::i2pStatus, &events_, &AccountEvents::i2pStatus);
     connect(worker_, &SessionWorker::i2pKeyState, &events_, &AccountEvents::i2pKeyState);
-    connect(worker_, &SessionWorker::i2pServedAddress, &events_, &AccountEvents::i2pServedAddress);
     connect(worker_, &SessionWorker::destChangeSettled, &events_,
         &AccountEvents::destChangeSettled);
-    connect(worker_, &SessionWorker::storageUsageReady, &events_,
-        &AccountEvents::storageUsageReady);
     connect(worker_, &SessionWorker::callStateChanged, this, &CoreAccount::onCallStateChanged);
     connect(worker_, &SessionWorker::callLevels, &events_, &AccountEvents::callLevels);
     connect(worker_, &SessionWorker::callLogged, this, &CoreAccount::onCallLogged);

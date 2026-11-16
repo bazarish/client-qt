@@ -39,8 +39,6 @@ class SessionController : public QObject {
     Q_PROPERTY(QString gatewayRefusal READ gatewayRefusal NOTIFY reachableChanged)
     Q_PROPERTY(int linkFailure READ linkFailure NOTIFY reachableChanged)
     Q_PROPERTY(bool i2pBusy READ i2pBusy NOTIFY i2pStatusChanged)
-    Q_PROPERTY(QVariantList devices READ devices NOTIFY devicesChanged)
-    Q_PROPERTY(bool devicesFailed READ devicesFailed NOTIFY devicesChanged)
     Q_PROPERTY(QVariantList ownDevices READ ownDevices NOTIFY devicesChanged)
     Q_PROPERTY(QVariantList devicesToReview READ devicesToReview NOTIFY devicesChanged)
     Q_PROPERTY(QString deviceId READ deviceId NOTIFY deviceStateChanged)
@@ -62,6 +60,12 @@ class SessionController : public QObject {
     Q_PROPERTY(QString voicePlaying READ voicePlaying NOTIFY voiceChanged)
     Q_PROPERTY(bool awaitingApproval READ awaitingApproval NOTIFY approvalChanged)
     Q_PROPERTY(QString approvalNote READ approvalNote NOTIFY approvalChanged)
+    Q_PROPERTY(bool approvalRefused READ approvalRefused NOTIFY approvalChanged)
+    Q_PROPERTY(bool overviewKnown READ overviewKnown NOTIFY i2pStatusChanged)
+    Q_PROPERTY(bool overviewFresh READ overviewFresh NOTIFY i2pStatusChanged)
+    Q_PROPERTY(bool overviewFailed READ overviewFailed NOTIFY i2pStatusChanged)
+    Q_PROPERTY(bool storageNearlyFull READ storageNearlyFull NOTIFY storageChanged)
+    Q_PROPERTY(bool storageFull READ storageFull NOTIFY storageChanged)
     Q_PROPERTY(QString activeFacadeHost READ activeFacade NOTIFY facadeInfoChanged)
     Q_PROPERTY(QStringList configuredFacades READ configuredFacades NOTIFY facadeInfoChanged)
     Q_PROPERTY(bool connecting READ connecting NOTIFY connectStateChanged)
@@ -159,8 +163,6 @@ public:
     QString gatewayRefusal() const { return gatewayRefusal_; }
     int linkFailure() const { return linkFailure_; }
     bool i2pBusy() const { return i2pBusy_; }
-    QVariantList devices() const { return devices_; }
-    bool devicesFailed() const { return devicesFailed_; }
     QVariantList ownDevices() const;
     QVariantList devicesToReview() const;
     QString deviceId() const { return deviceId_; }
@@ -182,6 +184,12 @@ public:
     QString voicePlaying() const { return voicePlaying_; }
     bool awaitingApproval() const { return awaitingApproval_; }
     QString approvalNote() const { return approvalNote_; }
+    bool approvalRefused() const { return approvalRefused_; }
+    bool overviewKnown() const { return overviewKnown_; }
+    bool overviewFresh() const { return overviewFresh_; }
+    bool overviewFailed() const { return overviewFailed_; }
+    bool storageNearlyFull() const;
+    bool storageFull() const;
     QString activeFacade() const { return activeFacade_; }
     QStringList configuredFacades() const { return configuredFacades_; }
     bool connecting() const { return connecting_; }
@@ -439,15 +447,14 @@ public:
     Q_INVOKABLE void cancelTransfer(const QString& e2eId);
     Q_INVOKABLE void publishPersonalDest();
     Q_INVOKABLE void disablePersonalDest();
-    Q_INVOKABLE void refreshI2pStatus();
+    // The Account page is open: the core keeps what it shows current.
+    Q_INVOKABLE void watchOverview(bool open);
     Q_INVOKABLE void keepThisDeviceAddress();
     Q_INVOKABLE void useFreshAddress();
-    Q_INVOKABLE void refreshStorageUsage();
     Q_INVOKABLE void measureDeviceStorage();
     Q_INVOKABLE void trimChat(const QString& peer, int keep);
     Q_INVOKABLE void trimEveryChat(int keep);
     Q_INVOKABLE void compactDatabase();
-    Q_INVOKABLE void refreshDevices();
     Q_INVOKABLE void revokeDevice(const QString& deviceId);
     Q_INVOKABLE void reviewDevices(const QStringList& revoke);
     Q_INVOKABLE void refreshContactDevices(const QString& peer);
@@ -536,21 +543,20 @@ private slots:
     void onPairOfferReady(const QString& uri, const QString& code);
     void onPairStage(const QString& status, double progress);
     void onPairFinished(bool ok, const QString& status);
-    void onApprovalState(bool pending, const QString& note);
+    void onApprovalState(bool pending, bool refused, const QString& note);
     void onConnectProgress(int percent, const QString& phase);
     void onFacadeInfo(const QString& activeAddress, const QStringList& configured,
         const QString& serverFp, const QStringList& reseeds);
-    void onI2pStatus(bool hasKey, bool enabled, const QString& address, qint64 transientExpires,
-        const QString& serverState);
+    void onOverviewReady(const QVariantMap& overview, bool fresh);
+    void onOverviewFailed();
+    void onMailboxUsage(qulonglong usedBytes, qulonglong quotaBytes);
     void onI2pKeyState(bool hasKey, const QString& address);
-    void onDevicesReady(const QVariantList& devices);
     void onDeviceState(const QString& deviceId, bool primary, const QVariantList& ownDevices,
         qint64 epochReserveUntil, bool epochReserveLow);
     void onContactDevices(const QString& peer, const QVariantList& devices);
     void onVoiceLoaded(const QString& e2eId, const QByteArray& bytes);
     void requestPicturesFor(const QList<StoredMessage>& messages);
     QVector<StoredMessage> chosenMessages(const QVariantList& localIds) const;
-    void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         const QString& stage, qint64 connectedAtMs);
     void onCallLevels(float inputLevel, float outputLevel);
@@ -579,7 +585,11 @@ private:
     int linkFailure_ = LinkStatus::None;
     bool i2pBusy_ = false;
     bool awaitingApproval_ = false;
+    bool approvalRefused_ = false;
     QString approvalNote_;
+    bool overviewKnown_ = false;
+    bool overviewFresh_ = false;
+    bool overviewFailed_ = false;
     QString activePeer_;
     QString activeFacade_;
     bool avatarBusy_ = false;
@@ -686,7 +696,6 @@ private:
     QString i2pAddress_;
     QString i2pServedAddress_;
     QVariantList devices_;
-    bool devicesFailed_ = false;
     QVariantList ownDevices_;
     QString deviceId_;
     bool primaryDevice_ = false;
@@ -708,11 +717,10 @@ private:
     QHash<QString, TransferProgress> transfers_;
     void replayTransfersForActivePeer();
     qint64 i2pTransientExpires_ = 0;
-    bool storageMailboxOk_ = false;
-    bool storageFailed_ = false;
+    bool storageKnown_ = false;
+    bool storageFresh_ = false;
     quint64 storageMailboxUsed_ = 0;
     quint64 storageMailboxQuota_ = 0;
-    qint64 storageUpdatedAtMs_ = 0;
     QVariantMap deviceStorage_;
     bool deviceStorageBusy_ = false;
     void runTrim(const QString& peer, int keep);
