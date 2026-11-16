@@ -450,7 +450,8 @@ void SessionWorker::startEventWaiter()
                 const std::vector<bazarish::client::PendingEntry> waiting
                     = bazarish::client::Session::waitForMail(*waiter,
                         answered ? bazarish::client::Client::MailWait::eHeld
-                                 : bazarish::client::Client::MailWait::eAtOnce);
+                                 : bazarish::client::Client::MailWait::eAtOnce,
+                        *context.keptMail);
                 if (!running->load()) {
                     return;
                 }
@@ -674,6 +675,9 @@ void SessionWorker::openAccount(
         emit syncReachable(true, {}, bazarish::client::LinkFailure::eNone);
     });
     session_->openOutboxWhenAnswered(mailGate_);
+    session_->onUnreadableMail([this]() {
+        emit opDone(beginOp(tr("A message could not be read"), {}), false, tr("Discarded"));
+    });
     session_->setAckSink([this](const std::string& pendingId) { queueAck(pendingId); });
     emit loginSignerReady(session_->loginSigner());
     session_->onAddressDecision([this](const std::string& served, const std::string& ours) {
