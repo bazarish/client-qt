@@ -26,6 +26,7 @@ class I2pController : public QObject {
     Q_PROPERTY(int inboundTunnels READ inboundTunnels NOTIFY statusChanged)
     Q_PROPERTY(int outboundTunnels READ outboundTunnels NOTIFY statusChanged)
     Q_PROPERTY(QStringList transports READ transports NOTIFY statusChanged)
+    Q_PROPERTY(bool transportsUnread READ transportsUnread NOTIFY statusChanged)
     Q_PROPERTY(QVariantList destinations READ destinations NOTIFY statusChanged)
     Q_PROPERTY(QString proxyHost READ proxyHost NOTIFY proxyChanged)
     Q_PROPERTY(int proxyPort READ proxyPort NOTIFY proxyChanged)
@@ -71,6 +72,7 @@ public:
     int inboundTunnels() const { return state_.inboundTunnels; }
     int outboundTunnels() const { return state_.outboundTunnels; }
     QStringList transports() const { return state_.transports; }
+    bool transportsUnread() const { return state_.transportsUnread; }
     QVariantList destinations() const { return state_.destinations; }
 
     bool gatewayAsked() const { return state_.gatewayAsked; }

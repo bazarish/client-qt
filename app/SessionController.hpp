@@ -10,6 +10,7 @@
 #include "Picture.hpp"
 #include "TranscriptStore.hpp"
 #include "VoiceNote.hpp"
+#include "WireLog.hpp"
 
 #include <bazarish/Limits.hpp>
 
@@ -140,6 +141,7 @@ class SessionController : public QObject {
     Q_PROPERTY(QVariantMap deviceStorage READ deviceStorage NOTIFY deviceStorageChanged)
     Q_PROPERTY(int keepRecentMessages READ keepRecentMessages CONSTANT)
     Q_PROPERTY(int keepManyMessages READ keepManyMessages CONSTANT)
+    Q_PROPERTY(int connectionLogCapacity READ connectionLogCapacity CONSTANT)
     Q_PROPERTY(QString callState READ callState NOTIFY callChanged)
     Q_PROPERTY(QString callStage READ callStage NOTIFY callChanged)
     Q_PROPERTY(qint64 callConnectedAtMs READ callConnectedAtMs NOTIFY callChanged)
@@ -267,6 +269,7 @@ public:
     QVariantMap deviceStorage() const { return deviceStorage_; }
     int keepRecentMessages() const { return kKeepRecentMessages; }
     int keepManyMessages() const { return kKeepManyMessages; }
+    int connectionLogCapacity() const { return static_cast<int>(bazarish::client::kWireLogCapacity); }
     qint64 i2pTransientExpires() const { return i2pTransientExpires_; }
     QString callState() const { return callState_; }
     QString callStage() const;
@@ -411,7 +414,7 @@ public:
     Q_INVOKABLE void cancelLoginFetch(const QString& link);
     Q_INVOKABLE QVariantMap describeLoginChallenge(const QString& challenge) const;
     Q_INVOKABLE void askForContacts();
-    Q_INVOKABLE void refreshConnectionLog();
+    Q_INVOKABLE void watchConnectionLog(bool on);
     Q_INVOKABLE void clearConnectionLog();
     Q_INVOKABLE void saveAttachmentToFile(const QString& peer, const QString& e2eId,
         const QString& fileUrl, qint64 token);
@@ -519,6 +522,7 @@ signals:
     void loginSigned(const QString& blob);
     void addressNeedsChoice(const QString& servedHost, const QString& ourHost);
     void connectionLogUpdated(const QVariantList& lines);
+    void connectionLogLine(const QVariantMap& line);
     void resendFilePickRequested();
 
 signals:

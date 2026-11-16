@@ -17,6 +17,7 @@
 #include "DeliveryStatus.hpp"
 #include "SystemNotes.hpp"
 #include "DevicePairing.hpp"
+#include "ServiceSchedule.hpp"
 #include "Session.hpp"
 
 #include <bazarish/Clock.hpp>
@@ -36,6 +37,7 @@
 
 #include <QByteArray>
 #include <QDateTime>
+#include <QEvent>
 #include <QSet>
 #include <chrono>
 #include <QTimer>
@@ -193,14 +195,8 @@ constexpr std::chrono::milliseconds kSlowPass{400};
 
 constexpr std::chrono::milliseconds kSlowStretch{200};
 
-constexpr qint64 kTransientCheckIntervalMs = 3600 * 1000;
-
-constexpr qint64 kAliasServiceIntervalMs = 60 * 1000;
-
 constexpr int kFirstClientError = 400;
 constexpr int kFirstServerError = 500;
-
-constexpr qint64 kRegistryRetryIntervalMs = 10 * 1000;
 
 constexpr qint64 kTransientRenewLeadSeconds = 5 * 24 * 3600;
 
@@ -208,7 +204,16 @@ constexpr qint64 kTransientJitterSeconds = 6 * 3600;
 
 constexpr int kCallWatchIntervalMs = 100;
 
-constexpr int kMaintenanceIntervalMs = 2000;
+QVariantMap wireLine(const bazarish::client::WireEvent& event)
+{
+    return {
+        {QStringLiteral("at"), QVariant::fromValue(event.atMillis)},
+        {QStringLiteral("outgoing"), event.outgoing},
+        {QStringLiteral("what"), QString::fromStdString(event.what)},
+        {QStringLiteral("status"), QString::fromStdString(event.status)},
+        {QStringLiteral("detail"), QString::fromStdString(event.detail)},
+    };
+}
 
 bazarish::DeviceRole roleOf(const bool primary)
 {
@@ -337,15 +342,74 @@ SessionWorker::~SessionWorker()
     stopErrands();
 }
 
+bool SessionWorker::event(QEvent* event)
+{
+    const bool handled = QObject::event(event);
+    if (event->type() == QEvent::MetaCall) {
+        sessionDutiesFailed_ = false;
+        armSchedule();
+    }
+    return handled;
+}
+
 void SessionWorker::startMaintenance()
 {
     if (maintenanceTimer_ == nullptr) {
         maintenanceTimer_ = new QTimer(this);
-        maintenanceTimer_->setInterval(kMaintenanceIntervalMs);
+        maintenanceTimer_->setSingleShot(true);
         connect(maintenanceTimer_, &QTimer::timeout, this, &SessionWorker::maintain);
     }
-    if (!maintenanceTimer_->isActive()) {
-        maintenanceTimer_->start();
+    maintaining_ = true;
+    armSchedule();
+}
+
+void SessionWorker::stopMaintenance()
+{
+    maintaining_ = false;
+    if (maintenanceTimer_ != nullptr) {
+        maintenanceTimer_->stop();
+    }
+}
+
+std::optional<qint64> SessionWorker::transientCheckAtMs(const qint64 nowMs) const
+{
+    if (!session_ || !session_->isConnected()) {
+        return std::nullopt;
+    }
+    return bazarish::client::cadencedAtMs(nowMs, lastTransientCheckMs_);
+}
+
+std::optional<qint64> SessionWorker::aliasAttemptAtMs() const
+{
+    if (!session_ || !session_->isConnected() || aliasErrandRunning_) {
+        return std::nullopt;
+    }
+    return bazarish::client::cadencedAtMs(
+        bazarish::client::secondToMs(session_->aliasServiceDueAt()), lastAliasServiceMs_);
+}
+
+void SessionWorker::armSchedule()
+{
+    if (!session_ || !maintaining_ || maintenanceTimer_ == nullptr) {
+        return;
+    }
+    const qint64 now = nowMillis();
+    const std::optional<qint64> sessionAt = sessionDutiesFailed_
+        ? std::nullopt
+        : bazarish::client::atMsAfter(now, session_->untilNextDue());
+    const std::optional<std::chrono::milliseconds> wait = bazarish::client::waitForSoonest(
+        now, {sessionAt, transientCheckAtMs(now), aliasAttemptAtMs()});
+    if (!wait.has_value()) {
+        maintenanceTimer_->stop();
+        return;
+    }
+    maintenanceTimer_->start(*wait);
+}
+
+void SessionWorker::serviceAliasesIfDue()
+{
+    if (session_ && session_->isConnected() && session_->aliasServicingDue()) {
+        startAliasErrand(/*byHand=*/false);
     }
 }
 
@@ -656,6 +720,7 @@ void SessionWorker::registerThisDevice()
         return;
     }
     mailGate_.registered();
+    serviceAliasesIfDue();
 }
 
 void SessionWorker::stopEventWaiter()
@@ -1021,9 +1086,7 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
     emit connectionChanged(true, "active");
     emitContacts();
     emitDeviceState();
-    if (session_->aliasServicingDue()) {
-        startAliasErrand(/*byHand=*/false);
-    }
+    serviceAliasesIfDue();
     emit actionOk(tr("Connected"));
     emitFacadeInfo();
     startReceiving();
@@ -1042,16 +1105,14 @@ void SessionWorker::setSyncEnabled(bool on)
         stopEventWaiter();
         stopOverview();
         stopApprovalWaiter();
-        if (maintenanceTimer_ != nullptr) {
-            maintenanceTimer_->stop();
-        }
+        stopMaintenance();
     }
 }
 
 void SessionWorker::rebuildI2pLinks()
 {
     stopEventWaiter();
-    if (maintenanceTimer_ == nullptr || !maintenanceTimer_->isActive()) {
+    if (!maintaining_) {
         return;
     }
     QMetaObject::invokeMethod(this, [this]() { emit linksRebuilding(); }, Qt::QueuedConnection);
@@ -1179,13 +1240,13 @@ void SessionWorker::maintain()
         const bazarish::log::Slow timedEchoes("telling our own devices", kSlowStretch);
         session_->flushPendingEchoes();
     } catch (const std::exception& error) {
-        bazarish::log::warn("self-sync of our own sends failed: {}", error.what());
+        bazarish::log::warn("self-sync of our own sends failed, next try on the next event: {}",
+            error.what());
+        sessionDutiesFailed_ = true;
     }
     session_->expireFileRequests(nowMillis());
-    if (!session_->isConnected()) {
-        return;
-    }
-    if (nowMillis() - lastTransientCheckMs_ >= kTransientCheckIntervalMs) {
+    const std::optional<qint64> transientAt = transientCheckAtMs(nowMillis());
+    if (transientAt.has_value() && nowMillis() >= *transientAt) {
         lastTransientCheckMs_ = nowMillis();
         try {
             const qint64 jitter
@@ -1199,13 +1260,11 @@ void SessionWorker::maintain()
             bazarish::log::warn("delegation renewal check failed: {}", error.what());
         }
     }
-    const qint64 aliasEvery = session_->routingFanout().registry
-        ? kRegistryRetryIntervalMs
-        : kAliasServiceIntervalMs;
-    if (nowMillis() - lastAliasServiceMs_ >= aliasEvery && session_->aliasServicingDue()) {
-        lastAliasServiceMs_ = nowMillis();
+    const std::optional<qint64> aliasAt = aliasAttemptAtMs();
+    if (aliasAt.has_value() && nowMillis() >= *aliasAt) {
         startAliasErrand(/*byHand=*/false);
     }
+    armSchedule();
 }
 
 void SessionWorker::emitCallState()
@@ -1984,9 +2043,7 @@ void SessionWorker::shutdown()
     stopOverview();
     stopApprovalWaiter();
     stopErrands();
-    if (maintenanceTimer_ != nullptr) {
-        maintenanceTimer_->stop();
-    }
+    stopMaintenance();
     if (callTimer_ != nullptr) {
         callTimer_->stop();
     }
@@ -1996,6 +2053,7 @@ void SessionWorker::shutdown()
     if (session_) {
         session_->onCourierNews({});
         session_->onOwnDevicesChanged({});
+        session_->unwatchConnectionLog();
     }
     {
         const std::lock_guard<std::mutex> lock(sessionLife_);
@@ -2028,21 +2086,25 @@ void SessionWorker::askDevicesForContacts()
     });
 }
 
-void SessionWorker::connectionLog()
+void SessionWorker::watchConnectionLog(const bool on)
 {
     if (!session_) {
         emit connectionLogReady({});
         return;
     }
+    if (!on) {
+        session_->unwatchConnectionLog();
+        return;
+    }
+    const QPointer<SessionWorker> self(this);
     QVariantList lines;
-    for (const bazarish::client::WireEvent& event : session_->connectionLog()) {
-        lines.append(QVariantMap{
-            {QStringLiteral("at"), QVariant::fromValue(event.atMillis)},
-            {QStringLiteral("outgoing"), event.outgoing},
-            {QStringLiteral("what"), QString::fromStdString(event.what)},
-            {QStringLiteral("status"), QString::fromStdString(event.status)},
-            {QStringLiteral("detail"), QString::fromStdString(event.detail)},
-        });
+    for (const bazarish::client::WireEvent& event :
+        session_->watchConnectionLog([self](const bazarish::client::WireEvent& recorded) {
+            QMetaObject::invokeMethod(
+                self, [self, line = wireLine(recorded)]() { emit self->connectionLogLine(line); },
+                Qt::QueuedConnection);
+        })) {
+        lines.append(wireLine(event));
     }
     emit connectionLogReady(lines);
 }
@@ -2355,6 +2417,7 @@ void SessionWorker::approvalAnswered(const bazarish::client::I2pDestStatus& stat
         }
         startEventWaiter();
         refreshI2pStatus();
+        serviceAliasesIfDue();
     } else {
         approvalRefused({});
         return;
@@ -2480,6 +2543,7 @@ void SessionWorker::replacePersonalKey()
             return tr("Raised");
         });
     refreshI2pStatus();
+    serviceAliasesIfDue();
 }
 
 void SessionWorker::setAliasBinding(const QString& alias, const bool on)
@@ -2626,6 +2690,7 @@ void SessionWorker::publishPersonalDest()
         }
     }
     refreshI2pStatus();
+    serviceAliasesIfDue();
     emit destChangeSettled();
 }
 
@@ -2773,6 +2838,7 @@ void SessionWorker::startAliasErrand(const bool byHand)
     std::shared_ptr<AliasErrandQueue> queue = aliasErrands_;
     aliasErrandRunning_ = true;
     aliasErrandByHand_ = byHand;
+    lastAliasServiceMs_ = nowMillis();
     try {
         inBackground([context = std::move(context), queue = std::move(queue),
                          self = QPointer<SessionWorker>(this)]() {

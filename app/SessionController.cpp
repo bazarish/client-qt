@@ -364,6 +364,8 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
         });
     connect(&events_, &AccountEvents::connectionLogReady, this,
         &SessionController::connectionLogUpdated);
+    connect(&events_, &AccountEvents::connectionLogLine, this,
+        &SessionController::connectionLogLine);
     connect(&events_, &AccountEvents::overviewReady, this, &SessionController::onOverviewReady);
     connect(&events_, &AccountEvents::overviewFailed, this, &SessionController::onOverviewFailed);
     connect(&events_, &AccountEvents::mailboxUsage, this, &SessionController::onMailboxUsage);
@@ -1358,9 +1360,9 @@ void SessionController::askForContacts()
     emit commands_.requestContactsFromDevices();
 }
 
-void SessionController::refreshConnectionLog()
+void SessionController::watchConnectionLog(const bool on)
 {
-    emit commands_.requestConnectionLog();
+    emit commands_.watchConnectionLog(on);
 }
 
 void SessionController::clearConnectionLog()

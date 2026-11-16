@@ -27,6 +27,7 @@
 #include <string>
 #include <stdexcept>
 #include <thread>
+#include <vector>
 
 namespace bazarish::app {
 
@@ -446,6 +447,7 @@ void I2pService::refresh()
     int inboundTunnels = 0;
     int outboundTunnels = 0;
     QStringList transports;
+    bool transportsUnread = false;
     QVariantList destinations;
     if (running) {
         ready = router->get().ready();
@@ -455,7 +457,14 @@ void I2pService::refresh()
         floodfills = router->get().floodfills();
         inboundTunnels = router->get().inboundTunnels();
         outboundTunnels = router->get().outboundTunnels();
-        for (const bazarish::i2p::TransportPeer& peer : router->get().transportPeers()) {
+        std::vector<bazarish::i2p::TransportPeer> peers;
+        try {
+            peers = router->get().transportPeers();
+        } catch (const std::exception& error) {
+            bazarish::log::warn("i2p: no list of direct connections: {}", error.what());
+            transportsUnread = true;
+        }
+        for (const bazarish::i2p::TransportPeer& peer : peers) {
             QString row = QString::fromStdString(peer.transport) + " · ";
             if (!peer.endpoint.empty()) {
                 row += QString::fromStdString(peer.endpoint) + " · ";
@@ -490,6 +499,7 @@ void I2pService::refresh()
     now.inboundTunnels = inboundTunnels;
     now.outboundTunnels = outboundTunnels;
     now.transports = transports;
+    now.transportsUnread = transportsUnread;
     now.destinations = destinations;
     if (now == state_) {
         return;

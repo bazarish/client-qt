@@ -2057,6 +2057,12 @@
       "zh": "尚无直接的传输连接",
       "ar": "لا توجد بعدُ اتصالات نقل مباشرة"
     },
+    "The list of direct connections could not be read": {
+      "ru": "Не удалось получить список прямых соединений",
+      "es": "No se pudo leer la lista de conexiones directas",
+      "zh": "无法读取直接连接列表",
+      "ar": "تعذّرت قراءة قائمة الاتصالات المباشرة"
+    },
     "No invite yet: %1": {
       "ru": "Приглашения пока нет: %1",
       "es": "Todavía no hay invitación: %1",
@@ -4516,12 +4522,6 @@
       "es": "Cambiando si un contacto puede llamar",
       "zh": "正在更改联系人能否来电",
       "ar": "جارٍ تغيير سماح جهة اتصال بالاتصال"
-    },
-    "Reading the connection log": {
-      "ru": "Чтение журнала соединения",
-      "es": "Leyendo el registro de conexión",
-      "zh": "正在读取连接日志",
-      "ar": "جارٍ قراءة سجل الاتصال"
     },
     "Clearing the connection log": {
       "ru": "Очистка журнала соединения",

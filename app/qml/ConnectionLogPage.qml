@@ -9,9 +9,9 @@ Popup {
     property var session: null
     signal back()
 
-    property var lines: []
+    ListModel { id: lines }
 
-    // Held here, not in the delegate: every poll hands a new array, which rebuilds every delegate.
+    // Held here, not in the delegate: a cleared log rebuilds every delegate.
     property string copiedKey: ""
     property bool allCopied: false
     readonly property int copiedFlashMs: 1500
@@ -31,27 +31,25 @@ Popup {
     padding: 0
     background: DialogFrame { }
 
-    Timer {
-        id: poll
-        interval: 500
-        repeat: true
-        running: root.visible
-        onTriggered: if (root.session) { root.session.refreshConnectionLog() }
-    }
-
     Connections {
         target: root.session
         ignoreUnknownSignals: true
-        function onConnectionLogUpdated(lines) {
-            const newestFirst = lines.slice().reverse()
-            // A new array rebuilds every row, and a rebuilt row forgets the pointer over it.
-            if (JSON.stringify(newestFirst) !== JSON.stringify(root.lines)) {
-                root.lines = newestFirst
+        function onConnectionLogUpdated(held) {
+            lines.clear()
+            for (let i = held.length - 1; i >= 0; --i) {
+                lines.append(held[i])
+            }
+        }
+        function onConnectionLogLine(line) {
+            lines.insert(0, line)
+            while (lines.count > root.session.connectionLogCapacity) {
+                lines.remove(lines.count - 1)
             }
         }
     }
 
-    onOpened: if (root.session) { root.session.refreshConnectionLog() }
+    onOpened: if (root.session) { root.session.watchConnectionLog(true) }
+    onClosed: if (root.session) { root.session.watchConnectionLog(false) }
 
     function stamp(millis) {
         return Qt.formatDateTime(new Date(millis), "hh:mm:ss")
@@ -69,8 +67,8 @@ Popup {
 
     function asText() {
         let out = []
-        for (let i = 0; i < root.lines.length; ++i) {
-            out.push(lineText(root.lines[i]))
+        for (let i = 0; i < lines.count; ++i) {
+            out.push(lineText(lines.get(i)))
         }
         return out.join("\n")
     }
@@ -108,7 +106,7 @@ Popup {
             Layout.fillWidth: true
             Layout.margins: 14
             Layout.bottomMargin: 0
-            text: qsTr("The last %1 events of this account, newest first").arg(root.lines.length)
+            text: qsTr("The last %1 events of this account, newest first").arg(lines.count)
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap
@@ -121,7 +119,7 @@ Popup {
             Layout.margins: 14
             clip: true
             spacing: 2
-            model: root.lines
+            model: lines
             ScrollBar.vertical: ScrollBar {}
 
             delegate: Rectangle {
@@ -129,14 +127,14 @@ Popup {
                 width: list.width
                 height: rowLine.implicitHeight + 4
                 radius: Theme.radiusSmall
-                readonly property bool copied: root.copiedKey === root.lineKey(modelData)
+                readonly property bool copied: root.copiedKey === root.lineKey(model)
                 color: logRow.copied ? Theme.bubbleOut
                     : (rowTap.pressed ? Theme.pressed
                         : (rowHover.hovered ? Theme.surfaceAlt : "transparent"))
                 Behavior on color { ColorAnimation { duration: 120 } }
 
                 HoverHandler { id: rowHover; cursorShape: Qt.PointingHandCursor }
-                TapHandler { id: rowTap; onTapped: root.copyLine(modelData) }
+                TapHandler { id: rowTap; onTapped: root.copyLine(model) }
 
                 GridLayout {
                     id: rowLine
@@ -151,22 +149,22 @@ Popup {
                     Label {
                         Layout.row: 0
                         Layout.column: 0
-                        text: root.stamp(modelData.at)
+                        text: root.stamp(model.at)
                         color: Theme.textFaint
                         font.pixelSize: Theme.fontSmall
                     }
                     Label {
                         Layout.row: 0
                         Layout.column: 1
-                        text: modelData.outgoing ? "→" : "←"
-                        color: modelData.outgoing ? Theme.accent : Theme.green
+                        text: model.outgoing ? "→" : "←"
+                        color: model.outgoing ? Theme.accent : Theme.green
                         font.pixelSize: Theme.fontSmall
                     }
                     Label {
                         Layout.row: 0
                         Layout.column: 2
                         Layout.columnSpan: rowLine.stacked ? 2 : 1
-                        text: modelData.what
+                        text: model.what
                         color: Theme.text
                         font.pixelSize: Theme.fontSmall
                         elide: Text.ElideRight
@@ -176,17 +174,17 @@ Popup {
                     Label {
                         Layout.row: rowLine.stacked ? 1 : 0
                         Layout.column: rowLine.stacked ? 2 : 3
-                        text: modelData.status
+                        text: model.status
                         elide: Text.ElideRight
                         Layout.fillWidth: true
-                        color: modelData.status.indexOf("failed") === 0 || modelData.status === "dropped"
+                        color: model.status.indexOf("failed") === 0 || model.status === "dropped"
                             ? Theme.danger : Theme.textDim
                         font.pixelSize: Theme.fontSmall
                     }
                     Label {
                         Layout.row: rowLine.stacked ? 1 : 0
                         Layout.column: rowLine.stacked ? 3 : 4
-                        text: logRow.copied ? qsTr("copied") : modelData.detail
+                        text: logRow.copied ? qsTr("copied") : model.detail
                         color: logRow.copied ? Theme.green : Theme.textFaint
                         font.pixelSize: Theme.fontSmall
                     }
@@ -195,7 +193,7 @@ Popup {
 
             Label {
                 anchors.centerIn: parent
-                visible: root.lines.length === 0
+                visible: lines.count === 0
                 text: qsTr("Nothing yet")
                 color: Theme.textFaint
                 font.pixelSize: Theme.fontSmall

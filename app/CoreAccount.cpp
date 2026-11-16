@@ -71,7 +71,6 @@ const char* commandTitle(const QByteArray& signalName)
         {"requestSetBlocked", QT_TR_NOOP("Updating the block list")},
         {"requestSetContactNotifications", QT_TR_NOOP("Changing a contact's notifications")},
         {"requestSetContactCalls", QT_TR_NOOP("Changing whether a contact may call")},
-        {"requestConnectionLog", QT_TR_NOOP("Reading the connection log")},
         {"requestClearConnectionLog", QT_TR_NOOP("Clearing the connection log")},
         {"requestStartPairing", QT_TR_NOOP("Preparing a link for a new device")},
         {"requestStopPairing", QT_TR_NOOP("Closing the link for a new device")},
@@ -201,8 +200,8 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         &SessionWorker::publishThisDeviceAddress);
     connect(&commands_, &AccountCommands::requestPublishFreshAddress, worker_,
         &SessionWorker::publishFreshAddress);
-    connect(&commands_, &AccountCommands::requestConnectionLog, worker_,
-        &SessionWorker::connectionLog);
+    connect(&commands_, &AccountCommands::watchConnectionLog, worker_,
+        &SessionWorker::watchConnectionLog);
     connect(&commands_, &AccountCommands::requestContactsFromDevices, worker_,
         &SessionWorker::askDevicesForContacts);
     connect(&commands_, &AccountCommands::requestClearConnectionLog, worker_,
@@ -344,6 +343,8 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(worker_, &SessionWorker::loginSigned, &events_, &AccountEvents::loginSigned);
     connect(worker_, &SessionWorker::connectionLogReady, &events_,
         &AccountEvents::connectionLogReady);
+    connect(worker_, &SessionWorker::connectionLogLine, &events_,
+        &AccountEvents::connectionLogLine);
     connect(worker_, &SessionWorker::i2pKeyState, &events_, &AccountEvents::i2pKeyState);
     connect(worker_, &SessionWorker::destChangeSettled, &events_,
         &AccountEvents::destChangeSettled);

@@ -126,7 +126,7 @@ signals:
         const QString& requestId);
     void requestAcceptContact(const QString& peer);
     void requestSignLoginSig(const QString& challenge);
-    void requestConnectionLog();
+    void watchConnectionLog(bool on);
     void requestContactsFromDevices();
     void requestClearConnectionLog();
     void requestSaveAttachment(const QString& peer, const QString& e2eId,

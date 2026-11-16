@@ -27,6 +27,7 @@
 #include <utility>
 #include <vector>
 
+class QEvent;
 class QTimer;
 
 namespace bazarish::app {
@@ -38,6 +39,8 @@ class SessionWorker : public QObject {
     Q_OBJECT
 public:
     ~SessionWorker() override;
+
+    bool event(QEvent* event) override;
 
     // Any thread: a mail wait resting after a failure asks again at once.
     // Any thread: takes the account's I2P links down, so a call blocked on one returns at once.
@@ -113,7 +116,7 @@ public slots:
         const QString& requestId);
     void acceptContact(const QString& peer);
     void signLogin(const QString& challenge);
-    void connectionLog();
+    void watchConnectionLog(bool on);
     void clearConnectionLog();
     void askDevicesForContacts();
     void noteCommandDone();
@@ -215,6 +218,7 @@ signals:
     void inviteState(const QString& uri, const QString& problem);
     void loginSigned(const QString& blob);
     void connectionLogReady(const QVariantList& lines);
+    void connectionLogLine(const QVariantMap& line);
     void stopped();
     void syncReachable(
         bool ok, const QString& gatewayRefusal, bazarish::client::LinkFailure failure);
@@ -284,6 +288,11 @@ private:
         const bazarish::client::OutboundCourier::Outcome& outcome);
     void drainMailbox();
     void maintain();
+    void stopMaintenance();
+    void armSchedule();
+    std::optional<qint64> transientCheckAtMs(qint64 nowMs) const;
+    std::optional<qint64> aliasAttemptAtMs() const;
+    void serviceAliasesIfDue();
     Q_INVOKABLE void takeCourierNews();
     void refreshCalls();
     Q_INVOKABLE void drainResolvedAdds();
@@ -297,6 +306,8 @@ private:
     bool aliasErrandByHand_ = false;
     std::optional<std::pair<QVector<ContactState>, QStringList>> toldContacts_;
     QTimer* maintenanceTimer_ = nullptr;
+    bool maintaining_ = false;
+    bool sessionDutiesFailed_ = false;
     QTimer* callTimer_ = nullptr;
     std::thread eventWaiter_;
     bazarish::client::MailWaitGate mailGate_;

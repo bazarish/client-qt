@@ -315,13 +315,21 @@ Popup {
                     Layout.margins: 16
                     spacing: 8
                     Label {
+                        visible: !I2p.transportsUnread
                         text: qsTr("Direct network connections: %1").arg(I2p.transports.length)
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
                     }
                     Label {
-                        visible: I2p.transports.length === 0
+                        visible: I2p.transportsUnread
+                        text: qsTr("The list of direct connections could not be read")
+                        color: Theme.danger; font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
+                    }
+                    Label {
+                        visible: I2p.transports.length === 0 && !I2p.transportsUnread
                         text: qsTr("No direct transport connections yet")
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap

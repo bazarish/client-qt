@@ -147,6 +147,7 @@ signals:
     void loginFetchState(
         const QString& link, bool fetching, const QString& status, const QString& challenge);
     void connectionLogReady(const QVariantList& lines);
+    void connectionLogLine(const QVariantMap& line);
     void approvalState(bool pending, bool refused, const QString& note);
     void facadeInfo(const QString& activeAddress, const QStringList& configured,
         const QString& serverFp, const QStringList& reseeds);
