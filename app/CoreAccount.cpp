@@ -40,7 +40,6 @@ const int kIncomingMessageMetaType = qRegisterMetaType<bazarish::client::Incomin
 
 constexpr int kReadSyncIdleMs = 4000;
 constexpr int kPresenceOrderSettleMs = 2000;
-constexpr int kExpirySweepMs = 5 * 60 * 1000;
 constexpr int kCommandTickMs = 200;
 constexpr qint64 kCommandVisibleAfterMs = 400;
 
@@ -541,7 +540,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
 
     readSyncTimer_.setSingleShot(true);
     connect(&readSyncTimer_, &QTimer::timeout, this, &CoreAccount::flushReadSync);
-    expiryTimer_.setInterval(kExpirySweepMs);
+    expiryTimer_.setSingleShot(true);
     connect(&expiryTimer_, &QTimer::timeout, this, &CoreAccount::sweepExpired);
     connect(&thread_, &QThread::finished, &events_, &AccountEvents::closed);
 
@@ -717,8 +716,8 @@ void CoreAccount::open(const QString& file, const QString& passphrase, const boo
     unsentAtOpen_ = *unsent;
     ownDevice_ = QString::fromStdString(*device);
     unread_ = store_.unreadTotal();
+    store_.core().onExpiryStamped([this](const std::int64_t atMs) { armExpiry(atMs); });
     sweepExpired();
-    expiryTimer_.start();
     const SecretBytes key = client::accountkey::keyFor(toPath(file), passphrase.toStdString());
     emit events_.transcriptOpened(file, toQByteArray(key.bytes()));
     const QJsonDocument flashes = QJsonDocument::fromJson(

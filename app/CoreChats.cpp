@@ -11,11 +11,16 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 
+#include <algorithm>
+#include <limits>
+
 namespace bazarish::app {
 
 namespace {
 constexpr int kRecentReactions = 6;
 constexpr int kRecentEmoji = 40;
+// QTimer counts in int milliseconds; a later expiry is armed again when this runs out.
+constexpr qint64 kLongestTimerWaitMs = std::numeric_limits<int>::max();
 
 QStringList withNewest(QStringList list, const QString& item, const int limit)
 {
@@ -124,6 +129,7 @@ void CoreAccount::setChatTimer(const QString& peer, const qint64 seconds)
 
 void CoreAccount::sweepExpired()
 {
+    expiryTimer_.stop();
     const std::optional<QVector<RemovedRow>> removed = store_.removeExpired(nowMillis());
     if (!removed.has_value()) {
         reportUnsaved();
@@ -133,6 +139,19 @@ void CoreAccount::sweepExpired()
         emit events_.rowRemoved(row.peer, row.id, row.e2eId);
         emit events_.chatChanged(row.peer);
     }
+    if (const std::optional<std::int64_t> next = store_.core().nextExpiryAt(); next.has_value()) {
+        armExpiry(*next);
+    }
+}
+
+void CoreAccount::armExpiry(const qint64 atMs)
+{
+    if (expiryTimer_.isActive() && atMs >= expiryDueMs_) {
+        return;
+    }
+    expiryDueMs_ = atMs;
+    const qint64 waitMs = std::clamp<qint64>(atMs - nowMillis(), 0, kLongestTimerWaitMs);
+    expiryTimer_.start(static_cast<int>(waitMs));
 }
 
 void CoreAccount::forgetChat(const QString& peer)

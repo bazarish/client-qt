@@ -118,6 +118,7 @@ private:
     void forgetReactionFlash(const QString& peer);
     void persistReactionsToFlash();
     void reportUnsaved();
+    void armExpiry(qint64 atMs);
     bool isSavedChat(const QString& peer) const;
     void sendText(
         const QString& peer, const QString& text, const QString& replyTo, const QString& e2eId);
@@ -266,6 +267,7 @@ private:
     bool presenceFocused_ = false;
     bool presenceAway_ = false;
     QTimer expiryTimer_;
+    qint64 expiryDueMs_ = 0;
     OperationLog log_;
     QSet<qint64> savedSends_;
     // Outgoing rows still on their way when the profile last closed; the outbox resumes them.
