@@ -5,6 +5,7 @@
 #include "SystemNotes.hpp"
 
 #include <QDateTime>
+#include <QSet>
 
 #include <algorithm>
 
@@ -205,6 +206,9 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case ContactableRole: return m.contactable;
     case FromHostRole: return m.fromHost;
     case DeviceRole: return m.device;
+    case ReactionsRole: return reactions_.value(m.e2eId).summary;
+    case FreshReactionsRole: return reactions_.value(m.e2eId).fresh;
+    case PictureVersionRole: return pictureVersions_.value(m.e2eId);
     case DayRole:
         return m.ts > 0
             ? QDateTime::fromMSecsSinceEpoch(m.ts).date().toString(QStringLiteral("yyyy-MM-dd"))
@@ -227,15 +231,88 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
         {DurationRole, "attDurationMs"}, {WaveRole, "attWave"},
         {TransferStageRole, "transferStage"},
         {ReplyToRole, "replyTo"}, {AuthorRole, "author"}, {ContactableRole, "contactable"},
-        {FromHostRole, "fromHost"}, {DeviceRole, "device"}};
+        {FromHostRole, "fromHost"}, {DeviceRole, "device"}, {ReactionsRole, "reactions"},
+        {FreshReactionsRole, "freshReactions"}, {PictureVersionRole, "pictureVersion"}};
 }
 
-void ConversationModel::setMessages(QVector<StoredMessage> messages)
+void ConversationModel::setMessages(QVector<StoredMessage> messages, const ViewLanding landing)
 {
     beginResetModel();
     messages_ = std::move(messages);
     live_.clear();
+    pictureVersions_.clear();
+    const QStringList ids = loadedE2eIds();
+    const QSet<QString> loaded(ids.cbegin(), ids.cend());
+    reactions_.removeIf([&loaded](const auto& entry) { return !loaded.contains(entry.key()); });
+    landing_ = landing;
     endResetModel();
+}
+
+void ConversationModel::setLanding(const ViewLanding landing)
+{
+    landing_ = landing;
+}
+
+QVariantMap ConversationModel::landing() const
+{
+    const int count = static_cast<int>(messages_.size());
+    int row = -1;
+    if (landing_.mode == ViewLanding::eRow && count > 0) {
+        row = static_cast<int>(std::clamp<qint64>(landing_.at, 0, count - 1));
+    } else if (landing_.mode == ViewLanding::eUnread || landing_.mode == ViewLanding::eMessage) {
+        row = rowForId(landing_.at);
+    }
+    const bool found = row >= 0;
+    return {{QStringLiteral("row"), row},
+        {QStringLiteral("centre"), found && landing_.mode == ViewLanding::eMessage},
+        {QStringLiteral("unreadFrom"),
+            found && landing_.mode == ViewLanding::eUnread ? landing_.at : qint64(-1)},
+        {QStringLiteral("highlight"),
+            found && landing_.mode == ViewLanding::eMessage ? landing_.at : qint64(-1)}};
+}
+
+void ConversationModel::putReactions(const QString& e2eId, const RowReactions& reactions)
+{
+    const auto known = reactions_.constFind(e2eId);
+    if (known != reactions_.constEnd() && *known == reactions) {
+        return;
+    }
+    reactions_.insert(e2eId, reactions);
+    notifyRow(rowForE2e(e2eId), {ReactionsRole, FreshReactionsRole});
+}
+
+void ConversationModel::notePictureChanged(const QString& e2eId)
+{
+    const int row = rowForE2e(e2eId);
+    if (row < 0) {
+        return;
+    }
+    ++pictureVersions_[e2eId];
+    notifyRow(row, {PictureVersionRole});
+}
+
+int ConversationModel::rowForE2e(const QString& e2eId) const
+{
+    if (e2eId.isEmpty()) {
+        return -1;
+    }
+    for (int i = 0; i < messages_.size(); ++i) {
+        if (messages_[i].e2eId == e2eId) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+QStringList ConversationModel::loadedE2eIds() const
+{
+    QStringList ids;
+    for (const StoredMessage& message : messages_) {
+        if (!message.e2eId.isEmpty()) {
+            ids << message.e2eId;
+        }
+    }
+    return ids;
 }
 
 void ConversationModel::retranslate()

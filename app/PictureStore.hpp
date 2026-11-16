@@ -13,15 +13,10 @@ namespace bazarish::app {
 
 class PictureStore : public QObject {
     Q_OBJECT
-    Q_PROPERTY(int revision READ revision NOTIFY revisionChanged)
 public:
     static PictureStore& instance();
 
-    int revision() const { return revision_; }
-
     bool put(const QString& e2eId, const QByteArray& bytes);
-    // Unlike put(), bumps no revision, so pictures already shown do not reload.
-    bool restore(const QString& e2eId, const QByteArray& bytes);
 
     bool has(const QString& e2eId) const;
 
@@ -34,7 +29,7 @@ public:
     void clear();
 
 signals:
-    void revisionChanged();
+    void pictureChanged(const QString& e2eId);
 
 private:
     explicit PictureStore(QObject* parent = nullptr)
@@ -57,7 +52,6 @@ private:
     quint64 clock_ = 0;
     qint64 decodedBytes_ = 0;
     qint64 storedBytes_ = 0;
-    int revision_ = 0;
 };
 
 class PictureProvider : public QQuickImageProvider {

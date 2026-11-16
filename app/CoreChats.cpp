@@ -52,7 +52,7 @@ void CoreAccount::react(const QString& peer, const QString& e2eId, const QString
         return;
     }
     emit commands_.requestSendReaction(peer, e2eId, next);
-    emit events_.reactionsChanged();
+    emit events_.reactionsChanged(peer, e2eId);
 }
 
 void CoreAccount::rememberReaction(const QString& emoji)

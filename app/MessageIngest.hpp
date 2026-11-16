@@ -33,7 +33,7 @@ signals:
     void chatChanged(const QString& peer);
     void chatsChanged();
     void deliveredThrough(const QString& peer, qint64 uptoId);
-    void reactionsChanged();
+    void reactionsChanged(const QString& peer, const QString& e2eId);
     void groupChanged(const QString& peer);
     void accountRenamed(const QString& name);
     void contactsRevised();

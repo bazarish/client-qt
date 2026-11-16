@@ -173,7 +173,8 @@ signals:
     void chatChanged(const QString& peer);
     void chatsChanged();
     void deliveredThrough(const QString& peer, qint64 uptoId);
-    void reactionsChanged();
+    // An empty e2eId: any message of that chat.
+    void reactionsChanged(const QString& peer, const QString& e2eId);
     void reactionsToFlash(const QStringList& flashing);
     void recentReactions(const QStringList& recent);
     void recentEmoji(const QStringList& recent);

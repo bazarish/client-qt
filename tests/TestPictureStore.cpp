@@ -8,6 +8,7 @@
 #include <QImage>
 #include <QImageReader>
 #include <QRandomGenerator>
+#include <QStringList>
 
 #include <cstdio>
 #include <cstdlib>
@@ -108,7 +109,7 @@ void decodedBudgetKeepsEveryPicture()
     }
 }
 
-void keptBytesBudgetLetsTheOldestGoAndRestoreBringsItBack()
+void keptBytesBudgetLetsTheOldestGoAndPutBringsItBack()
 {
     PictureStore& store = PictureStore::instance();
     store.clear();
@@ -123,12 +124,15 @@ void keptBytesBudgetLetsTheOldestGoAndRestoreBringsItBack()
     CHECK(!store.has(QStringLiteral("noisy0")));
     CHECK(store.has(QStringLiteral("noisy%1").arg(kNoisyPictures - 1)));
 
-    const int revision = store.revision();
-    CHECK(store.restore(QStringLiteral("noisy0"), first));
+    QStringList announced;
+    const QMetaObject::Connection watching = QObject::connect(&store,
+        &PictureStore::pictureChanged, [&announced](const QString& id) { announced << id; });
+    CHECK(store.put(QStringLiteral("noisy0"), first));
     CHECK(store.has(QStringLiteral("noisy0")));
     CHECK(!store.image(QStringLiteral("noisy0")).isNull());
-    CHECK(store.revision() == revision);
-    CHECK(!store.restore(QStringLiteral("text"), QByteArrayLiteral("not a picture")));
+    CHECK(!store.put(QStringLiteral("text"), QByteArrayLiteral("not a picture")));
+    QObject::disconnect(watching);
+    CHECK(announced == QStringList{QStringLiteral("noisy0")});
 }
 
 // What another client sent straight from its camera shows the way its gallery did.
@@ -137,7 +141,7 @@ void cameraOrientationIsApplied()
     PictureStore& store = PictureStore::instance();
     store.clear();
     const QString e2eId = QStringLiteral("turned");
-    CHECK(store.restore(e2eId, bazarish::test::turnedLeftJpeg()));
+    CHECK(store.put(e2eId, bazarish::test::turnedLeftJpeg()));
     const QImage shown = store.image(e2eId);
     CHECK(shown.width() == bazarish::test::kTurnedHigh);
     CHECK(shown.height() == bazarish::test::kTurnedWide);
@@ -152,7 +156,7 @@ void hugeHeaderIsNotDecoded()
     buffer.setData(bytes);
     CHECK(buffer.open(QIODevice::ReadOnly));
     CHECK(QImageReader(&buffer).size() == QSize(kHugeEdge, kHugeEdge));
-    CHECK(store.restore(QStringLiteral("huge"), bytes));
+    CHECK(store.put(QStringLiteral("huge"), bytes));
     CHECK(store.image(QStringLiteral("huge")).isNull());
 }
 
@@ -162,7 +166,7 @@ int main(int argc, char** argv)
 {
     QGuiApplication app(argc, argv);
     decodedBudgetKeepsEveryPicture();
-    keptBytesBudgetLetsTheOldestGoAndRestoreBringsItBack();
+    keptBytesBudgetLetsTheOldestGoAndPutBringsItBack();
     cameraOrientationIsApplied();
     hugeHeaderIsNotDecoded();
     std::printf("TestPictureStore: ok\n");

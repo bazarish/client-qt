@@ -88,9 +88,12 @@ public:
         if (reactor != contacts_.ownFingerprint().toStdString() && !emoji.empty()) {
             emit owner_.reactionArrived(qt(peer), qt(target), qt(emoji));
         }
-        emit owner_.reactionsChanged();
+        emit owner_.reactionsChanged(qt(peer), qt(target));
     }
-    void groupReactionsChanged(const std::string&) override { emit owner_.reactionsChanged(); }
+    void groupReactionsChanged(const std::string& peer) override
+    {
+        emit owner_.reactionsChanged(qt(peer), {});
+    }
     void groupChanged(const std::string& peer) override { emit owner_.groupChanged(qt(peer)); }
     void accountRenamed(const std::string& name) override { emit owner_.accountRenamed(qt(name)); }
     void contactsRevised() override { emit owner_.contactsRevised(); }

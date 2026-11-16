@@ -74,6 +74,20 @@ struct LiveMessageState {
     bool downloading = false;
 };
 
+struct ViewLanding {
+    enum Mode { eEnd, eRow, eUnread, eMessage };
+    Mode mode = eEnd;
+    // A row for eRow, a message id for eUnread and eMessage.
+    qint64 at = 0;
+};
+
+struct RowReactions {
+    QVariantList summary;
+    QStringList fresh;
+
+    friend bool operator==(const RowReactions&, const RowReactions&) = default;
+};
+
 class ConversationModel : public QAbstractListModel {
     Q_OBJECT
 public:
@@ -84,7 +98,8 @@ public:
         TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole, DayRole,
         DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole, SavedPathRole,
         TransferStageRole, ReplyToRole, PictureRole,
-        DurationRole, WaveRole, AuthorRole, ContactableRole, FromHostRole, DeviceRole
+        DurationRole, WaveRole, AuthorRole, ContactableRole, FromHostRole, DeviceRole,
+        ReactionsRole, FreshReactionsRole, PictureVersionRole
     };
     using QAbstractListModel::QAbstractListModel;
 
@@ -92,7 +107,14 @@ public:
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    void setMessages(QVector<StoredMessage> messages);
+    void setMessages(QVector<StoredMessage> messages, ViewLanding landing = {});
+    void setLanding(ViewLanding landing);
+    Q_INVOKABLE QVariantMap landing() const;
+    // Rows not loaded yet keep theirs until they come; a reset drops those of rows it left out.
+    void putReactions(const QString& e2eId, const RowReactions& reactions);
+    void notePictureChanged(const QString& e2eId);
+    int rowForE2e(const QString& e2eId) const;
+    QStringList loadedE2eIds() const;
     void retranslate();
     int appendMessage(const StoredMessage& message);
     void prependMessages(const QVector<StoredMessage>& messages);
@@ -116,6 +138,9 @@ private:
 
     QVector<StoredMessage> messages_;
     QHash<qint64, LiveMessageState> live_;
+    QHash<QString, RowReactions> reactions_;
+    QHash<QString, int> pictureVersions_;
+    ViewLanding landing_;
 };
 
 class OpenAccountsModel : public QAbstractListModel {

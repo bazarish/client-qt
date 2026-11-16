@@ -86,11 +86,7 @@ Item {
         const inSight = item !== null && item.y >= messages.contentY
             && item.y + item.height <= messages.contentY + messages.height
         if (!inSight) {
-            messages.endPin()
-            messages.stickToBottom = false
-            messages.autoScrolling = true
-            messages.positionViewAtIndex(row, ListView.Center)
-            messages.autoScrolling = false
+            messages.landAt(row, true, false)
         }
         messages.highlightId = localId
         highlightTimer.restart()
@@ -133,39 +129,9 @@ Item {
         target: root.session
         function onContactRequestBusy(fingerprint) { root.retryPeer = fingerprint }
         function onResendFilePickRequested() { resendPickDialog.open() }
-        function onScrollToMessage(localId) {
-            Qt.callLater(function() {
-                const r = messages.model ? messages.model.rowForId(localId) : -1
-                if (r >= 0) {
-                    root.showMessage(r, localId)
-                }
-            })
-        }
-        function onScrollToUnread(firstUnreadId) {
-            Qt.callLater(function() {
-                messages.endPin()
-                const r = messages.model ? messages.model.rowForId(firstUnreadId) : -1
-                if (r >= 0) {
-                    messages.stickToBottom = false
-                    messages.autoScrolling = true
-                    messages.positionViewAtIndex(r, ListView.Beginning)
-                    messages.autoScrolling = false
-                    const first = messages.itemAtIndex(r)
-                    if (first !== null && root.session.atNewest
-                            && messages.originY + messages.contentHeight - first.y <= messages.height) {
-                        messages.stickToBottom = true
-                        messages.pinToBottom()
-                    }
-                    messages.unreadFlashFromId = firstUnreadId
-                    unreadFlashTimer.restart()
-                }
-                Qt.callLater(root.markVisibleRead)
-            })
-        }
         function onScrollToBottom() {
-            messages.stickToBottom = true
             root.session.saveScroll(root.session.activePeer, -1, true)
-            messages.pinToBottom()
+            messages.landAt(-1, false, false)
         }
     }
     FileDialog {
@@ -186,7 +152,7 @@ Item {
     Connections {
         target: root.session
         function onActivePeerChanged() { reactionFlashTimer.restart() }
-        function onReactionsRevisionChanged() {
+        function onReactionsFlashing() {
             if (!reactionFlashTimer.running) {
                 reactionFlashTimer.restart()
             }
@@ -530,37 +496,18 @@ Item {
             // Qt hands a touch to the handlers beneath a popup too: the bubbles took it from the viewer.
             enabled: !imageViewer.visible && !composer.pickingEmoji
 
-            property bool building: false
-            readonly property string openChat:
-                (root.session ? root.session.accountId : "") + "/"
-                    + (root.session ? root.session.activePeer : "")
-            onOpenChatChanged: { building = true; buildDelay.restart() }
-            Timer {
-                id: buildDelay
-                interval: 1
-                onTriggered: listPane.building = false
-            }
-
-            BusyIndicator {
-                anchors.centerIn: parent
-                running: listPane.building
-                visible: running
-            }
-
             ListView {
                 id: messages
                 property TextEdit selectingText: null
                 ScrollBoost { flickable: messages }
                 anchors.fill: parent
                 clip: true
-                visible: !listPane.building
                 spacing: 6
                 topMargin: 10
                 readonly property int kEndGapInSpacings: 2
                 bottomMargin: spacing * kEndGapInSpacings
-                model: listPane.building ? null : (root.session ? root.session.conversation : null)
-                // A bubble pooled before the model was let go comes back with its bindings left on the old rows.
-                reuseItems: !listPane.building
+                model: root.session ? root.session.conversation : null
+                reuseItems: true
                 delegate: MessageBubble {
                     session: root.session
                     reacting: reactionPicker.visible && reactionPicker.target === model.e2eId
@@ -628,88 +575,98 @@ Item {
                 property bool settled: true
                 opacity: settled ? 1 : 0
 
+                property bool landing: false
+                property int landRow: -1
+                property bool landCentre: false
+                property bool landTail: false
+
+                // positionViewAtEnd() leaves out bottomMargin.
                 function scrollToEnd() {
                     autoScrolling = true
                     positionViewAtEnd()
                     contentY = Math.max(originY - topMargin, originY + contentHeight + bottomMargin - height)
                     autoScrolling = false
                 }
-
-                // positionViewAtEnd misses until freshly created delegates are measured.
-                function pinToBottom() {
-                    pinTimer.ticks = 0
+                function tailFits() {
+                    const first = itemAtIndex(landRow)
+                    return first !== null && root.session !== null && root.session.atNewest
+                        && originY + contentHeight - first.y <= height
+                }
+                function applyLanding() {
+                    landRow = Math.min(landRow, count - 1)
+                    if (landRow >= 0) {
+                        autoScrolling = true
+                        positionViewAtIndex(landRow, landCentre ? ListView.Center : ListView.Beginning)
+                        autoScrolling = false
+                        if (!landTail || !tailFits()) {
+                            return
+                        }
+                        landRow = -1
+                        stickToBottom = true
+                    }
                     scrollToEnd()
-                    pinTimer.restart()
                 }
-                function endPin() {
-                    pinTimer.stop()
+                // Row -1 is the end; re-applied after each frame's polish until it holds.
+                function landAt(row, centre, tail) {
+                    landRow = row
+                    landCentre = centre
+                    landTail = tail
+                    stickToBottom = row < 0 || count === 0
+                    landing = true
+                    applyLanding()
+                    if (Window.window) {
+                        Window.window.update()
+                    }
+                }
+                function endLanding() {
+                    landing = false
                     settled = true
+                    if (landRow < 0) {
+                        stickToBottom = root.session ? root.session.atNewest : true
+                    }
+                    root.markVisibleRead()
                 }
-                Timer {
-                    id: pinTimer
-                    interval: 16
-                    repeat: true
-                    property int ticks: 0
-                    onTriggered: {
-                        messages.scrollToEnd()
-                        ticks += 1
-                        if (messages.atYEnd || ticks >= 12) {
-                            messages.stickToBottom = root.session ? root.session.atNewest : true
-                            messages.endPin()
+                function land(fresh) {
+                    settled = false
+                    const target = model ? model.landing()
+                        : ({row: -1, centre: false, unreadFrom: -1, highlight: -1})
+                    if (fresh && target.highlight >= 0) {
+                        highlightId = target.highlight
+                        highlightTimer.restart()
+                    }
+                    if (fresh && target.unreadFrom >= 0) {
+                        unreadFlashFromId = target.unreadFrom
+                        unreadFlashTimer.restart()
+                    }
+                    landAt(target.row, target.centre, target.unreadFrom >= 0)
+                }
+                Connections {
+                    target: messages.Window.window
+                    enabled: messages.landing
+                    function onAfterAnimating() {
+                        const before = messages.contentY
+                        messages.applyLanding()
+                        if (messages.contentY === before) {
+                            messages.endLanding()
                         }
                     }
                 }
-
-                // By row, not by contentY: positioning on a row builds its delegate.
-                function restoreScroll() {
-                    if (!root.session) {
-                        autoScrolling = false
-                        settled = true
-                        return
-                    }
-                    const st = root.session.scrollFor(root.session.activePeer)
-                    forceLayout()
-                    if (!st.has || st.stick || st.anchor < 0) {
-                        stickToBottom = true
-                        pinToBottom()
-                    } else {
-                        stickToBottom = false
-                        restoreToRow(st.anchor)
-                        Qt.callLater(function() {
-                            messages.restoreToRow(st.anchor)
-                            messages.settled = true
-                        })
-                    }
-                    Qt.callLater(root.markVisibleRead)
-                }
-                function restoreToRow(idx) {
-                    if (count === 0) {
-                        return
-                    }
-                    autoScrolling = true
-                    positionViewAtIndex(Math.min(count - 1, Math.max(0, idx)), ListView.Beginning)
-                    autoScrolling = false
-                }
+                onMovementStarted: if (landing) { endLanding() }
                 onModelChanged: {
                     // Qt makes row 0 current; after a prepended page that item kept the boundary row's bubble.
                     currentIndex = -1
-                    if (model) {
-                        settled = false
-                        autoScrolling = true
-                        Qt.callLater(restoreScroll)
-                    }
+                    land(false)
                 }
 
                 function loadOlder() {
-                    if (paging || !root.session) {
+                    if (paging || landing || !root.session) {
                         return
                     }
                     paging = true
-                    endPin()
                     stickToBottom = false
                     // The view keeps the rows on screen in place itself; setting contentY would stop a fling.
                     root.session.loadOlderMessages()
-                    Qt.callLater(function() { messages.paging = false })
+                    paging = false
                 }
 
                 function loadNewer() {
@@ -718,7 +675,7 @@ Item {
                     }
                     paging = true
                     root.session.loadNewerMessages()
-                    Qt.callLater(function() { messages.paging = false })
+                    paging = false
                 }
 
                 onContentYChanged: {
@@ -732,7 +689,7 @@ Item {
                             ? -1 : indexAt(width / 2, contentY + topMargin + 2)
                         root.session.saveScroll(root.session.activePeer, anchor, stickToBottom)
                     }
-                    if (!paging && !pinTimer.running && contentY - originY < height
+                    if (!paging && !landing && contentY - originY < height
                             && root.session.hasMoreOlder) {
                         Qt.callLater(loadOlder)
                     } else if (!paging && contentY + height > contentHeight - height
@@ -758,22 +715,13 @@ Item {
                             root.session.saveScroll(root.session.activePeer, -1, true)
                         }
                         if (messages.stickToBottom) {
-                            Qt.callLater(messages.scrollToEnd)
+                            messages.landAt(-1, false, false)
                         }
-                        Qt.callLater(root.markVisibleRead)
                     }
-                    function onModelReset() {
-                        if (root.session && root.session.atNewest) {
-                            messages.stickToBottom = true
-                            messages.pinToBottom()
-                        } else {
-                            messages.stickToBottom = false
-                        }
-                        Qt.callLater(root.markVisibleRead)
-                    }
+                    function onModelReset() { messages.land(true) }
                 }
 
-                Component.onCompleted: { Qt.callLater(restoreScroll) }
+                Component.onCompleted: land(false)
             }
 
             RoundButton {

@@ -124,7 +124,6 @@ class SessionController : public QObject {
     Q_PROPERTY(QString replyingText READ replyingText NOTIFY replyingChanged)
     Q_PROPERTY(QString replyingSender READ replyingSender NOTIFY replyingChanged)
     Q_PROPERTY(int contactsRevision READ contactsRevision NOTIFY contactsRevisionChanged)
-    Q_PROPERTY(int reactionsRevision READ reactionsRevision NOTIFY reactionsRevisionChanged)
     Q_PROPERTY(bool i2pHasKey READ i2pHasKey NOTIFY i2pStatusChanged)
     Q_PROPERTY(bool i2pEnabled READ i2pEnabled NOTIFY i2pStatusChanged)
     Q_PROPERTY(QString i2pAddress READ i2pAddress NOTIFY i2pStatusChanged)
@@ -229,7 +228,6 @@ public:
     QString replyingText() const { return replyingText_; }
     QString replyingSender() const { return replyingSender_; }
     int contactsRevision() const { return contactsRevision_; }
-    int reactionsRevision() const { return reactionsRevision_; }
     bool activeIsGroup() const { return activeGroup_.has_value(); }
     qint64 activeChatTimer() const { return activeChatTimer_; }
     QVariantList activeBotMenu() const { return activeBotMenu_; }
@@ -283,7 +281,6 @@ public:
     Q_INVOKABLE int loadNewerMessages();
     Q_INVOKABLE void jumpToLatest();
     Q_INVOKABLE void saveScroll(const QString& peer, int anchorRow, bool stick);
-    Q_INVOKABLE QVariantMap scrollFor(const QString& peer) const;
     Q_INVOKABLE void markReadThroughRow(int row);
     Q_INVOKABLE QVariantList searchMessages(const QString& query);
     Q_INVOKABLE void sendText(const QString& text);
@@ -297,8 +294,8 @@ public:
     Q_INVOKABLE void sendFile(const QString& fileUrl);
     Q_INVOKABLE void sendPictureFiles(const QStringList& fileUrls);
     Q_INVOKABLE QVariantMap pictureBeside(const QString& e2eId, int step);
-    // Brings back bytes the cache let go before answering.
-    Q_INVOKABLE QString pictureSource(const QString& e2eId, int revision);
+    // Brings back bytes the cache let go; a picture that comes back reloads where it is shown.
+    Q_INVOKABLE void refillPicture(const QString& e2eId);
     Q_INVOKABLE bool savePictureToDownloads(const QString& e2eId, const QString& name);
     Q_INVOKABLE void sendClipboardPicture();
     Q_INVOKABLE void sendShot(QObject* shot);
@@ -357,7 +354,6 @@ public:
     Q_PROPERTY(QStringList recentEmoji READ recentEmoji NOTIFY recentEmojiChanged)
     QStringList recentEmoji() const { return recentEmoji_; }
     Q_INVOKABLE void rememberEmoji(const QString& emoji);
-    Q_INVOKABLE QVariantList reactionSummary(const QString& e2eId) const;
     Q_INVOKABLE void renameContact(const QString& fp, const QString& name);
     Q_INVOKABLE QString contactInvite(const QString& fp) const;
     Q_INVOKABLE bool canWriteTo(const QString& fp) const;
@@ -400,7 +396,6 @@ public:
     Q_INVOKABLE void acceptContact();
     Q_INVOKABLE bool contactCanAccept(const QString& fp) const;
     Q_INVOKABLE bool contactAgreeing(const QString& fp) const;
-    Q_INVOKABLE QStringList reactionsToFlash(const QString& e2eId) const;
     Q_INVOKABLE void forgetReactionFlash();
     Q_INVOKABLE void signLogin(const QString& challenge);
     Q_INVOKABLE void sendLogin(const QString& challenge);
@@ -475,8 +470,6 @@ signals:
     void activeChatTimerChanged();
     void activeBotMenuChanged();
     void pagingChanged();
-    void scrollToMessage(qint64 localId);
-    void scrollToUnread(qint64 firstUnreadId);
     void scrollToBottom();
     void facadeInfoChanged();
     void connectStateChanged();
@@ -489,7 +482,7 @@ signals:
     void editingChanged();
     void replyingChanged();
     void contactsRevisionChanged();
-    void reactionsRevisionChanged();
+    void reactionsFlashing();
     void unreadTotalChanged();
     void operationsChanged();
     void onlineChanged();
@@ -620,7 +613,10 @@ private:
     QString replyingSender_;
     QStringList reactionsToFlash_;
     int contactsRevision_ = 0;
-    int reactionsRevision_ = 0;
+    RowReactions reactionsOf(const QString& e2eId) const;
+    void putReactionsFor(const QVector<StoredMessage>& messages);
+    void onReactionsChanged(const QString& peer, const QString& e2eId);
+    void onReactionsToFlash(const QStringList& flashing);
     QString takeReply();
     void sendPictureTo(const QString& peer, const PreparedPicture& picture, const QString& replyTo);
     void sendPreparedPicture(const PreparedPicture& picture);
@@ -643,7 +639,7 @@ private:
     void onPeerForgotten(const QString& peer);
     void onDeliveredThrough(const QString& peer, qint64 uptoId);
     void loadLatestWindow();
-    void openWindowAtUnread(const QString& peer, qint64 firstUnread);
+    void showWindow(const QVector<StoredMessage>& window, ViewLanding landing);
     void showInActiveView(const StoredMessage& m, bool isOwn);
     ContactBook book_;
     QStringList recentReactions_;

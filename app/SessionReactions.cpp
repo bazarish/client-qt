@@ -3,26 +3,13 @@
 
 #include "SessionShared.hpp"
 
+#include <utility>
+
 namespace bazarish::app {
 
 QStringList SessionController::standardReactions() const
 {
     return bazarish::app::standardReactions();
-}
-
-QStringList SessionController::reactionsToFlash(const QString& e2eId) const
-{
-    if (activePeer_.isEmpty() || e2eId.isEmpty()
-        || !reactionsToFlash_.contains(reactionFlashKey(activePeer_, e2eId))) {
-        return {};
-    }
-    QStringList emoji;
-    for (const Reaction& reaction : store_.reactionsFor(activePeer_, e2eId)) {
-        if (reaction.reactor != fingerprint_ && !reaction.emoji.isEmpty()) {
-            emoji << reaction.emoji;
-        }
-    }
-    return emoji;
 }
 
 void SessionController::forgetReactionFlash()
@@ -44,9 +31,9 @@ void SessionController::rememberEmoji(const QString& emoji)
     emit commands_.rememberEmoji(emoji);
 }
 
-QVariantList SessionController::reactionSummary(const QString& e2eId) const
+RowReactions SessionController::reactionsOf(const QString& e2eId) const
 {
-    QVariantList out;
+    RowReactions out;
     if (activePeer_.isEmpty() || e2eId.isEmpty()) {
         return out;
     }
@@ -60,7 +47,11 @@ QVariantList SessionController::reactionSummary(const QString& e2eId) const
             counts[it.key()] = static_cast<int>(it.value());
         }
     }
+    const bool flashing = reactionsToFlash_.contains(reactionFlashKey(activePeer_, e2eId));
     for (const Reaction& r : store_.reactionsFor(activePeer_, e2eId)) {
+        if (flashing && r.reactor != fingerprint_ && !r.emoji.isEmpty()) {
+            out.fresh << r.emoji;
+        }
         if (activeGroup_ && r.reactor != fingerprint_) {
             continue;
         }
@@ -73,13 +64,52 @@ QVariantList SessionController::reactionSummary(const QString& e2eId) const
         }
     }
     for (const QString& e : order) {
-        QVariantMap m;
-        m[QStringLiteral("emoji")] = e;
-        m[QStringLiteral("count")] = counts.value(e);
-        m[QStringLiteral("mine")] = (e == mine);
-        out << m;
+        out.summary << QVariantMap{{QStringLiteral("emoji"), e},
+            {QStringLiteral("count"), counts.value(e)}, {QStringLiteral("mine"), e == mine}};
     }
     return out;
+}
+
+void SessionController::putReactionsFor(const QVector<StoredMessage>& messages)
+{
+    for (const StoredMessage& message : messages) {
+        if (!message.e2eId.isEmpty()) {
+            conversation_.putReactions(message.e2eId, reactionsOf(message.e2eId));
+        }
+    }
+}
+
+void SessionController::onReactionsChanged(const QString& peer, const QString& e2eId)
+{
+    if (peer != activePeer_) {
+        return;
+    }
+    const QStringList targets = e2eId.isEmpty() ? conversation_.loadedE2eIds() : QStringList{e2eId};
+    for (const QString& target : targets) {
+        if (conversation_.rowForE2e(target) >= 0) {
+            conversation_.putReactions(target, reactionsOf(target));
+        }
+    }
+}
+
+void SessionController::onReactionsToFlash(const QStringList& flashing)
+{
+    if (reactionsToFlash_ == flashing) {
+        return;
+    }
+    const QStringList before = std::exchange(reactionsToFlash_, flashing);
+    bool shownFlashing = false;
+    for (const QString& target : conversation_.loadedE2eIds()) {
+        const QString key = reactionFlashKey(activePeer_, target);
+        const bool now = flashing.contains(key);
+        shownFlashing = shownFlashing || now;
+        if (now != before.contains(key)) {
+            conversation_.putReactions(target, reactionsOf(target));
+        }
+    }
+    if (shownFlashing) {
+        emit reactionsFlashing();
+    }
 }
 
 }  // namespace bazarish::app

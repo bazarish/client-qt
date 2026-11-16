@@ -57,18 +57,9 @@ bool PictureStore::put(const QString& e2eId, const QByteArray& data)
 {
     const Insert result = insert(e2eId, data);
     if (result == Insert::eAdded) {
-        {
-            const QWriteLocker locker(&lock_);
-            ++revision_;
-        }
-        emit revisionChanged();
+        emit pictureChanged(e2eId);
     }
     return result != Insert::eRefused;
-}
-
-bool PictureStore::restore(const QString& e2eId, const QByteArray& data)
-{
-    return insert(e2eId, data) != Insert::eRefused;
 }
 
 bool PictureStore::has(const QString& e2eId) const
@@ -179,9 +170,8 @@ void PictureStore::remove(const QString& e2eId)
         decodedBytes_ -= decodedSize(found->decoded);
         storedBytes_ -= found->bytes.size();
         entries_.erase(found);
-        ++revision_;
     }
-    emit revisionChanged();
+    emit pictureChanged(e2eId);
 }
 
 void PictureStore::clear()
@@ -191,9 +181,7 @@ void PictureStore::clear()
         entries_.clear();
         decodedBytes_ = 0;
         storedBytes_ = 0;
-        ++revision_;
     }
-    emit revisionChanged();
 }
 
 QImage PictureProvider::requestImage(const QString& id, QSize* size, const QSize& requestedSize)

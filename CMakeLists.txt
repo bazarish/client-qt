@@ -501,6 +501,20 @@ if(Qt6_FOUND)
     add_test(NAME TestConversationModel COMMAND TestConversationModel)
     set_tests_properties(TestConversationModel PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
+    if(TARGET Qt6::Test)
+        add_executable(TestConversationView tests/TestConversationView.cpp app/Models.cpp
+            app/Models.hpp)
+        target_compile_definitions(TestConversationView PRIVATE
+            BAZARISH_CONVERSATION_VIEW="${CMAKE_CURRENT_SOURCE_DIR}/app/qml/ConversationView.qml"
+            BAZARISH_VIEW_STUBS="${CMAKE_CURRENT_SOURCE_DIR}/tests/ConversationViewStubs")
+        target_link_libraries(TestConversationView PRIVATE bazarish_test_util bazarish_app_shared
+            Qt6::Quick Qt6::Qml Qt6::Test)
+        target_compile_options(TestConversationView PRIVATE -Wall -Wextra -Werror)
+        add_test(NAME TestConversationView COMMAND TestConversationView)
+        set_tests_properties(TestConversationView PROPERTIES
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=Basic")
+    endif()
+
     add_executable(TestLetterAvatar tests/TestLetterAvatar.cpp app/LetterAvatar.cpp)
     target_include_directories(TestLetterAvatar PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
     target_link_libraries(TestLetterAvatar PRIVATE bazarish_test_util Qt6::Gui)

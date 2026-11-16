@@ -402,8 +402,6 @@ int main(int argc, char** argv)
     engine.rootContext()->setContextProperty("App", &controller);
     engine.rootContext()->setContextProperty("Avatars", &bazarish::app::AvatarStore::instance());
     engine.rootContext()->setContextProperty("Audio", &bazarish::app::AudioRoute::instance());
-    engine.rootContext()->setContextProperty(
-        "Pictures", &bazarish::app::PictureStore::instance());
 
     engine.rootContext()->setContextProperty("I2p", &i2pController);
     QObject::connect(&translations, &bazarish::app::Translations::languageChanged, &controller,

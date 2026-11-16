@@ -36,7 +36,7 @@ Popup {
     property string afterSource: ""
 
     function pictureUrl(e2eId) {
-        return "image://picture/" + e2eId + "?r=" + Pictures.revision
+        return "image://picture/" + e2eId
     }
     function show(url, e2eId, name) {
         root.source = url

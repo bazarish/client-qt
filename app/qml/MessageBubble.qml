@@ -68,7 +68,7 @@ Item {
     readonly property bool voicePlaying: delegate.isVoice && delegate.session
         && delegate.session.voicePlaying === model.e2eId
     readonly property string pictureUrl: (delegate.isPicture && model.hasPicture)
-        ? delegate.session.pictureSource(model.e2eId, Pictures.revision) : ""
+        ? "image://picture/" + model.e2eId + "?v=" + model.pictureVersion : ""
     readonly property bool pictureBroken: delegate.isPicture && !model.hasPicture
     readonly property bool isAttachment: !delegate.isPicture && !delegate.isVoice
         && ((model.attName && model.attName.length > 0)
@@ -95,12 +95,8 @@ Item {
         ? 0 : App.emojiCount(model.text || "")
     readonly property bool sticker: delegate.emojiCount > 0
         && delegate.emojiCount <= delegate.kStickerMaxEmoji
-    readonly property var reactions: (delegate.session && delegate.reactable
-        && delegate.session.reactionsRevision >= 0)
-        ? delegate.session.reactionSummary(model.e2eId) : []
-    readonly property var freshReactions: (delegate.session && delegate.reactable
-        && delegate.session.reactionsRevision >= 0)
-        ? delegate.session.reactionsToFlash(model.e2eId) : []
+    readonly property var reactions: delegate.reactable ? model.reactions : []
+    readonly property var freshReactions: delegate.reactable ? model.freshReactions : []
 
     Rectangle {
         anchors.fill: parent
@@ -801,6 +797,11 @@ Item {
                     visible: model.hasPicture && status === Image.Ready
                     source: delegate.pictureUrl
                     asynchronous: true
+                    onStatusChanged: {
+                        if (status === Image.Error) {
+                            delegate.session.refillPicture(model.e2eId)
+                        }
+                    }
                     fillMode: Image.PreserveAspectFit
                     readonly property int maxEdge: 320
                     readonly property real fit: implicitWidth > 0 && implicitHeight > 0

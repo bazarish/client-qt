@@ -219,18 +219,12 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
     connect(&events_, &AccountEvents::chatsChanged, this, &SessionController::rebuildChatList);
     connect(&events_, &AccountEvents::deliveredThrough, this,
         &SessionController::onDeliveredThrough);
-    connect(&events_, &AccountEvents::reactionsChanged, this, [this]() {
-        ++reactionsRevision_;
-        emit reactionsRevisionChanged();
-    });
-    connect(&events_, &AccountEvents::reactionsToFlash, this, [this](const QStringList& flashing) {
-        if (reactionsToFlash_ == flashing) {
-            return;
-        }
-        reactionsToFlash_ = flashing;
-        ++reactionsRevision_;
-        emit reactionsRevisionChanged();
-    });
+    connect(&events_, &AccountEvents::reactionsChanged, this,
+        &SessionController::onReactionsChanged);
+    connect(&events_, &AccountEvents::reactionsToFlash, this,
+        &SessionController::onReactionsToFlash);
+    connect(&PictureStore::instance(), &PictureStore::pictureChanged, this,
+        [this](const QString& e2eId) { conversation_.notePictureChanged(e2eId); });
     connect(&events_, &AccountEvents::recentReactions, this, [this](const QStringList& recent) {
         recentReactions_ = recent;
         emit recentReactionsChanged();
@@ -590,13 +584,18 @@ QString SessionController::withoutLinkPlates(const QString& text) const
 
 void SessionController::loadLatestWindow()
 {
-    const QVector<StoredMessage> msgs = store_.latestMessages(activePeer_, kPageSize);
-    oldestLoadedId_ = msgs.isEmpty() ? 0 : lowestId(msgs);
-    newestLoadedId_ = msgs.isEmpty() ? 0 : highestId(msgs);
-    hasMoreOlder_ = !msgs.isEmpty() && store_.hasMessagesBefore(activePeer_, oldestLoadedId_);
-    hasMoreNewer_ = false;
-    conversation_.setMessages(msgs);
-    requestPicturesFor(msgs);
+    showWindow(store_.latestMessages(activePeer_, kPageSize), {});
+}
+
+void SessionController::showWindow(const QVector<StoredMessage>& window, const ViewLanding landing)
+{
+    oldestLoadedId_ = window.isEmpty() ? 0 : lowestId(window);
+    newestLoadedId_ = window.isEmpty() ? 0 : highestId(window);
+    hasMoreOlder_ = !window.isEmpty() && store_.hasMessagesBefore(activePeer_, oldestLoadedId_);
+    hasMoreNewer_ = !window.isEmpty() && store_.hasMessagesAfter(activePeer_, newestLoadedId_);
+    putReactionsFor(window);
+    conversation_.setMessages(window, landing);
+    requestPicturesFor(window);
     replayTransfersForActivePeer();
     emit pagingChanged();
 }
@@ -613,6 +612,7 @@ void SessionController::showInActiveView(const StoredMessage& m, bool isOwn)
         }
         return;
     }
+    putReactionsFor({m});
     conversation_.appendMessage(m);
     newestLoadedId_ = std::max(newestLoadedId_, m.id);
 }
@@ -631,66 +631,39 @@ void SessionController::closeConversation()
 
 void SessionController::openConversation(const QString& peer)
 {
+    const bool switching = peer != activePeer_;
     activateConversation(peer);
     const qint64 firstUnread = store_.firstUnreadId(peer);
-    loadLatestWindow();
-    if (firstUnread > 0) {
-        if (oldestLoadedId_ > 0 && firstUnread >= oldestLoadedId_) {
-            emit scrollToUnread(firstUnread);
-        } else {
-            openWindowAtUnread(peer, firstUnread);
+    const QVector<StoredMessage> latest = store_.latestMessages(peer, kPageSize);
+    if (firstUnread > 0 && !latest.isEmpty()) {
+        const QVector<StoredMessage> fromUnread = firstUnread >= lowestId(latest)
+            ? latest
+            : store_.newerMessages(peer, firstUnread - 1, kPageSize);
+        if (!fromUnread.isEmpty()) {
+            showWindow(fromUnread, {ViewLanding::eUnread, firstUnread});
+            return;
         }
     }
-}
-
-void SessionController::openWindowAtUnread(const QString& peer, qint64 firstUnread)
-{
-    const QVector<StoredMessage> win = store_.newerMessages(peer, firstUnread - 1, kPageSize);
-    if (win.isEmpty()) {
-        loadLatestWindow();
-        return;
-    }
-    oldestLoadedId_ = lowestId(win);
-    newestLoadedId_ = highestId(win);
-    hasMoreOlder_ = store_.hasMessagesBefore(peer, oldestLoadedId_);
-    hasMoreNewer_ = store_.hasMessagesAfter(peer, newestLoadedId_);
-    conversation_.setMessages(win);
-    requestPicturesFor(win);
-    replayTransfersForActivePeer();
-    emit pagingChanged();
-    emit scrollToUnread(firstUnread);
+    const bool remembered = switching && peer == scrollPeer_ && !scrollStick_;
+    showWindow(latest,
+        remembered ? ViewLanding{ViewLanding::eRow, scrollAnchorRow_} : ViewLanding{});
 }
 
 void SessionController::saveScroll(const QString& peer, int anchorRow, bool stick)
 {
     scrollPeer_ = peer;
     scrollAnchorRow_ = anchorRow;
-    scrollStick_ = stick;
-}
-
-QVariantMap SessionController::scrollFor(const QString& peer) const
-{
-    QVariantMap m;
-    const bool has = !peer.isEmpty() && peer == scrollPeer_;
-    m[QStringLiteral("has")] = has;
-    m[QStringLiteral("anchor")] = scrollAnchorRow_;
-    m[QStringLiteral("stick")] = scrollStick_;
-    return m;
+    scrollStick_ = stick || anchorRow < 0;
+    if (peer == activePeer_) {
+        conversation_.setLanding(
+            scrollStick_ ? ViewLanding{} : ViewLanding{ViewLanding::eRow, anchorRow});
+    }
 }
 
 void SessionController::openConversationAtMessage(const QString& peer, qint64 localId)
 {
     activateConversation(peer);
-    const QVector<StoredMessage> win = store_.messagesAround(peer, localId, kPageSize);
-    oldestLoadedId_ = win.isEmpty() ? 0 : lowestId(win);
-    newestLoadedId_ = win.isEmpty() ? 0 : highestId(win);
-    hasMoreOlder_ = !win.isEmpty() && store_.hasMessagesBefore(peer, oldestLoadedId_);
-    hasMoreNewer_ = store_.hasMessagesAfter(peer, newestLoadedId_);
-    conversation_.setMessages(win);
-    requestPicturesFor(win);
-    replayTransfersForActivePeer();
-    emit pagingChanged();
-    emit scrollToMessage(localId);
+    showWindow(store_.messagesAround(peer, localId, kPageSize), {ViewLanding::eMessage, localId});
 }
 
 int SessionController::loadOlderMessages()
@@ -707,6 +680,7 @@ int SessionController::loadOlderMessages()
     }
     oldestLoadedId_ = lowestId(older);
     hasMoreOlder_ = store_.hasMessagesBefore(activePeer_, oldestLoadedId_);
+    putReactionsFor(older);
     conversation_.prependMessages(older);
     requestPicturesFor(older);
     emit pagingChanged();
@@ -727,6 +701,7 @@ int SessionController::loadNewerMessages()
     }
     newestLoadedId_ = highestId(newer);
     hasMoreNewer_ = store_.hasMessagesAfter(activePeer_, newestLoadedId_);
+    putReactionsFor(newer);
     conversation_.appendMessages(newer);
     requestPicturesFor(newer);
     emit pagingChanged();
@@ -1166,15 +1141,15 @@ void SessionController::sendPictureFiles(const QStringList& fileUrls)
     });
 }
 
-QString SessionController::pictureSource(const QString& e2eId, const int revision)
+void SessionController::refillPicture(const QString& e2eId)
 {
-    if (!PictureStore::instance().has(e2eId)) {
-        const QByteArray bytes = store_.media(QString::fromLatin1(client::kPictureKeyPrefix) + e2eId);
-        if (!PictureStore::instance().restore(e2eId, bytes)) {
-            bazarish::log::warn("picture {} has no drawable bytes here", e2eId.toStdString());
-        }
+    if (PictureStore::instance().has(e2eId)) {
+        return;
     }
-    return QStringLiteral("image://picture/%1?r=%2").arg(e2eId).arg(revision);
+    const QByteArray bytes = store_.media(QString::fromLatin1(client::kPictureKeyPrefix) + e2eId);
+    if (!PictureStore::instance().put(e2eId, bytes)) {
+        bazarish::log::warn("picture {} has no drawable bytes here", e2eId.toStdString());
+    }
 }
 
 QVariantMap SessionController::pictureBeside(const QString& e2eId, const int step)
