@@ -29,6 +29,7 @@ signals:
     void cancelUnlock();
     void setNotificationsEnabled(bool on);
     void setNotificationText(bool on);
+    void setSystemNotifications(bool on);
     void setBackgroundTasksVisible(bool on);
     void setSpeakerOn(bool on);
     void setPortable(bool on);

@@ -5470,6 +5470,12 @@
       "es": "John Doe",
       "zh": "John Doe",
       "ar": "John Doe"
+    },
+    "System notifications": {
+      "ru": "Системные уведомления",
+      "es": "Notificaciones del sistema",
+      "zh": "系统通知",
+      "ar": "إشعارات النظام"
     }
   }
 }

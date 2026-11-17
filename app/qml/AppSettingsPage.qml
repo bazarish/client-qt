@@ -150,6 +150,20 @@ Popup {
                         }
                     }
                     RowLayout {
+                        visible: App.mobile
+                        Layout.fillWidth: true
+                        Label {
+                            text: qsTr("System notifications")
+                            color: Theme.text
+                            wrapMode: Text.Wrap
+                            Layout.fillWidth: true
+                        }
+                        Toggle {
+                            checked: App.systemNotifications
+                            onToggled: App.systemNotifications = checked
+                        }
+                    }
+                    RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
                             Layout.fillWidth: true

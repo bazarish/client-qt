@@ -84,6 +84,7 @@ void AppSettings::load()
         offlineAccounts_ = document.value("offlineAccounts", std::vector<std::string>());
         notifications_ = document.value("notifications", true);
         notificationText_ = document.value("notificationText", true);
+        systemNotifications_ = document.value("systemNotifications", false);
         backgroundTasks_ = document.value("backgroundTasks", false);
         const nlohmann::json audio = document.value("audio", nlohmann::json::object());
         audioInput_ = audio.value("input", std::string());
@@ -146,6 +147,7 @@ void AppSettings::save() const
         {"offlineAccounts", offlineAccounts_},
         {"notifications", notifications_},
         {"notificationText", notificationText_},
+        {"systemNotifications", systemNotifications_},
         {"backgroundTasks", backgroundTasks_},
         {"audio", {{"input", audioInput_}, {"output", audioOutput_}}},
         {"i2p", i2p},
@@ -242,6 +244,17 @@ void AppSettings::setNotificationText(const bool on)
         return;
     }
     notificationText_ = on;
+    save();
+}
+
+bool AppSettings::systemNotifications() const { return systemNotifications_; }
+
+void AppSettings::setSystemNotifications(const bool on)
+{
+    if (systemNotifications_ == on) {
+        return;
+    }
+    systemNotifications_ = on;
     save();
 }
 

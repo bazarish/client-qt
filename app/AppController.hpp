@@ -58,6 +58,8 @@ class AppController : public QObject {
             NOTIFY notificationsEnabledChanged)
     Q_PROPERTY(bool notificationText READ notificationText WRITE setNotificationText
             NOTIFY notificationTextChanged)
+    Q_PROPERTY(bool systemNotifications READ systemNotifications WRITE setSystemNotifications
+            NOTIFY systemNotificationsChanged)
     Q_PROPERTY(bool backgroundTasksVisible READ backgroundTasksVisible
             WRITE setBackgroundTasksVisible NOTIFY backgroundTasksVisibleChanged)
     Q_PROPERTY(bool lightTheme READ lightTheme WRITE setLightTheme NOTIFY lightThemeChanged)
@@ -144,6 +146,8 @@ public:
 
     bool notificationText() const { return notificationText_; }
     void setNotificationText(bool on);
+    bool systemNotifications() const { return systemNotifications_; }
+    void setSystemNotifications(bool on);
     bool backgroundTasksVisible() const { return backgroundTasks_; }
     void setBackgroundTasksVisible(bool on);
 
@@ -245,6 +249,7 @@ signals:
     void accountsChanged();
     void notificationsEnabledChanged();
     void notificationTextChanged();
+    void systemNotificationsChanged();
     void backgroundTasksVisibleChanged();
     void lightThemeChanged();
     void cameraChanged();
@@ -302,6 +307,7 @@ private:
     QString deletingId_;
     bool notifications_ = true;
     bool notificationText_ = true;
+    bool systemNotifications_ = false;
     bool backgroundTasks_ = false;
     bool lightTheme_ = true;
     QString camera_;

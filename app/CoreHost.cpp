@@ -149,6 +149,8 @@ CoreHost::CoreHost(QObject* const parent)
     connect(&commands_, &AppCommands::setNotificationsEnabled, this,
         &CoreHost::setNotificationsEnabled);
     connect(&commands_, &AppCommands::setNotificationText, this, &CoreHost::setNotificationText);
+    connect(&commands_, &AppCommands::setSystemNotifications, this,
+        &CoreHost::setSystemNotifications);
     connect(&commands_, &AppCommands::setBackgroundTasksVisible, this,
         &CoreHost::setBackgroundTasksVisible);
     connect(&commands_, &AppCommands::setSpeakerOn, this, &CoreHost::setSpeakerOn);
@@ -285,8 +287,10 @@ void CoreHost::start()
     i2p_.announce();
     notifications_ = AppSettings::instance().notifications();
     notificationText_ = AppSettings::instance().notificationText();
+    systemNotifications_ = AppSettings::instance().systemNotifications();
     backgroundTasks_ = AppSettings::instance().backgroundTasks();
-    emit events_.settings(notifications_, notificationText_, backgroundTasks_);
+    emit events_.settings(
+        notifications_, notificationText_, systemNotifications_, backgroundTasks_);
     refreshAccountList();
     loadOfflineSet();
     openAllAccounts();
@@ -334,7 +338,8 @@ void CoreHost::setNotificationsEnabled(const bool on)
     }
     notifications_ = on;
     AppSettings::instance().setNotifications(notifications_);
-    emit events_.settings(notifications_, notificationText_, backgroundTasks_);
+    emit events_.settings(
+        notifications_, notificationText_, systemNotifications_, backgroundTasks_);
     emit notificationsEnabledChanged();
     updateRinging();
 }
@@ -346,7 +351,20 @@ void CoreHost::setNotificationText(const bool on)
     }
     notificationText_ = on;
     AppSettings::instance().setNotificationText(notificationText_);
-    emit events_.settings(notifications_, notificationText_, backgroundTasks_);
+    emit events_.settings(
+        notifications_, notificationText_, systemNotifications_, backgroundTasks_);
+}
+
+void CoreHost::setSystemNotifications(const bool on)
+{
+    if (systemNotifications_ == on) {
+        return;
+    }
+    systemNotifications_ = on;
+    AppSettings::instance().setSystemNotifications(systemNotifications_);
+    emit events_.settings(
+        notifications_, notificationText_, systemNotifications_, backgroundTasks_);
+    emit systemNotificationsChanged();
 }
 
 void CoreHost::setBackgroundTasksVisible(const bool on)
@@ -356,7 +374,8 @@ void CoreHost::setBackgroundTasksVisible(const bool on)
     }
     backgroundTasks_ = on;
     AppSettings::instance().setBackgroundTasks(backgroundTasks_);
-    emit events_.settings(notifications_, notificationText_, backgroundTasks_);
+    emit events_.settings(
+        notifications_, notificationText_, systemNotifications_, backgroundTasks_);
 }
 
 void CoreHost::updateRinging()

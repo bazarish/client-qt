@@ -48,6 +48,8 @@ public:
     bool notificationsEnabled() const { return notifications_; }
     void setNotificationsEnabled(bool on);
     void setNotificationText(bool on);
+    bool systemNotifications() const { return systemNotifications_; }
+    void setSystemNotifications(bool on);
     QString ringingAccount() const { return ringingAccount_; }
     QString ringingPeer() const { return ringingPeer_; }
     QString ringingPeerFingerprint() const { return ringingPeerFingerprint_; }
@@ -66,6 +68,7 @@ public:
 signals:
     void accountsChanged();
     void notificationsEnabledChanged();
+    void systemNotificationsChanged();
     void ringingChanged();
     void callLiveChanged();
     void speakerOnChanged();
@@ -157,6 +160,7 @@ private:
     bool callScreenShown_ = false;
     bool notifications_ = true;
     bool notificationText_ = true;
+    bool systemNotifications_ = false;
     bool backgroundTasks_ = false;
     Ringtone ringtone_;
     QString ringingAccount_;

@@ -14,6 +14,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -26,6 +28,7 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
 import android.os.ResultReceiver;
+import android.provider.Settings;
 import android.service.notification.StatusBarNotification;
 
 import java.io.IOException;
@@ -35,6 +38,8 @@ import java.util.List;
 public final class Shade {
     static final String CHANNEL_PRESENCE = "status";
     static final String CHANNEL_MESSAGES = "messages";
+    // A channel keeps its sound for good, so the phone's own sound takes a channel of its own.
+    static final String CHANNEL_SYSTEM_MESSAGES = "system_messages";
     static final String CHANNEL_REACTIONS = "reactions";
     static final String CHANNEL_CALLS = "calls";
     static final String EXTRA_ACCOUNT = "org.bazarish.client.account";
@@ -60,6 +65,9 @@ public final class Shade {
     private static final long MESSAGE_PULSE_MILLIS = 250;
     private static final long MESSAGE_GAP_MILLIS = 250;
     private static long lastBuzzAt = 0;
+    private static final long REACTION_PULSE_MILLIS = 60;
+    private static Ringtone systemRing = null;
+    private static volatile boolean systemSounds = false;
 
     static Context app;
     static String line = "";
@@ -171,15 +179,19 @@ public final class Shade {
     }
 
     public static void show(String presence, String messages, String reactions, String calls,
-            String presenceLine) {
+            String presenceLine, boolean system) {
         line = presenceLine;
+        systemSounds = system;
         NotificationManager manager = app.getSystemService(NotificationManager.class);
         presenceChannel(app, presence);
-        NotificationChannel messagesChannel = sounding(CHANNEL_MESSAGES, messages,
-            NotificationManager.IMPORTANCE_HIGH, "notify");
+        NotificationChannel messagesChannel = system
+            ? new NotificationChannel(CHANNEL_SYSTEM_MESSAGES, messages,
+                NotificationManager.IMPORTANCE_HIGH)
+            : sounding(CHANNEL_MESSAGES, messages, NotificationManager.IMPORTANCE_HIGH, "notify");
         // Felt as the phone's own setting for notification vibration decides.
         messagesChannel.enableVibration(true);
         manager.createNotificationChannel(messagesChannel);
+        manager.deleteNotificationChannel(system ? CHANNEL_MESSAGES : CHANNEL_SYSTEM_MESSAGES);
         NotificationChannel reactionsChannel = new NotificationChannel(
             CHANNEL_REACTIONS, reactions, NotificationManager.IMPORTANCE_DEFAULT);
         // A channel's sound turns into vibration in vibrate mode: the chime is played here instead.
@@ -204,10 +216,14 @@ public final class Shade {
         context.getSystemService(NotificationManager.class).createNotificationChannel(channel);
     }
 
+    private static String messagesChannel() {
+        return systemSounds ? CHANNEL_SYSTEM_MESSAGES : CHANNEL_MESSAGES;
+    }
+
     public static void notifyMessage(String account, String peer, String title, String body,
             boolean reaction) {
         Notification shown = new Notification.Builder(
-                app, reaction ? CHANNEL_REACTIONS : CHANNEL_MESSAGES)
+                app, reaction ? CHANNEL_REACTIONS : messagesChannel())
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(body)
@@ -216,7 +232,9 @@ public final class Shade {
             .setContentIntent(opening(account, peer))
             .setAutoCancel(true)
             .build();
-        if (reaction) {
+        if (reaction && systemSounds) {
+            buzzForReaction();
+        } else if (reaction) {
             chimeForReaction();
         }
         app.getSystemService(NotificationManager.class)
@@ -270,7 +288,11 @@ public final class Shade {
     }
 
     public static void startRinging() {
-        if (ring != null) {
+        if (ring != null || systemRing != null) {
+            return;
+        }
+        if (systemSounds) {
+            ringWithPhoneRingtone();
             return;
         }
         ring = new MediaPlayer();
@@ -286,6 +308,20 @@ public final class Shade {
             throw new IllegalStateException("the ringtone did not load", e);
         }
         ring.start();
+        vibrateForRinging();
+    }
+
+    // The phone's own ringtone; with none set the call is felt only.
+    private static void ringWithPhoneRingtone() {
+        systemRing = RingtoneManager.getRingtone(app, Settings.System.DEFAULT_RINGTONE_URI);
+        if (systemRing != null) {
+            systemRing.setAudioAttributes(new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build());
+            systemRing.setLooping(true);
+            systemRing.play();
+        }
         vibrateForRinging();
     }
 
@@ -320,8 +356,8 @@ public final class Shade {
     // A message that lands while the window is in front is felt instead of shown.
     public static void buzzForMessage() {
         NotificationManager manager = app.getSystemService(NotificationManager.class);
-        if (!mayInterrupt(CHANNEL_MESSAGES)
-                || !manager.getNotificationChannel(CHANNEL_MESSAGES).shouldVibrate()) {
+        if (!mayInterrupt(messagesChannel())
+                || !manager.getNotificationChannel(messagesChannel()).shouldVibrate()) {
             return;
         }
         long buzzMillis = MESSAGE_PULSE_MILLIS + MESSAGE_GAP_MILLIS + MESSAGE_PULSE_MILLIS;
@@ -339,6 +375,23 @@ public final class Shade {
                 pulses, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_NOTIFICATION));
         } else {
             vibrator.vibrate(pulses, new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .build());
+        }
+    }
+
+    private static void buzzForReaction() {
+        if (!mayInterrupt(CHANNEL_REACTIONS)) {
+            return;
+        }
+        Vibrator vibrator = app.getSystemService(VibratorManager.class).getDefaultVibrator();
+        VibrationEffect pulse = VibrationEffect.createOneShot(
+            REACTION_PULSE_MILLIS, VibrationEffect.DEFAULT_AMPLITUDE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            vibrator.vibrate(
+                pulse, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_NOTIFICATION));
+        } else {
+            vibrator.vibrate(pulse, new AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                 .build());
         }
@@ -366,12 +419,15 @@ public final class Shade {
     }
 
     public static void stopRinging() {
-        if (ring == null) {
-            return;
+        if (ring != null) {
+            ring.stop();
+            ring.release();
+            ring = null;
         }
-        ring.stop();
-        ring.release();
-        ring = null;
+        if (systemRing != null) {
+            systemRing.stop();
+            systemRing = null;
+        }
         if (buzzing != null) {
             buzzing.cancel();
             buzzing = null;

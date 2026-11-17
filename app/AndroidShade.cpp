@@ -110,6 +110,7 @@ AndroidShade::AndroidShade(CoreHost& core, Notifier& notifier, Translations& tra
         }
     });
     connect(&translations, &Translations::languageChanged, this, &AndroidShade::show);
+    connect(&core_, &CoreHost::systemNotificationsChanged, this, &AndroidShade::show);
     connect(&core_, &CoreHost::ringingChanged, this, &AndroidShade::followRinging);
     connect(&core_, &CoreHost::callLiveChanged, this, &AndroidShade::followRinging);
     connect(&core_, &CoreHost::speakerOnChanged, this, &AndroidShade::followRinging);
@@ -202,9 +203,10 @@ void AndroidShade::show()
     const QJniObject line = javaString(line_);
     QJniObject::callStaticMethod<void>(kShade, "show",
         "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;"
-        "Ljava/lang/String;)V",
+        "Ljava/lang/String;Z)V",
         presence.object<jstring>(), messages.object<jstring>(), reactions.object<jstring>(),
-        calls.object<jstring>(), line.object<jstring>());
+        calls.object<jstring>(), line.object<jstring>(),
+        static_cast<jboolean>(core_.systemNotifications()));
 }
 
 void AndroidShade::notifyMessage(const QString& accountId, const QString& peer,
