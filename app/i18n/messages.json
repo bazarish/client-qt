@@ -4259,12 +4259,6 @@
       "zh": "这条语音消息已不在本设备上",
       "ar": "لم تعد هذه الرسالة الصوتية على هذا الجهاز"
     },
-    "via %1": {
-      "ru": "через %1",
-      "es": "por %1",
-      "zh": "经由 %1",
-      "ar": "عبر ⁦%1⁩"
-    },
     "wants to add you as a contact": {
       "ru": "хочет добавить вас в контакты",
       "es": "quiere añadirte como contacto",
@@ -5476,6 +5470,12 @@
       "es": "Notificaciones del sistema",
       "zh": "系统通知",
       "ar": "إشعارات النظام"
+    },
+    "Incoming calls and messages use the system sound": {
+      "ru": "Для входящих звонков и сообщений используется системный звук",
+      "es": "Las llamadas y los mensajes entrantes usan el sonido del sistema",
+      "zh": "来电和新消息使用系统提示音",
+      "ar": "تستخدم المكالمات والرسائل الواردة صوت النظام"
     }
   }
 }

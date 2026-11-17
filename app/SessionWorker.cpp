@@ -733,6 +733,7 @@ void SessionWorker::registerThisDevice()
         bazarish::log::warn("this device could not register again: {}", error.what());
         return;
     }
+    emitI2pKeyState();
     mailGate_.registered();
     serviceAliasesIfDue();
 }
@@ -883,10 +884,7 @@ void SessionWorker::openAccount(
         }
     });
     emitInvite();
-    emit i2pKeyState(session_->hasI2pDestination(),
-        session_->hasI2pDestination()
-            ? QString::fromStdString(session_->i2pAddress())
-            : QString());
+    emitI2pKeyState();
     session_->setSwitchedOff(!startOnline);
     if (startOnline) {
         startMaintenance();
@@ -1092,6 +1090,7 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
     emit connectProgress(100, tr("Connected"));
     bazarish::client::setConnectProgressSink(progressAccount, {});
     emit connectionChanged(true, "active");
+    emitI2pKeyState();
     emitContacts();
     emitDeviceState();
     serviceAliasesIfDue();
@@ -2206,16 +2205,21 @@ void SessionWorker::refreshContacts()
     }
 }
 
+void SessionWorker::emitI2pKeyState()
+{
+    const bool hasKey = session_->hasI2pDestination();
+    emit i2pKeyState(hasKey, QString::fromStdString(
+        hasKey ? session_->i2pAddress() : session_->servedDestination()));
+}
+
 void SessionWorker::refreshI2pStatus()
 {
     if (!session_) {
         return;
     }
     emitInvite();
+    emitI2pKeyState();
     const bool hasKey = session_->hasI2pDestination();
-    const QString address
-        = hasKey ? QString::fromStdString(session_->i2pAddress()) : QString();
-    emit i2pKeyState(hasKey, address);
     WorkerOp op(*this, QStringLiteral("i2p-status"), QStringLiteral("status"),
         tr("Checking your destination"), tr("Asking your server…"));
     QString summary;

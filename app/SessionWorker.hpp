@@ -256,6 +256,7 @@ private:
     void startReceiving();
     void emitFacadeInfo();
     void emitInvite();
+    void emitI2pKeyState();
     QString lastInvite_;
     QString lastInviteProblem_;
     void emitContacts();

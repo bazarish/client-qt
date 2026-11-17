@@ -192,7 +192,7 @@ Popup {
                             Layout.fillWidth: true
                             text: root.session && root.session.activeFacadeHost.length > 0
                                 ? (root.session.reachable
-                                    ? qsTr("via %1").arg(root.session.activeFacadeHost)
+                                    ? root.session.activeFacadeHost
                                     : qsTr("connecting via %1").arg(root.session.activeFacadeHost))
                                 : ""
                             color: Theme.textDim; font.pixelSize: Theme.fontSmall; elide: Text.ElideMiddle
@@ -465,7 +465,7 @@ Popup {
                                 }
                             }
                             Label {
-                                visible: root.session && !root.session.i2pHasKey
+                                visible: root.session && root.session.i2pAddress.length === 0
                                 text: qsTr("No destination key on this account yet")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
@@ -507,7 +507,7 @@ Popup {
                         }
                     }
                     ButtonRow {
-                        visible: root.session && !root.session.i2pHasKey
+                        visible: root.session && root.session.i2pAddress.length === 0
                         Layout.fillWidth: true
                         MenuButton { Layout.fillWidth: true; iconName: "plus"; text: qsTr("Create address")
                             onClicked: root.session.generatePersonalKey() }

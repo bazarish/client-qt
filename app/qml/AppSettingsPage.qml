@@ -152,11 +152,19 @@ Popup {
                     RowLayout {
                         visible: App.mobile
                         Layout.fillWidth: true
-                        Label {
-                            text: qsTr("System notifications")
-                            color: Theme.text
-                            wrapMode: Text.Wrap
+                        ColumnLayout {
                             Layout.fillWidth: true
+                            Label {
+                                text: qsTr("System notifications")
+                                color: Theme.text
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: qsTr("Incoming calls and messages use the system sound")
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
                         }
                         Toggle {
                             checked: App.systemNotifications
