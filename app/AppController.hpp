@@ -192,6 +192,7 @@ public:
     Q_PROPERTY(bool linksHandled READ linksHandled NOTIFY systemPermissionsChanged)
     bool linksHandled() const;
     Q_INVOKABLE void openLinkSettings() const;
+    Q_INVOKABLE void askNotifications() const;
     Q_PROPERTY(bool canPickPictures READ canPickPictures CONSTANT)
     bool canPickPictures() const;
     Q_INVOKABLE void pickPictures() const;

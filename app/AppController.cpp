@@ -722,6 +722,13 @@ bool AppController::linksHandled() const
 #endif
 }
 
+void AppController::askNotifications() const
+{
+#ifdef Q_OS_ANDROID
+    AndroidWindow::askNotifications();
+#endif
+}
+
 void AppController::openLinkSettings() const
 {
 #ifdef Q_OS_ANDROID

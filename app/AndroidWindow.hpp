@@ -25,6 +25,7 @@ public:
     static void openFullScreenCallsSettings();
     static bool linksHandled();
     static void openLinkSettings();
+    static void askNotifications();
     static bool canPickPictures();
     static void pickPictures();
     static void pickAvatar();

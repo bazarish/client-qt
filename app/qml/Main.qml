@@ -133,7 +133,10 @@ ApplicationWindow {
     Component {
         id: firstRunComponent
         FirstRunPage {
-            onFinished: stack.replace(null, App.session ? mainComponent : pickerComponent)
+            onFinished: {
+                stack.replace(null, App.session ? mainComponent : pickerComponent)
+                window.askSystem()
+            }
         }
     }
 
@@ -147,6 +150,9 @@ ApplicationWindow {
             if (stack.currentItem.objectName === "attaching") {
                 stack.replace(null, !I2p.gatewayAsked ? firstRunComponent
                     : App.session ? mainComponent : pickerComponent)
+            }
+            if (I2p.gatewayAsked) {
+                window.askSystem()
             }
         }
         function onAccountOpened() {
@@ -222,14 +228,22 @@ ApplicationWindow {
         z: 900
     }
 
-    Component.onCompleted: {
-        App.forgetFocusOnClose(Overlay.overlay)
-        App.paintSystemBars(Theme.bg)
+    property bool systemAsked: false
+    function askSystem() {
+        if (window.systemAsked) {
+            return
+        }
+        window.systemAsked = true
+        App.askNotifications()
         if (backgroundAsk.needed) {
             backgroundAsk.open()
         } else if (!App.linksHandled) {
             linksAsk.open()
         }
+    }
+    Component.onCompleted: {
+        App.forgetFocusOnClose(Overlay.overlay)
+        App.paintSystemBars(Theme.bg)
     }
     Connections {
         target: Theme

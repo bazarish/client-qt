@@ -151,7 +151,6 @@ AndroidWindow::AndroidWindow(AppController& app, QObject* const parent)
         gWindow.store(this);
     }
 
-    QJniObject::callStaticMethod<void>(kWindow, "askNotifications", "()V");
     QJniObject::callStaticMethod<void>(kWindow, "followKeyboard", "()V");
     // Android's touch-and-hold delay, which its accessibility settings change; Qt keeps 800 ms.
     const jint longPressMs = QJniObject::callStaticMethod<jint>(
@@ -214,6 +213,11 @@ void AndroidWindow::openFullScreenCallsSettings()
 bool AndroidWindow::linksHandled()
 {
     return QJniObject::callStaticMethod<jboolean>(kWindow, "linksHandled", "()Z");
+}
+
+void AndroidWindow::askNotifications()
+{
+    QJniObject::callStaticMethod<void>(kWindow, "askNotifications", "()V");
 }
 
 void AndroidWindow::openLinkSettings()
