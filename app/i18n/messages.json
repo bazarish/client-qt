@@ -2273,11 +2273,11 @@
       "zh": "密码",
       "ar": "كلمة السر"
     },
-    "Passphrase (optional, encrypts keys at rest)": {
-      "ru": "Пароль (необязательно, шифрует ключи на диске)",
-      "es": "Contraseña (opcional, cifra las claves en disco)",
-      "zh": "密码（可选，用于加密磁盘上的密钥）",
-      "ar": "كلمة سر (اختيارية، تشفّر المفاتيح على القرص)"
+    "Passphrase (optional, protects the database)": {
+      "ru": "Пароль (необязательно, защищает базу данных)",
+      "es": "Contraseña (opcional, protege la base de datos)",
+      "zh": "密码（可选，保护数据库）",
+      "ar": "كلمة سر (اختيارية، تحمي قاعدة البيانات)"
     },
     "This passphrase cannot be used": {
       "ru": "Этот пароль использовать нельзя",
@@ -3959,11 +3959,11 @@
       "zh": "余额不足以支付下次续期",
       "ar": "لن يغطي رصيدك التجديد القادم"
     },
-    "Your identity is a key pair generated on this device": {
-      "ru": "Ваша личность — пара ключей, созданная на этом устройстве",
-      "es": "Tu identidad es un par de claves generado en este dispositivo",
-      "zh": "你的身份是在本设备上生成的一对密钥",
-      "ar": "هويتك زوج مفاتيح أُنشئ على هذا الجهاز"
+    "Your account is a key pair": {
+      "ru": "Ваш аккаунт — это пара ключей",
+      "es": "Tu cuenta es un par de claves",
+      "zh": "你的账户就是一对密钥",
+      "ar": "حسابك زوج مفاتيح"
     },
     "Your messages among them (%1) are removed from the other side too, the rest only from this device": {
       "ru": "Ваши сообщения среди них (%1) удалятся и у собеседника, остальные — только на этом устройстве",

@@ -53,7 +53,7 @@ Item {
             Layout.alignment: Qt.AlignHCenter
         }
         Label {
-            text: qsTr("Your identity is a key pair generated on this device")
+            text: qsTr("Your account is a key pair")
             color: Theme.textDim
             wrapMode: Text.Wrap
             Layout.fillWidth: true
@@ -66,7 +66,7 @@ Item {
             placeholder: qsTr("e.g. Mr. Who")
             validator: Utf8Limit { maxBytes: App.maxAccountNameBytes }
         }
-        FormField { id: passField; label: qsTr("Passphrase (optional, encrypts keys at rest)"); echoMode: TextInput.Password; placeholder: qsTr("leave empty for none") }
+        FormField { id: passField; label: qsTr("Passphrase (optional, protects the database)"); echoMode: TextInput.Password; placeholder: qsTr("leave empty for none") }
         FormField { id: confirmField; label: qsTr("Confirm passphrase"); echoMode: TextInput.Password }
 
         Label {

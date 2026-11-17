@@ -58,10 +58,17 @@ Item {
         }
     }
 
+    function placement(item) {
+        const chain = []
+        for (let p = item; p !== null; p = p.parent) {
+            chain.push(p.x, p.y)
+        }
+        return chain
+    }
     // The void reads make the binding track whatever moves the field.
     function rectAt(position) {
-        void [root.field.text, root.field.width, root.view.contentY, root.view.contentHeight,
-            root.view.originY, root.width, root.height]
+        void [root.placement(root.field), root.field.text, root.field.width, root.view.contentY,
+            root.view.contentHeight, root.view.originY, root.width, root.height]
         // While its whole text is replaced the field reports -1 for a moment.
         if (position < 0) {
             return Qt.rect(0, 0, 0, 0)
@@ -77,7 +84,7 @@ Item {
         if (!root.live || root.view === null) {
             return 0
         }
-        void [root.view.contentY, root.width, root.height]
+        void [root.placement(root.view), root.view.contentY, root.width, root.height]
         return root.view.mapToItem(root, 0, 0).y
     }
     function boundsTop() {
