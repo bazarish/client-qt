@@ -116,6 +116,23 @@ protected:
     }
 };
 
+#ifdef Q_OS_ANDROID
+// A finger lifted leaves no pointer behind: what it touched is no longer hovered.
+class TouchLeavesNoHover : public QObject {
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override
+    {
+        const QEvent::Type type = event->type();
+        if ((type == QEvent::TouchEnd || type == QEvent::TouchCancel)
+            && qobject_cast<QWindow*>(watched) != nullptr) {
+            // ownership: allowed - the posted event queue takes and deletes the event.
+            QCoreApplication::postEvent(watched, new QEvent(QEvent::Leave));
+        }
+        return QObject::eventFilter(watched, event);
+    }
+};
+#endif
+
 // macOS hands a bazarish:// link to the running application as an event, not as an argument.
 class LinkCatcher : public QObject {
 public:
@@ -269,6 +286,10 @@ int main(int argc, char** argv)
     app.installEventFilter(&links);
     PressCommitsWord words;
     app.installEventFilter(&words);
+#ifdef Q_OS_ANDROID
+    TouchLeavesNoHover touchHover;
+    app.installEventFilter(&touchHover);
+#endif
     QGuiApplication::setApplicationName("Bazarish");
     QGuiApplication::setOrganizationName("Bazarish");
 

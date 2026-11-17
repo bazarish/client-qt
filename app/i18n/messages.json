@@ -5476,6 +5476,12 @@
       "es": "Las llamadas y los mensajes entrantes usan el sonido del sistema",
       "zh": "来电和新消息使用系统提示音",
       "ar": "تستخدم المكالمات والرسائل الواردة صوت النظام"
+    },
+    "Waiting for the connection…": {
+      "ru": "Ожидание соединения…",
+      "es": "Esperando la conexión…",
+      "zh": "正在等待连接…",
+      "ar": "بانتظار الاتصال…"
     }
   }
 }

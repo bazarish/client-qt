@@ -32,6 +32,9 @@ QString humanDeliveryPhase(const QString& phase)
     if (phase == QLatin1StringView(bazarish::client::kPhaseWaiting)) {
         return CoreAccount::tr("Waiting for the recipient's server…");
     }
+    if (phase == QLatin1StringView(bazarish::client::kPhaseOffline)) {
+        return CoreAccount::tr("Waiting for the connection…");
+    }
     return phase;
 }
 
