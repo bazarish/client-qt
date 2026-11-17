@@ -324,8 +324,7 @@ if(Qt6_FOUND)
             app/qml/DestinationSheet.qml
             app/qml/ConnectionLogPage.qml
         app/qml/StoragePage.qml
-            app/qml/LanguageFirstRunDialog.qml
-            app/qml/GatewayFirstRunDialog.qml
+            app/qml/FirstRunPage.qml
             app/qml/AccountDeleteConfirmDialog.qml
             app/qml/AddressChoiceDialog.qml
             app/qml/RestoredDevicesDialog.qml

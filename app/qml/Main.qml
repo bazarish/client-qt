@@ -130,6 +130,12 @@ ApplicationWindow {
     Component { id: attachingComponent; Item { objectName: "attaching" } }
     Component { id: pickerComponent; AccountPicker {} }
     Component { id: mainComponent; MainView {} }
+    Component {
+        id: firstRunComponent
+        FirstRunPage {
+            onFinished: stack.replace(null, App.session ? mainComponent : pickerComponent)
+        }
+    }
 
     Connections {
         target: App
@@ -139,10 +145,8 @@ ApplicationWindow {
                 return
             }
             if (stack.currentItem.objectName === "attaching") {
-                stack.replace(null, App.session ? mainComponent : pickerComponent)
-            }
-            if (!I2p.gatewayAsked && !gatewayFirstRun.opened) {
-                languageFirstRun.open()
+                stack.replace(null, !I2p.gatewayAsked ? firstRunComponent
+                    : App.session ? mainComponent : pickerComponent)
             }
         }
         function onAccountOpened() {
@@ -218,15 +222,6 @@ ApplicationWindow {
         z: 900
     }
 
-    LanguageFirstRunDialog {
-        id: languageFirstRun
-        z: 1100
-        onAccepted: gatewayFirstRun.open()
-    }
-    GatewayFirstRunDialog {
-        id: gatewayFirstRun
-        z: 1100
-    }
     Component.onCompleted: {
         App.forgetFocusOnClose(Overlay.overlay)
         App.paintSystemBars(Theme.bg)

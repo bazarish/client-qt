@@ -2315,18 +2315,6 @@
       "zh": "欢迎使用 Bazarish",
       "ar": "مرحبًا بك في Bazarish"
     },
-    "A messenger where your anonymity is as natural as sending a message.": {
-      "ru": "Мессенджер, в котором ваша анонимность так же естественна, как отправка сообщения.",
-      "es": "Un mensajero en el que tu anonimato es tan natural como enviar un mensaje.",
-      "zh": "在这款通讯软件里，匿名就像发送消息一样自然。",
-      "ar": "تطبيق مراسلة يكون فيه إخفاء هويتك طبيعيًا كإرسال رسالة."
-    },
-    "Choose the app language": {
-      "ru": "Выберите язык приложения",
-      "es": "Elige el idioma de la aplicación",
-      "zh": "选择应用语言",
-      "ar": "اختر لغة التطبيق"
-    },
     "Next": {
       "ru": "Далее",
       "es": "Siguiente",
@@ -4079,12 +4067,6 @@
       "zh": "已停用",
       "ar": "معطَّل"
     },
-    "e.g. Mr. Who": {
-      "ru": "например, Иван Иванов",
-      "es": "por ejemplo, Juan Pérez",
-      "zh": "例如：张三",
-      "ar": "مثلًا: فلان الفلاني"
-    },
     "edited": {
       "ru": "изменено",
       "es": "editado",
@@ -5482,6 +5464,12 @@
       "es": "Desconocido",
       "zh": "未知",
       "ar": "غير معروف"
+    },
+    "John Doe": {
+      "ru": "John Doe",
+      "es": "John Doe",
+      "zh": "John Doe",
+      "ar": "John Doe"
     }
   }
 }

@@ -63,7 +63,7 @@ Item {
         FormField {
             id: nameField
             label: qsTr("Account name")
-            placeholder: qsTr("e.g. Mr. Who")
+            placeholder: qsTr("John Doe")
             validator: Utf8Limit { maxBytes: App.maxAccountNameBytes }
         }
         FormField { id: passField; label: qsTr("Passphrase (optional, protects the database)"); echoMode: TextInput.Password; placeholder: qsTr("leave empty for none") }
