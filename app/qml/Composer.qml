@@ -482,12 +482,14 @@ Rectangle {
             }
 
             IconButton {
-                iconName: root.editing ? "check" : "send"
+                readonly property bool records: !root.editing
+                    && input.length === 0 && input.preeditText.length === 0
+                iconName: root.editing ? "check" : (records ? "mic" : "send")
                 focusPolicy: Qt.NoFocus
                 tint: Theme.accent
                 enabled: !root.switchedOff
                 Layout.alignment: Qt.AlignBottom
-                onClicked: root.send()
+                onClicked: records ? voiceSheet.open() : root.send()
             }
         }
     }
@@ -530,11 +532,6 @@ Rectangle {
             text: qsTr("Photo")
             iconName: "camera"
             onTriggered: photoSheet.open()
-        }
-        ContextMenuItem {
-            text: qsTr("Voice message")
-            iconName: "mic"
-            onTriggered: voiceSheet.open()
         }
     }
 
