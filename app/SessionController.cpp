@@ -379,7 +379,6 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
     connect(&events_, &AccountEvents::destChangeSettled, this, [this]() {
         i2pBusy_ = false;
         emit i2pStatusChanged();
-        emit i2pAnswered();
     });
     connect(&events_, &AccountEvents::i2pKeyState, this, &SessionController::onI2pKeyState);
     connect(&events_, &AccountEvents::callStateChanged, this,
@@ -1688,9 +1687,6 @@ void SessionController::onOverviewReady(const QVariantMap& overview, const bool 
     emit i2pStatusChanged();
     emit devicesChanged();
     emit storageChanged();
-    if (overviewFresh_) {
-        emit i2pAnswered();
-    }
 }
 
 void SessionController::onOverviewFailed()

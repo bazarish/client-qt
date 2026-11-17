@@ -514,7 +514,6 @@ signals:
     void acceptingContactChanged();
     void ownInviteChanged();
     void i2pStatusChanged();
-    void i2pAnswered();
     void devicesChanged();
     void deviceStateChanged();
     void contactDevicesChanged();

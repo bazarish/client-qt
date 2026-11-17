@@ -396,23 +396,9 @@ Popup {
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
                     }
-                    Connections {
-                        target: root.session
-                        ignoreUnknownSignals: true
-                        function onI2pAnswered() { i2pFlash.restart() }
-                    }
-                    Rectangle {
-                        id: i2pStatusBox
+                    Item {
                         Layout.fillWidth: true
-                        radius: Theme.radiusSmall
-                        color: "transparent"
                         implicitHeight: i2pStatusCol.implicitHeight + 12
-                        SequentialAnimation {
-                            id: i2pFlash
-                            PropertyAction { target: i2pStatusBox; property: "color"; value: Qt.rgba(0.12, 0.48, 0.08, 0.5) }
-                            PauseAnimation { duration: 550 }
-                            ColorAnimation { target: i2pStatusBox; property: "color"; to: "transparent"; duration: 500 }
-                        }
                         ColumnLayout {
                             id: i2pStatusCol
                             anchors.left: parent.left

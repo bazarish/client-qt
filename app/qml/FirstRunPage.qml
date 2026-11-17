@@ -122,7 +122,7 @@ Item {
             Layout.fillWidth: true
             wrapMode: Text.Wrap
             color: Theme.text
-            text: qsTr("If you run your own gateway or a friend shared a link to one, enter its address. A gateway lowers the load on the processor and helps devices that run on battery. It is especially useful if you plan to talk to family and friends on the same server. If there is no link or you do not trust whoever gave it, skip this step: the app will run its built-in I2P router.")
+            text: qsTr("If you run your own gateway or a friend shared a link to one, enter its address. A gateway lowers the load on the processor, which matters for devices that run on battery. It also helps when you talk to family and friends on the same server. If there is no link or you do not trust whoever gave it, skip this step: the app will run its built-in I2P router.")
         }
         RowLayout {
             Layout.fillWidth: true
