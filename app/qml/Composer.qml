@@ -520,6 +520,7 @@ Rectangle {
         ContextMenuItem {
             text: qsTr("File")
             iconName: "file"
+            visible: !(root.session && root.session.activeIsGroup)
             onTriggered: fileDialog.open()
         }
         ContextMenuItem {
