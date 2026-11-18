@@ -27,7 +27,7 @@ Popup {
     focus: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(720, parent ? parent.width - 24 : 720)
-    height: Math.min(parent ? parent.height - 40 : 600, 560)
+    height: parent ? parent.height - 40 : 600
     padding: 0
     background: DialogFrame { }
 

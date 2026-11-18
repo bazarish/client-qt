@@ -15,7 +15,7 @@ Popup {
     focus: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(420, parent ? parent.width - 24 : 420)
-    height: Math.min(parent ? parent.height - 80 : 560, 560)
+    height: Math.min(parent ? parent.height - 80 : 560, implicitHeight)
     readonly property int unreadSlotWidth: 34
     padding: 0
     background: DialogFrame { }
@@ -53,6 +53,7 @@ Popup {
         ListView {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            implicitHeight: contentHeight
             clip: true
             model: App.accounts
             // A delegate's compiled handler cannot resolve the Popup's id, so it calls in through ListView.view.

@@ -14,7 +14,7 @@ Popup {
     property bool copied: false
 
     readonly property int kMaxWidth: 460
-    readonly property int kMaxHeight: 560
+    readonly property int kFallbackHeight: 560
     readonly property int kSideRoom: 24
     readonly property int kTopRoom: 40
     readonly property int kPollMs: 2000
@@ -70,7 +70,7 @@ Popup {
     focus: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(root.kMaxWidth, parent ? parent.width - root.kSideRoom : root.kMaxWidth)
-    height: Math.min(parent ? parent.height - root.kTopRoom : root.kMaxHeight, root.kMaxHeight)
+    height: Math.min(parent ? parent.height - root.kTopRoom : root.kFallbackHeight, implicitHeight)
     padding: 0
     background: DialogFrame { }
 

@@ -21,7 +21,7 @@ Popup {
     focus: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(420, parent ? parent.width - 24 : 420)
-    height: Math.min(parent ? parent.height - 80 : 560, 560)
+    height: Math.min(parent ? parent.height - 80 : 560, implicitHeight)
     padding: 0
 
     background: DialogFrame { }
@@ -91,6 +91,7 @@ Popup {
             id: list
             Layout.fillWidth: true
             Layout.fillHeight: true
+            implicitHeight: contentHeight
             clip: true
             topMargin: Theme.rowInset
             bottomMargin: Theme.radius

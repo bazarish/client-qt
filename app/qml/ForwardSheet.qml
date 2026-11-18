@@ -29,7 +29,7 @@ Popup {
     focus: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(420, parent ? parent.width - 24 : 420)
-    height: Math.min(parent ? parent.height - 80 : 520, 520)
+    height: Math.min(parent ? parent.height - 80 : 520, implicitHeight)
     padding: 0
 
     background: DialogFrame { }
@@ -63,6 +63,7 @@ Popup {
             id: chats
             Layout.fillWidth: true
             Layout.fillHeight: true
+            implicitHeight: contentHeight
             Layout.topMargin: 8
             Layout.bottomMargin: Theme.radius
             clip: true

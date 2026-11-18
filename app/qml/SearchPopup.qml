@@ -15,7 +15,7 @@ Popup {
     modal: true
     focus: true
     width: Math.min(parent ? parent.width * 0.82 : 480, 520)
-    height: Math.min(parent ? parent.height * 0.82 : 600, 640)
+    height: parent ? parent.height - 40 : 600
     padding: 0
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     background: DialogFrame { }
