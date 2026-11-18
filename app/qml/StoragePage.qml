@@ -4,53 +4,40 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-Popup {
+WindowPopup {
     id: root
     signal back()
+    readonly property int kWindowWidth: 600
 
     readonly property var session: App.session
     readonly property var info: root.session ? root.session.deviceStorage : ({})
     readonly property bool busy: root.info.busy === true
     readonly property var chats: root.info.chats !== undefined ? root.info.chats : []
 
-    modal: true
-    focus: true
-    anchors.centerIn: Overlay.overlay
-    width: Math.min(600, parent ? parent.width - 24 : 600)
-    height: Math.min(parent ? parent.height - 40 : 600, implicitHeight)
-    padding: 0
-    background: DialogFrame { }
+    preferredWidth: root.kWindowWidth
 
     onOpened: if (root.session) { root.session.measureDeviceStorage() }
 
     contentItem: ColumnLayout {
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: 14
-            IconButton { iconName: "back"; onClicked: root.back() }
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 0
-                Label {
-                    text: qsTr("Storage")
-                    color: Theme.green
-                    font.pixelSize: Theme.fontTitle
-                    font.weight: Font.DemiBold
-                }
-                Label {
-                    visible: root.session !== null
-                    text: root.session ? root.session.displayName : ""
-                    color: Theme.textDim
-                    font.pixelSize: Theme.fontSmall
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
-                }
-            }
-            IconButton { iconName: "close"; onClicked: root.close() }
+        WindowHeader {
+            title: qsTr("Storage")
+            showBack: true
+            onBackClicked: root.back()
+            onCloseClicked: root.close()
         }
-        Hairline { }
+        Label {
+            visible: root.session !== null
+            text: root.session ? root.session.displayName : ""
+            color: Theme.textDim
+            font.pixelSize: Theme.fontSmall
+            elide: Text.ElideRight
+            Layout.fillWidth: true
+            Layout.leftMargin: Theme.contentInset
+            Layout.rightMargin: Theme.contentInset
+            Layout.topMargin: Theme.contentInset
+        }
 
         ScrollView {
             Layout.fillWidth: true
@@ -65,7 +52,7 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 14
+                    Layout.margins: Theme.contentInset
                     spacing: 4
                     Label {
                         text: qsTr("Database file: %1").arg(App.humanBytes(root.info.fileBytes))
@@ -113,7 +100,7 @@ Popup {
                 Label {
                     visible: root.chats.length === 0
                     Layout.fillWidth: true
-                    Layout.margins: 14
+                    Layout.margins: Theme.contentInset
                     text: root.session ? qsTr("Nothing stored yet") : qsTr("No account is open")
                     color: Theme.textFaint
                     font.pixelSize: Theme.fontSmall
@@ -128,8 +115,8 @@ Popup {
                         readonly property bool saved: root.session !== null
                             && root.session.isSavedChat(chatRow.modelData.peer)
                         Layout.fillWidth: true
-                        Layout.leftMargin: 14
-                        Layout.rightMargin: 14
+                        Layout.leftMargin: Theme.contentInset
+                        Layout.rightMargin: Theme.contentInset
                         spacing: 10
                         SavedMark {
                             visible: chatRow.saved
@@ -181,7 +168,7 @@ Popup {
 
                 Label {
                     Layout.fillWidth: true
-                    Layout.margins: 14
+                    Layout.margins: Theme.contentInset
                     Layout.topMargin: 4
                     text: qsTr("Trimming happens only on this device")
                     color: Theme.textFaint
@@ -199,14 +186,11 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true
-        width: Math.min(380, parent ? parent.width - 24 : 380)
+        width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
         background: DialogFrame { }
-        header: Label {
-            text: qsTr("Trim %1").arg(trimDialog.who)
-            color: Theme.green
-            font.pixelSize: Theme.fontTitle
-            font.weight: Font.DemiBold
-            padding: 14
+        header: WindowHeader {
+            title: qsTr("Trim %1").arg(trimDialog.who)
+            showClose: false
         }
         footer: DialogButtons {
             acceptText: qsTr("Cancel")

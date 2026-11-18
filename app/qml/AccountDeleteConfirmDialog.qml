@@ -15,7 +15,7 @@ Dialog {
     anchors.centerIn: Overlay.overlay
     modal: true
     focus: true
-    width: Math.min(360, parent ? parent.width - 24 : 360)
+    width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
     title: qsTr("Delete account")
     footer: DialogButtons {
         acceptText: qsTr("Delete everywhere")
@@ -29,12 +29,9 @@ Dialog {
     }
     onAccepted: root.confirmed(root.accountId)
     background: DialogFrame { destructive: true }
-    header: Label {
-        text: qsTr("Delete account")
-        color: Theme.green
-        font.pixelSize: Theme.fontTitle
-        font.weight: Font.DemiBold
-        padding: 14
+    header: WindowHeader {
+        title: root.title
+        showClose: false
     }
     contentItem: Label {
         text: (root.accountName.length > 0

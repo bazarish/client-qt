@@ -162,12 +162,16 @@ Item {
         bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: Overlay.overlay
         modal: true
+        width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
         focus: true
         title: qsTr("Backup password")
         onAccepted: App.importAccount(nameField.text.trim(), root.pendingBackupFile,
             backupPass.text, passField.text)
         background: DialogFrame { }
-        header: Label { text: qsTr("Backup password"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        header: WindowHeader {
+            title: backupPassDialog.title
+            showClose: false
+        }
         footer: DialogButtons { onAccepted: backupPassDialog.accept(); onRejected: backupPassDialog.reject() }
         contentItem: TextField {
             id: backupPass

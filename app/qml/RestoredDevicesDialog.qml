@@ -35,14 +35,12 @@ Dialog {
     modal: true
     focus: true
     closePolicy: Popup.NoAutoClose
-    width: Math.min(420, parent ? parent.width - 24 : 420)
+    width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
     background: DialogFrame { }
-    header: Label {
-        text: qsTr("Other devices")
-        color: Theme.warn
-        font.pixelSize: Theme.fontTitle
-        font.weight: Font.DemiBold
-        padding: 14
+    header: WindowHeader {
+        title: qsTr("Other devices")
+        titleColor: Theme.warn
+        showClose: false
     }
     footer: DialogButtons {
         acceptText: root.chosenCount > 0 ? qsTr("Revoke") : qsTr("Keep all")

@@ -4,7 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-Popup {
+WindowPopup {
     id: root
     property string title: ""
     property string note: ""
@@ -14,36 +14,17 @@ Popup {
     readonly property int kCopiedMs: 1500
     signal back()
 
-    // The window's overlay: declared inside a page, the sheet would size itself to that page's column.
-    parent: Overlay.overlay
-    modal: true
-    focus: true
-    anchors.centerIn: Overlay.overlay
-    width: Math.min(420, parent ? parent.width - 24 : 420)
-    height: Math.min(parent ? parent.height - 40 : 640, body.implicitHeight + 84)
-    padding: 0
-
-    background: DialogFrame { }
-
     onOpened: root.copied = false
 
     contentItem: ColumnLayout {
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: 14
-            IconButton { visible: root.hasBack; iconName: "back"; onClicked: root.back() }
-            Label {
-                text: root.title
-                color: Theme.green
-                font.pixelSize: Theme.fontTitle
-                font.weight: Font.DemiBold
-                Layout.fillWidth: true
-            }
-            IconButton { iconName: "close"; onClicked: root.close() }
+        WindowHeader {
+            title: root.title
+            showBack: root.hasBack
+            onBackClicked: root.back()
+            onCloseClicked: root.close()
         }
-        Hairline { }
 
         ScrollView {
             Layout.fillWidth: true
@@ -58,9 +39,9 @@ Popup {
 
                 Label {
                     Layout.fillWidth: true
-                    Layout.leftMargin: 16
-                    Layout.rightMargin: 16
-                    Layout.topMargin: 14
+                    Layout.leftMargin: Theme.contentInset
+                    Layout.rightMargin: Theme.contentInset
+                    Layout.topMargin: Theme.contentInset
                     text: root.note
                     color: Theme.textDim
                     font.pixelSize: Theme.fontSmall
@@ -72,8 +53,8 @@ Popup {
                 }
                 ScrollView {
                     Layout.fillWidth: true
-                    Layout.leftMargin: 16
-                    Layout.rightMargin: 16
+                    Layout.leftMargin: Theme.contentInset
+                    Layout.rightMargin: Theme.contentInset
                     Layout.preferredHeight: 96
                     TextArea {
                         id: linkArea
@@ -88,9 +69,9 @@ Popup {
                 }
                 MenuButton {
                     Layout.fillWidth: true
-                    Layout.leftMargin: 16
-                    Layout.rightMargin: 16
-                    Layout.bottomMargin: 14
+                    Layout.leftMargin: Theme.contentInset
+                    Layout.rightMargin: Theme.contentInset
+                    Layout.bottomMargin: Theme.contentInset
                     iconName: "copy"
                     text: root.copied ? qsTr("Copied") : qsTr("Copy link")
                     onClicked: {

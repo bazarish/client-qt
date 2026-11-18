@@ -7,4 +7,5 @@ QtObject {
     property color surface: "white"; property color text: "black"; property color textDim: "gray"
     property color textFaint: "gray"; property int fontSmall: 11; property int fontTitle: 16
     property int pressFocus: Qt.StrongFocus
+    property int dialogWidth: 380; property int windowSideRoom: 24
 }

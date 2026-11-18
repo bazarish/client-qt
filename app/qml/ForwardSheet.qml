@@ -4,7 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-Popup {
+WindowPopup {
     id: root
     bottomMargin: activeFocus ? App.keyboardInset : 0
     property var session: null
@@ -25,37 +25,20 @@ Popup {
         root.open()
     }
 
-    modal: true
-    focus: true
-    anchors.centerIn: Overlay.overlay
-    width: Math.min(420, parent ? parent.width - 24 : 420)
-    height: Math.min(parent ? parent.height - 80 : 520, implicitHeight)
-    padding: 0
-
-    background: DialogFrame { }
-
     contentItem: ColumnLayout {
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: 14
-            spacing: 8
-            Icon { name: "forward"; color: Theme.accent; size: 16 }
-            Label {
-                text: qsTr("Forward to")
-                color: Theme.text
-                font.pixelSize: Theme.fontTitle
-                Layout.fillWidth: true
-            }
-            IconButton { iconName: "close"; onClicked: root.close() }
+        WindowHeader {
+            title: qsTr("Forward to")
+            onCloseClicked: root.close()
         }
 
         FormField {
             id: filter
             Layout.fillWidth: true
-            Layout.leftMargin: 14
-            Layout.rightMargin: 14
+            Layout.leftMargin: Theme.contentInset
+            Layout.rightMargin: Theme.contentInset
+            Layout.topMargin: Theme.contentInset
             placeholder: qsTr("Search chats")
         }
 

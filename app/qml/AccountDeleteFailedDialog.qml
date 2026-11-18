@@ -23,14 +23,11 @@ Dialog {
     anchors.centerIn: Overlay.overlay
     modal: true
     focus: true
-    width: Math.min(400, parent ? parent.width - 24 : 400)
+    width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
     background: DialogFrame { destructive: true }
-    header: Label {
-        text: qsTr("The account was not deleted")
-        color: Theme.green
-        font.pixelSize: Theme.fontTitle
-        font.weight: Font.DemiBold
-        padding: 14
+    header: WindowHeader {
+        title: qsTr("The account was not deleted")
+        showClose: false
     }
     footer: DialogButtons {
         acceptText: qsTr("Try again")

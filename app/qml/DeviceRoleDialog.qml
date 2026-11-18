@@ -11,14 +11,11 @@ Dialog {
     anchors.centerIn: Overlay.overlay
     modal: true
     focus: true
-    width: Math.min(360, (Overlay.overlay ? Overlay.overlay.width : 360) - 2 * Theme.spacing)
+    width: Math.min(Theme.dialogWidth, (Overlay.overlay ? Overlay.overlay.width : Theme.dialogWidth) - Theme.windowSideRoom)
     background: DialogFrame { }
-    header: Label {
-        text: qsTr("Device role")
-        color: Theme.green
-        font.pixelSize: Theme.fontTitle
-        font.weight: Font.DemiBold
-        padding: 14
+    header: WindowHeader {
+        title: qsTr("Device role")
+        showClose: false
     }
     footer: DialogButtons {
         acceptText: qsTr("Cancel")

@@ -4,7 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-Popup {
+WindowPopup {
     id: root
     property var session: null
     signal back()
@@ -16,6 +16,7 @@ Popup {
     property bool allCopied: false
     readonly property int copiedFlashMs: 1500
     readonly property int kOneLineWidth: 600
+    readonly property int kWindowWidth: 720
 
     Timer {
         id: copiedReset
@@ -23,13 +24,8 @@ Popup {
         onTriggered: { root.copiedKey = ""; root.allCopied = false }
     }
 
-    modal: true
-    focus: true
-    anchors.centerIn: Overlay.overlay
-    width: Math.min(720, parent ? parent.width - 24 : 720)
-    height: parent ? parent.height - 40 : 600
-    padding: 0
-    background: DialogFrame { }
+    preferredWidth: root.kWindowWidth
+    height: parent ? parent.height - Theme.windowTopRoom : implicitHeight
 
     Connections {
         target: root.session
@@ -86,25 +82,16 @@ Popup {
     contentItem: ColumnLayout {
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: 14
-            IconButton { iconName: "back"; onClicked: root.back() }
-            Label {
-                text: qsTr("Connection log")
-                color: Theme.green
-                font.pixelSize: Theme.fontTitle
-                font.weight: Font.DemiBold
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-            }
-            IconButton { iconName: "close"; onClicked: root.close() }
+        WindowHeader {
+            title: qsTr("Connection log")
+            showBack: true
+            onBackClicked: root.back()
+            onCloseClicked: root.close()
         }
-        Hairline { }
 
         Label {
             Layout.fillWidth: true
-            Layout.margins: 14
+            Layout.margins: Theme.contentInset
             Layout.bottomMargin: 0
             text: qsTr("The last %1 events of this account, newest first").arg(lines.count)
             color: Theme.textDim
@@ -116,7 +103,7 @@ Popup {
             id: list
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.margins: 14
+            Layout.margins: Theme.contentInset
             clip: true
             spacing: 2
             model: lines
@@ -203,7 +190,7 @@ Popup {
         Hairline { }
         RowLayout {
             Layout.fillWidth: true
-            Layout.margins: 14
+            Layout.margins: Theme.contentInset
             spacing: 8
             MenuButton {
                 Layout.fillWidth: true

@@ -9,6 +9,7 @@ Dialog {
     property string accountId: ""
     bottomMargin: activeFocus ? App.keyboardInset : 0
     modal: true
+    width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
     focus: true
     closePolicy: Popup.CloseOnEscape
 
@@ -41,7 +42,11 @@ Dialog {
     }
     onOpened: field.forceActiveFocus()
     background: DialogFrame { }
-    header: Label { text: dialog.title; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14; visible: text.length > 0 }
+    header: WindowHeader {
+        title: dialog.title
+        showClose: false
+        visible: dialog.title.length > 0
+    }
     footer: DialogButtons { acceptText: qsTr("Unlock"); onAccepted: dialog.submit(); onRejected: dialog.reject() }
     contentItem: ColumnLayout {
         spacing: 6

@@ -4,7 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-Popup {
+WindowPopup {
     id: root
     property var session: null
     readonly property string uri: session ? session.ownInvite : ""
@@ -18,8 +18,6 @@ Popup {
     property bool showQr: false
     readonly property int kLinkLines: 4
     readonly property int kTagPadding: 10
-    readonly property int kHeaderMargin: 14
-    readonly property int kContentInset: 18
     readonly property string kI2pHost: ".i2p"
     readonly property int tagWidth: Math.ceil(Math.max(botTag.advanceWidth, wwwTag.advanceWidth,
         i2pTag.advanceWidth)) + 2 * kTagPadding
@@ -103,43 +101,34 @@ Popup {
         }
     }
 
-    modal: true
-    focus: true
-    anchors.centerIn: Overlay.overlay
-    width: Math.min(460, parent ? parent.width - 24 : 460)
     margins: Theme.spacing
-    padding: 0
     onAboutToShow: sheetScroll.toTop()
     onOpened: {
         publishing = ""
         showQr = false
     }
 
-    background: DialogFrame { }
-
     contentItem: ColumnLayout {
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: root.kHeaderMargin
-            IconButton { iconName: "back"; onClicked: root.back() }
-            Label { text: qsTr("My invite"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
+        WindowHeader {
+            title: qsTr("My invite")
+            showBack: true
+            onBackClicked: root.back()
+            onCloseClicked: root.close()
             IconButton {
                 iconName: "qr"
                 visible: root.hasAliases && root.hasInvite
                 tint: root.showQr ? Theme.accent : Theme.textDim
                 onClicked: root.showQr = !root.showQr
             }
-            IconButton { iconName: "close"; onClicked: root.close() }
         }
-        Hairline { }
 
         ScrollColumn {
             id: sheetScroll
             Layout.fillWidth: true
             Layout.fillHeight: true
-            inset: root.kContentInset
+            inset: Theme.contentInset
             spacing: 12
 
             Label {
@@ -394,14 +383,11 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true
-        width: Math.min(380, root.width)
+        width: Math.min(Theme.dialogWidth, root.width)
         background: DialogFrame { }
-        header: Label {
-            text: qsTr("Word for %1").arg("!" + wordDialog.alias)
-            color: Theme.text
-            font.pixelSize: Theme.fontTitle
-            font.weight: Font.DemiBold
-            padding: 14
+        header: WindowHeader {
+            title: qsTr("Word for %1").arg("!" + wordDialog.alias)
+            showClose: false
         }
         footer: DialogButtons {
             acceptText: qsTr("Save")

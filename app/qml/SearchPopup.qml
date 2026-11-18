@@ -12,10 +12,12 @@ Popup {
 
     property var results: []
 
+    parent: Overlay.overlay
+    anchors.centerIn: Overlay.overlay
     modal: true
     focus: true
-    width: Math.min(parent ? parent.width * 0.82 : 480, 520)
-    height: parent ? parent.height - 40 : 600
+    width: Math.min(Theme.windowWidth, parent ? parent.width - Theme.windowSideRoom : Theme.windowWidth)
+    height: parent ? parent.height - Theme.windowTopRoom : implicitHeight
     padding: 0
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     background: DialogFrame { }

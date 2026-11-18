@@ -183,7 +183,7 @@ Item {
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true
-        width: Math.min(360, parent ? parent.width - 24 : 360)
+        width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
         footer: DialogButtons {
             acceptText: groupActionDialog.command === "exclude" ? qsTr("Exclude")
                 : groupActionDialog.command === "block" ? qsTr("Block") : qsTr("Delete")
@@ -202,16 +202,13 @@ Item {
             }
         }
         background: DialogFrame { destructive: true }
-        header: Label {
-            text: groupActionDialog.command === "exclude"
+        header: WindowHeader {
+            title: groupActionDialog.command === "exclude"
                 ? qsTr("Exclude %1?").arg(groupActionDialog.author)
                 : groupActionDialog.command === "block"
                     ? qsTr("Block %1?").arg(groupActionDialog.author)
                     : qsTr("Delete for everyone?")
-            color: Theme.green
-            font.pixelSize: Theme.fontTitle
-            font.weight: Font.DemiBold
-            padding: 14
+            showClose: false
         }
         contentItem: Label {
             text: groupActionDialog.command === "exclude"
@@ -230,7 +227,7 @@ Item {
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true
-        width: Math.min(360, parent ? parent.width - 24 : 360)
+        width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
         readonly property int own: root.session && !root.session.activeIsGroup ? root.chosenOwn : 0
         footer: DialogButtons {
             acceptText: qsTr("Delete")
@@ -245,12 +242,9 @@ Item {
             root.clearChosen()
         }
         background: DialogFrame { destructive: true }
-        header: Label {
-            text: qsTr("Delete selected messages?")
-            color: Theme.green
-            font.pixelSize: Theme.fontTitle
-            font.weight: Font.DemiBold
-            padding: 14
+        header: WindowHeader {
+            title: qsTr("Delete selected messages?")
+            showClose: false
         }
         contentItem: Label {
             text: root.savedChat ? qsTr("They are removed from your other devices too")
@@ -268,7 +262,7 @@ Item {
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true
-        width: Math.min(360, parent ? parent.width - 24 : 360)
+        width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
         readonly property bool forEveryone: root.pendingDeleteOutgoing && root.session
         footer: DialogButtons {
             acceptText: qsTr("Delete")
@@ -285,12 +279,9 @@ Item {
         }
         onRejected: root.pendingDeleteId = null
         background: DialogFrame { destructive: true }
-        header: Label {
-            text: qsTr("Delete message")
-            color: Theme.green
-            font.pixelSize: Theme.fontTitle
-            font.weight: Font.DemiBold
-            padding: 14
+        header: WindowHeader {
+            title: qsTr("Delete message")
+            showClose: false
         }
         contentItem: Label {
             text: root.savedChat

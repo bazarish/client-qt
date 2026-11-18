@@ -15,7 +15,8 @@ Dialog {
     closePolicy: Popup.CloseOnEscape
     onClosed: if (root.session && root.session.connecting) { root.suppressed = true }
     anchors.centerIn: Overlay.overlay
-    width: Math.min(parent ? parent.width - 2 * Theme.spacing : 420, 460)
+    width: Math.min(Theme.windowWidth, parent ? parent.width - Theme.windowSideRoom : Theme.windowWidth)
+    height: Math.min(parent ? parent.height - Theme.windowTopRoom : implicitHeight, implicitHeight)
     padding: 0
 
     Connections {
@@ -33,26 +34,20 @@ Dialog {
     }
 
     background: DialogFrame { }
+    header: WindowHeader {
+        title: qsTr("Connecting this account")
+        onCloseClicked: root.close()
+    }
 
     contentItem: ColumnLayout {
         spacing: 14
         Layout.fillWidth: true
 
-        Label {
-            text: qsTr("Connecting this account")
-            color: Theme.green
-            font.pixelSize: Theme.fontTitle
-            font.weight: Font.DemiBold
-            padding: 16
-            bottomPadding: 0
-            wrapMode: Text.Wrap
-            Layout.fillWidth: true
-        }
-
         ColumnLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 16
-            Layout.rightMargin: 16
+            Layout.topMargin: Theme.contentInset
+            Layout.leftMargin: Theme.contentInset
+            Layout.rightMargin: Theme.contentInset
             spacing: 8
 
             ProgressBar {
@@ -87,8 +82,8 @@ Dialog {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 16
-            Layout.rightMargin: 16
+            Layout.leftMargin: Theme.contentInset
+            Layout.rightMargin: Theme.contentInset
             Label {
                 text: qsTr("The panel on the right shows the progress")
                 color: Theme.textFaint

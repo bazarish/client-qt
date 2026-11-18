@@ -5,7 +5,7 @@ import QtQuick.Layouts
 import QtQuick.Dialogs
 import Bazarish
 
-Popup {
+WindowPopup {
     id: root
     bottomMargin: activeFocus ? App.keyboardInset : 0
     property var session: null
@@ -14,13 +14,6 @@ Popup {
     signal showStorage()
     signal showRouterStatus()
     signal showConnectionLog()
-
-    modal: true
-    focus: true
-    anchors.centerIn: Overlay.overlay
-    width: Math.min(460, parent ? parent.width - 24 : 460)
-    height: Math.min(parent ? parent.height - 40 : 600, implicitHeight)
-    padding: 0
 
     readonly property bool overviewFailed: session !== null && session.overviewFailed
     readonly property string awaitingText: overviewFailed ? qsTr("Unknown") : qsTr("Asking your server…")
@@ -31,21 +24,16 @@ Popup {
     onOpened: if (session) { session.watchOverview(true); delegationDaysBox.value = session.delegationDays }
     onClosed: if (session) { session.watchOverview(false) }
 
-    background: DialogFrame { }
-
     property string pendingExportFile: ""
     property bool pendingExportPrimary: true
 
     contentItem: ColumnLayout {
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: 14
-            Label { text: qsTr("Account"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
-            IconButton { iconName: "close"; onClicked: root.close() }
+        WindowHeader {
+            title: qsTr("Account")
+            onCloseClicked: root.close()
         }
-        Hairline { }
 
         ScrollView {
             id: settingsScroll
@@ -61,7 +49,7 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 8
                     RowLayout {
                         Layout.fillWidth: true
@@ -160,7 +148,7 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 6
                     Label {
                         text: qsTr("Server connection")
@@ -317,7 +305,7 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 6
                     Label {
                         text: qsTr("Devices")
@@ -387,7 +375,7 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 8
                     Label {
                         text: qsTr("Your I2P destination")
@@ -670,7 +658,7 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 8
                     Label { text: qsTr("Privacy"); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                     RowLayout {
@@ -733,7 +721,7 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 8
                     Label { text: qsTr("Database"); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                     MenuButton {
@@ -771,7 +759,7 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 8
                     RowLayout {
                         Layout.fillWidth: true
@@ -792,7 +780,7 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 8
                     Label { text: qsTr("Block list"); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                     readonly property var rows: (root.session && root.session.contactsRevision >= 0)
@@ -879,14 +867,11 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true
-        width: Math.min(380, root.width - 24)
+        width: Math.min(Theme.dialogWidth, root.width - Theme.windowSideRoom)
         background: DialogFrame { destructive: true }
-        header: Label {
-            text: qsTr("Revoke this device?")
-            color: Theme.green
-            font.pixelSize: Theme.fontTitle
-            font.weight: Font.DemiBold
-            padding: 14
+        header: WindowHeader {
+            title: qsTr("Revoke this device?")
+            showClose: false
         }
         footer: DialogButtons {
             acceptText: qsTr("Revoke")
@@ -933,14 +918,11 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true
-        width: Math.min(380, root.width - 24)
+        width: Math.min(Theme.dialogWidth, root.width - Theme.windowSideRoom)
         background: DialogFrame { }
-        header: Label {
-            text: qsTr("Take offline?")
-            color: Theme.text
-            font.pixelSize: Theme.fontTitle
-            font.weight: Font.DemiBold
-            padding: 14
+        header: WindowHeader {
+            title: qsTr("Take offline?")
+            showClose: false
         }
         footer: DialogButtons {
             acceptText: qsTr("Take offline")
@@ -962,14 +944,11 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true
-        width: Math.min(360, root.width - 24)
+        width: Math.min(Theme.dialogWidth, root.width - Theme.windowSideRoom)
         background: DialogFrame { }
-        header: Label {
-            text: qsTr("Remove your avatar?")
-            color: Theme.text
-            font.pixelSize: Theme.fontTitle
-            font.weight: Font.DemiBold
-            padding: 14
+        header: WindowHeader {
+            title: qsTr("Remove your avatar?")
+            showClose: false
         }
         footer: DialogButtons {
             acceptText: qsTr("Remove")
@@ -992,11 +971,14 @@ Popup {
         modal: true
         focus: true
         // Without a width of its own the dialog grows to fit its text on one line.
-        width: Math.min(320, parent ? parent.width - 24 : 320)
+        width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
         title: qsTr("Change name")
         onAccepted: if (root.session) root.session.setDisplayName(renameSelfField.text)
         background: DialogFrame { }
-        header: Label { text: qsTr("Change name"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        header: WindowHeader {
+            title: renameSelfDialog.title
+            showClose: false
+        }
         footer: DialogButtons {
             acceptText: qsTr("Save")
             acceptEnabled: renameSelfField.displayText.trim().length > 0
@@ -1026,12 +1008,16 @@ Popup {
         bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: Overlay.overlay
         modal: true
+        width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
         focus: true
         title: qsTr("Backup password")
         onAccepted: root.session.exportAccount(
             root.pendingExportFile, exportPass.text, root.pendingExportPrimary)
         background: DialogFrame { }
-        header: Label { text: qsTr("Backup password"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        header: WindowHeader {
+            title: exportPassDialog.title
+            showClose: false
+        }
         footer: DialogButtons { onAccepted: exportPassDialog.accept(); onRejected: exportPassDialog.reject() }
         contentItem: TextField { id: exportPass; echoMode: TextInput.Password; placeholderText: qsTr("password"); color: Theme.text; placeholderTextColor: Theme.textDim; implicitWidth: 260; onAccepted: exportPassDialog.accept()
             background: Rectangle { radius: 8; color: Theme.surface; border.color: exportPass.activeFocus ? Theme.accent : Theme.border } }
@@ -1042,11 +1028,14 @@ Popup {
         bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: Overlay.overlay
         modal: true
+        width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
         focus: true
         title: qsTr("Database password")
         background: DialogFrame { }
-        header: Label { text: qsTr("Database password"); color: Theme.green
-            font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        header: WindowHeader {
+            title: passwordDialog.title
+            showClose: false
+        }
         readonly property bool matched: newPass.text === newPassAgain.text
         readonly property bool reserved: newPass.text === App.reservedPassphrase
         readonly property bool choosable: matched && !reserved
@@ -1093,24 +1082,22 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true
-        width: Math.min(460, (Overlay.overlay ? Overlay.overlay.width : 460) - 2 * Theme.spacing)
+        parent: Overlay.overlay
+        width: Math.min(Theme.windowWidth, parent ? parent.width - Theme.windowSideRoom : Theme.windowWidth)
+        height: Math.min(parent ? parent.height - Theme.windowTopRoom : implicitHeight, implicitHeight)
         margins: Theme.spacing
         bottomMargin: Theme.spacing + (activeFocus ? App.keyboardInset : 0)
         onOpened: connectionForm.reset()
         padding: 0
         background: DialogFrame { }
-        header: RowLayout {
-            spacing: 4
-            IconButton { iconName: "back"; Layout.leftMargin: 8; onClicked: connectionDialog.close() }
-            Label {
-                text: qsTr("Server connection")
-                color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
-                Layout.fillWidth: true; Layout.rightMargin: 14; topPadding: 14; bottomPadding: 14
-                wrapMode: Text.Wrap
-            }
+        header: WindowHeader {
+            title: qsTr("Server connection")
+            showBack: true
+            onBackClicked: connectionDialog.close()
+            onCloseClicked: connectionDialog.close()
         }
         contentItem: ScrollColumn {
-            inset: Theme.spacing
+            inset: Theme.contentInset
             spacing: 12
             ServerConnectForm {
                 id: connectionForm
@@ -1130,12 +1117,11 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true
-        width: Math.min(360, (Overlay.overlay ? Overlay.overlay.width : 360) - 2 * Theme.spacing)
+        width: Math.min(Theme.dialogWidth, (Overlay.overlay ? Overlay.overlay.width : Theme.dialogWidth) - Theme.windowSideRoom)
         background: DialogFrame { }
-        header: Label {
-            text: qsTr("Server connection")
-            color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
-            padding: 14
+        header: WindowHeader {
+            title: qsTr("Server connection")
+            showClose: false
         }
         contentItem: ButtonRow {
             MenuButton {
@@ -1178,12 +1164,15 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true
-        width: Math.min(360, (Overlay.overlay ? Overlay.overlay.width : 360) - 2 * Theme.spacing)
+        width: Math.min(Theme.dialogWidth, (Overlay.overlay ? Overlay.overlay.width : Theme.dialogWidth) - Theme.windowSideRoom)
         title: qsTr("New key")
         footer: DialogButtons { acceptText: qsTr("New key"); danger: true; onAccepted: newKeyDialog.accept(); onRejected: newKeyDialog.reject() }
         onAccepted: if (root.session) root.session.replacePersonalKey()
         background: DialogFrame { destructive: true }
-        header: Label { text: qsTr("New key"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        header: WindowHeader {
+            title: newKeyDialog.title
+            showClose: false
+        }
         contentItem: Label {
             text: qsTr("Your address changes. Every invite link you have handed out stops working and the old address stops answering at once. Your contacts are sent the new details automatically, and your aliases are repointed by themselves. This helps in the rare case of shaking off spam. Do not take this step unless you are sure why you need it.")
             color: Theme.text

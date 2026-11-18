@@ -4,36 +4,18 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-Popup {
+WindowPopup {
     id: root
     property var session: null
-
-    modal: true
-    focus: true
-    anchors.centerIn: Overlay.overlay
-    width: Math.min(420, parent ? parent.width - 24 : 420)
-    height: Math.min(parent ? parent.height - 80 : 520, implicitHeight)
-    padding: 0
-
-    background: DialogFrame { }
 
     onOpened: Qt.inputMethod.hide()
 
     contentItem: ColumnLayout {
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: 14
-            spacing: 8
-            Icon { name: "list"; color: Theme.accent; size: 16 }
-            Label {
-                text: qsTr("Bot menu")
-                color: Theme.text
-                font.pixelSize: Theme.fontTitle
-                Layout.fillWidth: true
-            }
-            IconButton { iconName: "close"; onClicked: root.close() }
+        WindowHeader {
+            title: qsTr("Bot menu")
+            onCloseClicked: root.close()
         }
 
         ListView {

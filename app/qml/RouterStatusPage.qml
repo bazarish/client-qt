@@ -4,17 +4,9 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-Popup {
+WindowPopup {
     id: root
     signal back()
-
-    modal: true
-    focus: true
-    anchors.centerIn: Overlay.overlay
-    width: Math.min(460, parent ? parent.width - 24 : 460)
-    height: Math.min(parent ? parent.height - 40 : 600, implicitHeight)
-    padding: 0
-    background: DialogFrame { }
 
     readonly property int kSliderHandle: 14
     readonly property int kSliderTrackHeight: 4
@@ -52,14 +44,12 @@ Popup {
     contentItem: ColumnLayout {
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: 14
-            IconButton { iconName: "back"; onClicked: root.back() }
-            Label { text: qsTr("I2P router"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
-            IconButton { iconName: "close"; onClicked: root.close() }
+        WindowHeader {
+            title: qsTr("I2P router")
+            showBack: true
+            onBackClicked: root.back()
+            onCloseClicked: root.close()
         }
-        Hairline { }
 
         ScrollView {
             Layout.fillWidth: true
@@ -73,7 +63,7 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 10
 
                     Label { text: qsTr("Status"); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
@@ -135,7 +125,7 @@ Popup {
                 ColumnLayout {
                     visible: I2p.running
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 8
                     Label {
                         text: qsTr("Local destinations (%1)").arg(I2p.destinations.length)
@@ -232,7 +222,7 @@ Popup {
                 ColumnLayout {
                     visible: !I2p.gatewayEnabled
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 8
                     ColumnLayout {
                         Layout.fillWidth: true
@@ -312,7 +302,7 @@ Popup {
                 ColumnLayout {
                     visible: I2p.running && !I2p.gatewayEnabled
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 8
                     Label {
                         visible: !I2p.transportsUnread
@@ -378,7 +368,7 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 8
                     visible: !I2p.samEnabled && !I2p.gatewayEnabled
                     RowLayout {

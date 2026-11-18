@@ -18,14 +18,12 @@ Dialog {
     anchors.centerIn: Overlay.overlay
     modal: true
     focus: true
-    width: Math.min(460, parent ? parent.width - 24 : 460)
+    width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
     background: DialogFrame { }
-    header: Label {
-        text: qsTr("Open an external site?")
-        color: Theme.warn
-        font.pixelSize: Theme.fontTitle
-        font.weight: Font.DemiBold
-        padding: 14
+    header: WindowHeader {
+        title: qsTr("Open an external site?")
+        titleColor: Theme.warn
+        showClose: false
     }
     footer: DialogButtons {
         acceptText: qsTr("Open")

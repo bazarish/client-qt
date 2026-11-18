@@ -5,19 +5,12 @@ import QtQuick.Layouts
 import Bazarish
 import "Format.js" as Format
 
-Popup {
+WindowPopup {
     id: root
     property var session: null
 
-    modal: true
-    focus: true
-    readonly property int kLeastWidth: 420
-    readonly property int kEdge: 14
-    width: Math.min(parent ? parent.width - 24 : root.kLeastWidth,
-        Math.max(root.kLeastWidth, actions.implicitWidth + 2 * root.kEdge))
-    padding: 0
+    preferredWidth: Math.max(Theme.windowWidth, actions.implicitWidth + 2 * Theme.contentInset)
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    background: DialogFrame { }
 
     readonly property bool recording: root.session ? root.session.voiceRecording : false
     readonly property bool takeReady: root.session ? root.session.voiceTakeReady : false
@@ -78,23 +71,14 @@ Popup {
     contentItem: ColumnLayout {
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: 14
-            Label {
-                text: qsTr("Voice message")
-                color: Theme.green
-                font.pixelSize: Theme.fontTitle
-                font.weight: Font.DemiBold
-                Layout.fillWidth: true
-            }
-            IconButton { iconName: "close"; onClicked: root.close() }
+        WindowHeader {
+            title: qsTr("Voice message")
+            onCloseClicked: root.close()
         }
-        Hairline { }
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.margins: 14
+            Layout.margins: Theme.contentInset
             Layout.preferredHeight: 96
             radius: Theme.radiusSmall
             color: Theme.deep
@@ -174,7 +158,7 @@ Popup {
             readonly property int kButton: 56
             readonly property int kIcon: 24
             Layout.alignment: Qt.AlignHCenter
-            Layout.margins: root.kEdge
+            Layout.margins: Theme.contentInset
             spacing: 24
 
             Item {

@@ -4,21 +4,14 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-Popup {
+WindowPopup {
     id: root
     Connections {
         target: App
         function onAccountOpened() { root.close() }
     }
 
-    modal: true
-    focus: true
-    anchors.centerIn: Overlay.overlay
-    width: Math.min(420, parent ? parent.width - 24 : 420)
-    height: Math.min(parent ? parent.height - 80 : 560, implicitHeight)
     readonly property int unreadSlotWidth: 34
-    padding: 0
-    background: DialogFrame { }
 
     function statusText(m) {
         if (!m.open) {
@@ -42,13 +35,10 @@ Popup {
     contentItem: ColumnLayout {
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: 14
-            Label { text: qsTr("Accounts"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
-            IconButton { iconName: "close"; onClicked: root.close() }
+        WindowHeader {
+            title: qsTr("Accounts")
+            onCloseClicked: root.close()
         }
-        Hairline { }
 
         ListView {
             Layout.fillWidth: true

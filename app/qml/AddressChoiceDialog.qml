@@ -14,14 +14,12 @@ Dialog {
     modal: true
     focus: true
     closePolicy: Popup.NoAutoClose
-    width: Math.min(420, parent ? parent.width - 24 : 420)
+    width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
     background: DialogFrame { }
-    header: Label {
-        text: qsTr("Your server serves another address")
-        color: Theme.warn
-        font.pixelSize: Theme.fontTitle
-        font.weight: Font.DemiBold
-        padding: 14
+    header: WindowHeader {
+        title: qsTr("Your server serves another address")
+        titleColor: Theme.warn
+        showClose: false
     }
     footer: DialogButtons {
         acceptText: qsTr("Publish this one")

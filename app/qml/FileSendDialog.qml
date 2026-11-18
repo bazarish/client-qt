@@ -18,16 +18,13 @@ Dialog {
     anchors.centerIn: Overlay.overlay
     modal: true
     focus: true
-    width: Math.min(380, parent ? parent.width - 24 : 380)
+    width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
     padding: 0
 
     background: DialogFrame { }
-    header: Label {
-        text: qsTr("Send file")
-        color: Theme.green
-        font.pixelSize: Theme.fontTitle
-        font.weight: Font.DemiBold
-        padding: 14
+    header: WindowHeader {
+        title: qsTr("Send file")
+        showClose: false
     }
     footer: DialogButtons {
         acceptText: qsTr("Send")

@@ -4,27 +4,17 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-Popup {
+WindowPopup {
     id: root
     bottomMargin: activeFocus ? App.keyboardInset : 0
     property var session: null
     property bool searching: false
     readonly property int kRowHeight: 44
     readonly property int kLetterSize: 30
-    readonly property int kInset: 14
     readonly property var members: root.session
         ? root.session.membersInOrder(root.session.activeMembers, Tr.language) : []
     readonly property var shown: root.session && root.searching
         ? root.session.membersMatching(root.members, filter.displayText) : root.members
-
-    modal: true
-    focus: true
-    anchors.centerIn: Overlay.overlay
-    width: Math.min(420, parent ? parent.width - 24 : 420)
-    height: Math.min(parent ? parent.height - 80 : 560, implicitHeight)
-    padding: 0
-
-    background: DialogFrame { }
 
     function stopSearch() {
         root.searching = false
@@ -39,18 +29,9 @@ Popup {
     contentItem: ColumnLayout {
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: root.kInset
-            spacing: 8
-            Label {
-                text: qsTr("Member list")
-                color: Theme.green
-                font.pixelSize: Theme.fontTitle
-                font.weight: Font.DemiBold
-                elide: Text.ElideRight
-                Layout.fillWidth: true
-            }
+        WindowHeader {
+            title: qsTr("Member list")
+            onCloseClicked: root.close()
             Label {
                 text: root.members.length
                 color: Theme.textDim
@@ -69,23 +50,18 @@ Popup {
                     }
                 }
             }
-            IconButton { iconName: "close"; onClicked: root.close() }
         }
 
         TextField {
             id: filter
             visible: root.searching
             Layout.fillWidth: true
-            Layout.leftMargin: root.kInset
-            Layout.rightMargin: root.kInset
-            Layout.bottomMargin: root.kInset
+            Layout.margins: Theme.contentInset
             placeholderText: qsTr("Search members")
             color: Theme.text
             placeholderTextColor: Theme.textDim
             selectByMouse: true
         }
-
-        Hairline { }
 
         ListView {
             id: list
@@ -104,8 +80,8 @@ Popup {
                 height: root.kRowHeight
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: root.kInset
-                    anchors.rightMargin: root.kInset
+                    anchors.leftMargin: Theme.contentInset
+                    anchors.rightMargin: Theme.contentInset
                     spacing: 10
                     Rectangle {
                         Layout.preferredWidth: root.kLetterSize
@@ -132,9 +108,9 @@ Popup {
 
             Label {
                 visible: list.count === 0 && root.searching
-                x: root.kInset
-                y: root.kInset
-                width: list.width - 2 * root.kInset
+                x: Theme.contentInset
+                y: Theme.contentInset
+                width: list.width - 2 * Theme.contentInset
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.Wrap
                 text: qsTr("No member by that name")

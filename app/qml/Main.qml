@@ -391,49 +391,42 @@ ApplicationWindow {
         }
     }
 
-    Popup {
+    WindowPopup {
         id: errorDialog
-        parent: Overlay.overlay
-        anchors.centerIn: Overlay.overlay
-        modal: true
-        focus: true
         z: 1000
         closePolicy: Popup.CloseOnEscape
-        width: Math.min(460, (Overlay.overlay ? Overlay.overlay.width : 460) - 32)
-        padding: 18
-        background: DialogFrame { }
         contentItem: ColumnLayout {
-            spacing: 12
-            RowLayout {
+            spacing: 0
+            WindowHeader {
+                title: qsTr("Something went wrong")
+                titleColor: Theme.danger
+                onCloseClicked: errorDialog.close()
+            }
+            ColumnLayout {
                 Layout.fillWidth: true
-                Label {
-                    text: qsTr("Something went wrong")
-                    color: Theme.danger; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
+                Layout.margins: Theme.contentInset
+                spacing: 12
+                ScrollView {
                     Layout.fillWidth: true
-                    wrapMode: Text.Wrap
+                    Layout.preferredHeight: Math.min(220, errorText.implicitHeight + 16)
+                    TextArea {
+                        id: errorText
+                        readOnly: true
+                        wrapMode: TextArea.Wrap
+                        color: Theme.text
+                        selectByMouse: true
+                        background: Rectangle { radius: 8; color: Theme.control; border.color: Theme.controlEdge }
+                    }
                 }
-                IconButton { iconName: "close"; onClicked: errorDialog.close() }
-            }
-            ScrollView {
-                Layout.fillWidth: true
-                Layout.preferredHeight: Math.min(220, errorText.implicitHeight + 16)
-                TextArea {
-                    id: errorText
-                    readOnly: true
-                    wrapMode: TextArea.Wrap
-                    color: Theme.text
-                    selectByMouse: true
-                    background: Rectangle { radius: 8; color: Theme.control; border.color: Theme.controlEdge }
+                Button {
+                    focusPolicy: Theme.pressFocus
+                    Layout.fillWidth: true
+                    text: qsTr("Close")
+                    hoverEnabled: true
+                    onClicked: errorDialog.close()
+                    background: Rectangle { radius: 10; color: parent.hovered ? Theme.accentHover : Theme.accent }
+                    contentItem: IconLabel { name: "close"; color: Theme.accentText }
                 }
-            }
-            Button {
-                focusPolicy: Theme.pressFocus
-                Layout.fillWidth: true
-                text: qsTr("Close")
-                hoverEnabled: true
-                onClicked: errorDialog.close()
-                background: Rectangle { radius: 10; color: parent.hovered ? Theme.accentHover : Theme.accent }
-                contentItem: IconLabel { name: "close"; color: Theme.accentText }
             }
         }
     }
@@ -481,15 +474,11 @@ ApplicationWindow {
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true
-        width: Math.min(360, parent ? parent.width - 24 : 360)
+        width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
         background: DialogFrame { }
-        header: Label {
-            text: qsTr("Use the external gateway %1?").arg(gatewayOfferDialog.host)
-            color: Theme.text
-            font.pixelSize: Theme.fontTitle
-            font.weight: Font.DemiBold
-            wrapMode: Text.Wrap
-            padding: 14
+        header: WindowHeader {
+            title: qsTr("Use the external gateway %1?").arg(gatewayOfferDialog.host)
+            showClose: false
         }
         footer: DialogButtons {
             acceptText: qsTr("Use")
@@ -519,14 +508,11 @@ ApplicationWindow {
         modal: true
         focus: true
         closePolicy: Popup.NoAutoClose
-        width: Math.min(360, parent ? parent.width - 24 : 360)
+        width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
         background: DialogFrame { destructive: true }
-        header: Label {
-            text: qsTr("Restart Bazarish")
-            color: Theme.green
-            font.pixelSize: Theme.fontTitle
-            font.weight: Font.DemiBold
-            padding: 14
+        header: WindowHeader {
+            title: qsTr("Restart Bazarish")
+            showClose: false
         }
         footer: DialogButtons {
             acceptText: qsTr("Quit")
@@ -549,14 +535,11 @@ ApplicationWindow {
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true
-        width: Math.min(360, parent ? parent.width - 24 : 360)
+        width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
         background: DialogFrame { destructive: true }
-        header: Label {
-            text: qsTr("Account not added")
-            color: Theme.green
-            font.pixelSize: Theme.fontTitle
-            font.weight: Font.DemiBold
-            padding: 14
+        header: WindowHeader {
+            title: qsTr("Account not added")
+            showClose: false
         }
         footer: DialogButtons {
             acceptText: qsTr("OK")

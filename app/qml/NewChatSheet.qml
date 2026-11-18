@@ -4,18 +4,12 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-Popup {
+WindowPopup {
     id: root
     property var session: null
 
-    modal: true
-    focus: true
-    anchors.centerIn: Overlay.overlay
-    width: Math.min(460, parent ? parent.width - 24 : 460)
     margins: Theme.spacing
     bottomMargin: Theme.spacing + (activeFocus ? App.keyboardInset : 0)
-    padding: 0
-    readonly property int kContentInset: 18
     property string errorText: ""
     property string prefillTarget: ""
     readonly property string kGreeting: qsTr("Hi, add me?")
@@ -68,8 +62,6 @@ Popup {
         root.prefillTarget = ""
     }
 
-    background: DialogFrame { }
-
     function startRequest(fn) { errorText = ""; fn(); close() }
 
     function submit() {
@@ -103,91 +95,96 @@ Popup {
         }
     }
 
-    contentItem: ScrollColumn {
-        inset: root.kContentInset
-        spacing: 12
+    contentItem: ColumnLayout {
+        spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Label { text: qsTr("New chat"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
-            IconButton { iconName: "close"; onClicked: root.close() }
+        WindowHeader {
+            title: qsTr("New chat")
+            onCloseClicked: root.close()
         }
 
-        Label {
-            visible: root.errorText.length > 0
+        ScrollColumn {
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            color: Theme.danger
-            text: root.errorText
-        }
+            Layout.fillHeight: true
+            inset: Theme.contentInset
+            spacing: 12
 
-        Label {
-            text: qsTr("Paste an invite link or a short alias")
-            color: Theme.textDim
-            font.pixelSize: Theme.fontSmall
-            wrapMode: Text.Wrap
-            Layout.fillWidth: true
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-            ScrollView {
+            Label {
+                visible: root.errorText.length > 0
                 Layout.fillWidth: true
-                Layout.preferredHeight: root.inputHeight
-                TextArea {
-                    id: targetText
-                    wrapMode: TextArea.WrapAnywhere
-                    verticalAlignment: TextEdit.AlignVCenter
-                    color: Theme.text
-                    background: Rectangle { radius: 8; color: Theme.control; border.color: Theme.controlEdge }
-                    Label {
-                        id: targetHint
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.leftMargin: targetText.leftPadding
-                        anchors.rightMargin: targetText.rightPadding
-                        visible: targetText.length === 0 && targetText.preeditText.length === 0
-                        // U+2060 keeps the sigil on the line of the word it marks.
-                        text: qsTr("Invite link  or  %1alias").arg(App.aliasSigil + "\u2060")
-                        color: Theme.textDim
-                        font: targetText.font
-                        wrapMode: Text.Wrap
+                wrapMode: Text.Wrap
+                color: Theme.danger
+                text: root.errorText
+            }
+
+            Label {
+                text: qsTr("Paste an invite link or a short alias")
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: root.inputHeight
+                    TextArea {
+                        id: targetText
+                        wrapMode: TextArea.WrapAnywhere
+                        verticalAlignment: TextEdit.AlignVCenter
+                        color: Theme.text
+                        background: Rectangle { radius: 8; color: Theme.control; border.color: Theme.controlEdge }
+                        Label {
+                            id: targetHint
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.leftMargin: targetText.leftPadding
+                            anchors.rightMargin: targetText.rightPadding
+                            visible: targetText.length === 0 && targetText.preeditText.length === 0
+                            // U+2060 keeps the sigil on the line of the word it marks.
+                            text: qsTr("Invite link  or  %1alias").arg(App.aliasSigil + "\u2060")
+                            color: Theme.textDim
+                            font: targetText.font
+                            wrapMode: Text.Wrap
+                        }
+                        Keys.onReturnPressed: function(event) { root.submit(); event.accepted = true }
+                        Keys.onEnterPressed: function(event) { root.submit(); event.accepted = true }
                     }
-                    Keys.onReturnPressed: function(event) { root.submit(); event.accepted = true }
-                    Keys.onEnterPressed: function(event) { root.submit(); event.accepted = true }
+                }
+                QrScanButton {
+                    Layout.alignment: Qt.AlignTop
+                    onDecoded: function(text) { targetText.text = text }
                 }
             }
-            QrScanButton {
-                Layout.alignment: Qt.AlignTop
-                onDecoded: function(text) { targetText.text = text }
+
+            Label {
+                visible: root.problem.length > 0
+                text: root.problem
+                color: Theme.warn
+                font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
             }
-        }
 
-        Label {
-            visible: root.problem.length > 0
-            text: root.problem
-            color: Theme.warn
-            font.pixelSize: Theme.fontSmall
-            wrapMode: Text.Wrap
-            Layout.fillWidth: true
-        }
+            FormField {
+                id: intro
+                label: qsTr("Introduction")
+                text: root.kGreeting
+                validator: Utf8Limit { maxBytes: App.maxGreetingBytes }
+            }
 
-        FormField {
-            id: intro
-            label: qsTr("Introduction")
-            text: root.kGreeting
-            validator: Utf8Limit { maxBytes: App.maxGreetingBytes }
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            Item { Layout.fillWidth: true }
-            ActionButton {
-                text: qsTr("Send request")
-                enabled: root.typed.length > 0 && root.problem.length === 0
-                onClicked: root.submit()
+            RowLayout {
+                Layout.fillWidth: true
+                Item { Layout.fillWidth: true }
+                ActionButton {
+                    text: qsTr("Send request")
+                    enabled: root.typed.length > 0 && root.problem.length === 0
+                    onClicked: root.submit()
+                }
             }
         }
     }

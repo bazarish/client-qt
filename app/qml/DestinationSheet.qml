@@ -5,7 +5,7 @@ import QtQuick.Layouts
 import Bazarish
 import "Format.js" as Format
 
-Popup {
+WindowPopup {
     id: root
     property string host: ""
     property string label: ""
@@ -13,10 +13,6 @@ Popup {
     readonly property bool loaded: detail.host === root.host
     property bool copied: false
 
-    readonly property int kMaxWidth: 460
-    readonly property int kFallbackHeight: 560
-    readonly property int kSideRoom: 24
-    readonly property int kTopRoom: 40
     readonly property int kPollMs: 2000
     readonly property int kCopiedMs: 1500
     readonly property int kDot: 8
@@ -63,16 +59,6 @@ Popup {
             : qsTr("expired")
         return expiry + root.kSeparator + qsTr("leases: %1").arg(leaseSet.leases)
     }
-
-    // Declared inside the router page, the sheet would size itself to that page.
-    parent: Overlay.overlay
-    modal: true
-    focus: true
-    anchors.centerIn: Overlay.overlay
-    width: Math.min(root.kMaxWidth, parent ? parent.width - root.kSideRoom : root.kMaxWidth)
-    height: Math.min(parent ? parent.height - root.kTopRoom : root.kFallbackHeight, implicitHeight)
-    padding: 0
-    background: DialogFrame { }
 
     onAboutToShow: {
         root.copied = false
@@ -129,7 +115,7 @@ Popup {
         property string title: ""
         property var tunnels: []
         Layout.fillWidth: true
-        Layout.margins: 16
+        Layout.margins: Theme.contentInset
         spacing: 8
         DimLine { text: section.title }
         DimLine { visible: section.tunnels.length === 0; text: qsTr("No tunnels yet") }
@@ -169,20 +155,10 @@ Popup {
     contentItem: ColumnLayout {
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: 14
-            Label {
-                text: root.loaded ? root.detail.label : root.label
-                color: Theme.green
-                font.pixelSize: Theme.fontTitle
-                font.weight: Font.DemiBold
-                elide: Text.ElideRight
-                Layout.fillWidth: true
-            }
-            IconButton { iconName: "close"; onClicked: root.close() }
+        WindowHeader {
+            title: root.loaded ? root.detail.label : root.label
+            onCloseClicked: root.close()
         }
-        Hairline { }
 
         ScrollView {
             id: scroll
@@ -198,7 +174,7 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 8
                     RowLayout {
                         Layout.fillWidth: true
@@ -266,7 +242,7 @@ Popup {
                     id: leaseSection
                     readonly property var leaseSets: root.loaded ? root.detail.leaseSets : []
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 8
                     DimLine { text: qsTr("Known leasesets") }
                     DimLine { visible: leaseSection.leaseSets.length === 0; text: qsTr("No leasesets yet") }

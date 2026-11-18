@@ -71,6 +71,13 @@ QtObject {
     // A press that takes focus closes a phone's keyboard and moves the window before it lifts.
     readonly property int pressFocus: App.mobile ? Qt.NoFocus : Qt.StrongFocus
     readonly property int narrowWidth: 560
+    readonly property int windowWidth: 460
+    readonly property int dialogWidth: 380
+    readonly property int windowSideRoom: 24
+    readonly property int windowTopRoom: 40
+    readonly property int headerInset: 14
+    readonly property int headerRowHeight: 40
+    readonly property int contentInset: 14
 
     readonly property int iconInline: 15
 

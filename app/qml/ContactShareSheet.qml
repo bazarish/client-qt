@@ -4,21 +4,12 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-Popup {
+WindowPopup {
     id: root
     property var session: null
     property string link: ""
     property bool copied: false
     signal back()
-
-    modal: true
-    focus: true
-    anchors.centerIn: Overlay.overlay
-    width: Math.min(420, parent ? parent.width - 24 : 420)
-    height: Math.min(parent ? parent.height - 40 : 640, body.implicitHeight + 84)
-    padding: 0
-
-    background: DialogFrame { }
 
     onOpened: {
         copied = false
@@ -29,20 +20,12 @@ Popup {
     contentItem: ColumnLayout {
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: 14
-            IconButton { iconName: "back"; onClicked: root.back() }
-            Label {
-                text: qsTr("Share contact")
-                color: Theme.green
-                font.pixelSize: Theme.fontTitle
-                font.weight: Font.DemiBold
-                Layout.fillWidth: true
-            }
-            IconButton { iconName: "close"; onClicked: root.close() }
+        WindowHeader {
+            title: qsTr("Share contact")
+            showBack: true
+            onBackClicked: root.back()
+            onCloseClicked: root.close()
         }
-        Hairline { }
 
         ScrollView {
             Layout.fillWidth: true
@@ -57,9 +40,9 @@ Popup {
 
                 Label {
                     Layout.fillWidth: true
-                    Layout.leftMargin: 16
-                    Layout.rightMargin: 16
-                    Layout.topMargin: 14
+                    Layout.leftMargin: Theme.contentInset
+                    Layout.rightMargin: Theme.contentInset
+                    Layout.topMargin: Theme.contentInset
                     text: root.session
                         ? root.session.contactName(root.session.activePeer)
                         : ""
@@ -74,8 +57,8 @@ Popup {
                 }
                 ScrollView {
                     Layout.fillWidth: true
-                    Layout.leftMargin: 16
-                    Layout.rightMargin: 16
+                    Layout.leftMargin: Theme.contentInset
+                    Layout.rightMargin: Theme.contentInset
                     Layout.preferredHeight: 96
                     TextArea {
                         id: linkArea
@@ -91,9 +74,9 @@ Popup {
                 }
                 MenuButton {
                     Layout.fillWidth: true
-                    Layout.leftMargin: 16
-                    Layout.rightMargin: 16
-                    Layout.bottomMargin: 14
+                    Layout.leftMargin: Theme.contentInset
+                    Layout.rightMargin: Theme.contentInset
+                    Layout.bottomMargin: Theme.contentInset
                     enabled: root.link.length > 0
                     iconName: "copy"
                     text: root.copied ? qsTr("Copied") : qsTr("Copy contact link")

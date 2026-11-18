@@ -4,36 +4,18 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-Popup {
+WindowPopup {
     id: root
     bottomMargin: activeFocus ? App.keyboardInset : 0
     signal showRouterStatus()
 
-    modal: true
-    focus: true
-    anchors.centerIn: Overlay.overlay
-    width: Math.min(460, parent ? parent.width - 24 : 460)
-    height: Math.min(parent ? parent.height - 40 : 520, body.implicitHeight + 60)
-    padding: 0
-    background: DialogFrame { }
-
     contentItem: ColumnLayout {
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: 14
-            Label {
-                text: qsTr("Global settings")
-                color: Theme.green
-                font.pixelSize: Theme.fontTitle
-                font.weight: Font.DemiBold
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-            }
-            IconButton { iconName: "close"; onClicked: root.close() }
+        WindowHeader {
+            title: qsTr("Global settings")
+            onCloseClicked: root.close()
         }
-        Hairline { }
 
         ScrollColumn {
             Layout.fillWidth: true
@@ -46,7 +28,7 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 10
 
                     RowLayout {
@@ -83,7 +65,7 @@ Popup {
                 ColumnLayout {
                     visible: !App.mobile
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 10
 
                     RowLayout {
@@ -117,7 +99,7 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 10
 
                     MenuButton {
@@ -232,7 +214,7 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 8
 
                     Label {
@@ -532,7 +514,7 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 10
 
                     RowLayout {
@@ -607,14 +589,11 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true
-        width: Math.min(360, parent ? parent.width - 24 : 360)
+        width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
         background: DialogFrame { }
-        header: Label {
-            text: portableConfirm.turningOn ? qsTr("Move data beside the app?") : qsTr("Move data back?")
-            color: Theme.text
-            font.pixelSize: Theme.fontTitle
-            font.weight: Font.DemiBold
-            padding: 14
+        header: WindowHeader {
+            title: portableConfirm.turningOn ? qsTr("Move data beside the app?") : qsTr("Move data back?")
+            showClose: false
         }
         footer: DialogButtons {
             acceptText: qsTr("Move")

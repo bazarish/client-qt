@@ -4,7 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-Popup {
+WindowPopup {
     id: root
     bottomMargin: activeFocus ? App.keyboardInset : 0
     property var session: null
@@ -51,13 +51,6 @@ Popup {
         challengeArea.text = link
     }
 
-    modal: true
-    focus: true
-    anchors.centerIn: Overlay.overlay
-    width: Math.min(460, parent ? parent.width - 24 : 460)
-    height: Math.min(parent ? parent.height - 40 : 600,
-        headerRow.implicitHeight + body.implicitHeight + 32)
-    padding: 0
     onOpened: {
         if (!App.mobile) {
             challengeArea.forceActiveFocus()
@@ -106,8 +99,6 @@ Popup {
         }
     }
 
-    background: DialogFrame { }
-
     Connections {
         target: root.session
         ignoreUnknownSignals: true
@@ -131,19 +122,11 @@ Popup {
     contentItem: ColumnLayout {
         spacing: 0
 
-        RowLayout {
-            id: headerRow
-            Layout.fillWidth: true
-            Layout.margins: 14
-            IconButton { iconName: "back"; onClicked: root.back() }
-            Label {
-                text: qsTr("Sign with the account key")
-                color: Theme.green
-                font.pixelSize: Theme.fontTitle
-                font.weight: Font.DemiBold
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-            }
+        WindowHeader {
+            title: qsTr("Sign with the account key")
+            showBack: true
+            onBackClicked: root.back()
+            onCloseClicked: root.close()
             Label {
                 visible: root.consumer.ok === true
                 text: root.expired ? qsTr("Expired")
@@ -153,9 +136,7 @@ Popup {
                 font.pixelSize: Theme.fontSmall
                 font.weight: root.expired ? Font.DemiBold : Font.Normal
             }
-            IconButton { iconName: "close"; onClicked: root.close() }
         }
-        Hairline { }
 
         ScrollView {
             Layout.fillWidth: true
@@ -170,7 +151,7 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.margins: 16
+                    Layout.margins: Theme.contentInset
                     spacing: 12
 
                     Rectangle {

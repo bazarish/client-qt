@@ -44,14 +44,11 @@ Dialog {
     anchors.centerIn: Overlay.overlay
     modal: true
     focus: true
-    width: Math.min(kViewport + 48, parent ? parent.width - 24 : kViewport + 48)
+    width: Math.min(kViewport + 48, parent ? parent.width - Theme.windowSideRoom : kViewport + 48)
     background: DialogFrame { }
-    header: Label {
-        text: qsTr("Position your avatar")
-        color: Theme.text
-        font.pixelSize: Theme.fontTitle
-        font.weight: Font.DemiBold
-        padding: 14
+    header: WindowHeader {
+        title: qsTr("Position your avatar")
+        showClose: false
     }
     footer: DialogButtons {
         acceptText: qsTr("Apply")
