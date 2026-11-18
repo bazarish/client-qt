@@ -15,6 +15,7 @@ Popup {
     readonly property int kCell: 40
     readonly property int kGlyphPixels: 24
     readonly property int kTabPixels: 18
+    readonly property int kMarkHeight: 2
     property var recent: []
     property int group: 0
     onAboutToShow: root.group = root.recent.length > 0 ? 0 : 1
@@ -35,7 +36,16 @@ Popup {
         width: root.kCell
         height: root.kCell
         radius: Theme.radiusSmall
-        color: glyphHover.hovered || glyph.current ? Theme.surfaceAlt : "transparent"
+        color: glyph.current ? Theme.selected : glyphHover.hovered ? Theme.surfaceAlt : "transparent"
+        Rectangle {
+            visible: glyph.current
+            anchors.bottom: parent.bottom
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: parent.width / 2
+            height: root.kMarkHeight
+            radius: height / 2
+            color: Theme.selectedMark
+        }
         Label {
             anchors.centerIn: parent
             visible: glyph.iconName.length === 0
