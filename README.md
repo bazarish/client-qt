@@ -46,6 +46,12 @@ build.
 `packaging/appimage-build.sh` builds the portable Linux AppImage, x86_64 on a Debian 12
 base and aarch64 on an Ubuntu 24.04 one, carrying its own Qt, OpenSSL and SQLCipher.
 
+`packaging/windows/build.sh <x86_64|aarch64> <work dir> <output zip>` cross-builds the
+portable Windows folder on a Linux host, x86_64 or aarch64: llvm-mingw with the UCRT,
+the MSYS2 CLANG64 or CLANGARM64 packages and the host's Qt tools of the same version,
+all fetched into the work dir and kept there for the next build. It needs python3 with
+aqtinstall, cmake, ninja, zip and zstd, and nasm for an x86_64 target.
+
 `packaging/android/build.sh <output dir>` builds the Android package for arm64-v8a
 (Android 12 and newer) and signs it with the keystore it is given. It takes the
 toolchain from the environment: `ANDROID_SDK_ROOT`, `ANDROID_NDK_ROOT` (NDK r27c),
