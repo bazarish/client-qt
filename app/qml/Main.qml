@@ -523,7 +523,7 @@ ApplicationWindow {
         background: DialogFrame { destructive: true }
         header: Label {
             text: qsTr("Restart Bazarish")
-            color: Theme.neon
+            color: Theme.green
             font.pixelSize: Theme.fontTitle
             font.weight: Font.DemiBold
             padding: 14
@@ -553,7 +553,7 @@ ApplicationWindow {
         background: DialogFrame { destructive: true }
         header: Label {
             text: qsTr("Account not added")
-            color: Theme.neon
+            color: Theme.green
             font.pixelSize: Theme.fontTitle
             font.weight: Font.DemiBold
             padding: 14

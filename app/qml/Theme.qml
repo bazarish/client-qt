@@ -28,15 +28,14 @@ QtObject {
     // A filled area: the lightest green under white ink that still holds 4.5:1.
     readonly property color greenFill: light ? "#228716" : green
     readonly property color greenInk:  light ? "#ffffff" : accentInk
-    readonly property color neon:      light ? green : "#39ff14"
     readonly property color accentInk: light ? "#f2f4f2" : "#11151a"
     readonly property color accent:    light ? "#1b2026" : "#f2f4f2"
     readonly property color accentText: accentInk
     readonly property color accentHover: light ? "#2b333d" : Qt.darker(accent, 1.12)
     readonly property color accentDown: light ? "#39434e" : Qt.darker(accent, 1.2)
     readonly property color selected:  light ? "#d3e9cb" : "#1a3a22"
-    readonly property color selectedInk: light ? "#1a6b11" : neon
-    readonly property color selectedMark: light ? greenFill : neon
+    readonly property color selectedInk: light ? "#1a6b11" : authorName
+    readonly property color selectedMark: light ? greenFill : green
     readonly property color hoverTint: light ? Qt.rgba(0, 0, 0, 0.04) : Qt.rgba(1, 1, 1, 0.04)
 
     readonly property color success:   green

@@ -883,7 +883,7 @@ Popup {
         background: DialogFrame { destructive: true }
         header: Label {
             text: qsTr("Revoke this device?")
-            color: Theme.neon
+            color: Theme.green
             font.pixelSize: Theme.fontTitle
             font.weight: Font.DemiBold
             padding: 14
@@ -1183,7 +1183,7 @@ Popup {
         footer: DialogButtons { acceptText: qsTr("New key"); danger: true; onAccepted: newKeyDialog.accept(); onRejected: newKeyDialog.reject() }
         onAccepted: if (root.session) root.session.replacePersonalKey()
         background: DialogFrame { destructive: true }
-        header: Label { text: qsTr("New key"); color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        header: Label { text: qsTr("New key"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         contentItem: Label {
             text: qsTr("Your address changes. Every invite link you have handed out stops working and the old address stops answering at once. Your contacts are sent the new details automatically, and your aliases are repointed by themselves. This helps in the rare case of shaking off spam. Do not take this step unless you are sure why you need it.")
             color: Theme.text

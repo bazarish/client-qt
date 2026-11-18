@@ -40,7 +40,7 @@ Dialog {
 
         Label {
             text: qsTr("Connecting this account")
-            color: Theme.neon
+            color: Theme.green
             font.pixelSize: Theme.fontTitle
             font.weight: Font.DemiBold
             padding: 16

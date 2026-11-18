@@ -27,7 +27,7 @@ Dialog {
     background: DialogFrame { destructive: true }
     header: Label {
         text: qsTr("The account was not deleted")
-        color: Theme.neon
+        color: Theme.green
         font.pixelSize: Theme.fontTitle
         font.weight: Font.DemiBold
         padding: 14

@@ -208,7 +208,7 @@ Item {
                 : groupActionDialog.command === "block"
                     ? qsTr("Block %1?").arg(groupActionDialog.author)
                     : qsTr("Delete for everyone?")
-            color: Theme.neon
+            color: Theme.green
             font.pixelSize: Theme.fontTitle
             font.weight: Font.DemiBold
             padding: 14
@@ -247,7 +247,7 @@ Item {
         background: DialogFrame { destructive: true }
         header: Label {
             text: qsTr("Delete selected messages?")
-            color: Theme.neon
+            color: Theme.green
             font.pixelSize: Theme.fontTitle
             font.weight: Font.DemiBold
             padding: 14
@@ -287,7 +287,7 @@ Item {
         background: DialogFrame { destructive: true }
         header: Label {
             text: qsTr("Delete message")
-            color: Theme.neon
+            color: Theme.green
             font.pixelSize: Theme.fontTitle
             font.weight: Font.DemiBold
             padding: 14

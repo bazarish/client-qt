@@ -77,7 +77,7 @@ Popup {
                 background: Rectangle {
                     color: "transparent"
                     radius: Theme.radiusSmall
-                    border.color: model.active ? Theme.neon : "transparent"
+                    border.color: model.active ? Theme.green : "transparent"
                     border.width: model.active ? 1 : 0
                 }
                 contentItem: Item {
@@ -140,7 +140,7 @@ Popup {
                         Label {
                             width: parent.width
                             text: model.name
-                            color: model.active ? Theme.neon : Theme.text
+                            color: model.active ? Theme.green : Theme.text
                             font.weight: Font.Medium
                             elide: Text.ElideRight
                         }

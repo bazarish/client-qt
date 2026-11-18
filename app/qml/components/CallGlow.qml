@@ -32,7 +32,7 @@ Item {
             ctx.reset()
             const centre = width / 2
             const light = function(alpha) {
-                return Qt.rgba(Theme.neon.r, Theme.neon.g, Theme.neon.b, alpha)
+                return Qt.rgba(Theme.green.r, Theme.green.g, Theme.green.b, alpha)
             }
             const gradient = ctx.createRadialGradient(centre, centre, 0, centre, centre, centre)
             gradient.addColorStop(0, light(0.55))

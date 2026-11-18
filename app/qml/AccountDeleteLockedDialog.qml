@@ -20,7 +20,7 @@ Dialog {
     background: DialogFrame { destructive: true }
     header: Label {
         text: qsTr("This account is locked")
-        color: Theme.neon
+        color: Theme.green
         font.pixelSize: Theme.fontTitle
         font.weight: Font.DemiBold
         padding: 14

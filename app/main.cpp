@@ -184,7 +184,7 @@ constexpr const char* kBrandSurface = "#1b2026";
 constexpr const char* kBrandSurfaceAlt = "#232a31";
 constexpr const char* kBrandText = "#d7dbd8";
 constexpr const char* kBrandTextDim = "#8b948c";
-constexpr const char* kBrandNeon = "#39ff14";
+constexpr const char* kBrandGreen = "#2aa61b";
 constexpr const char* kBrandAccentInk = "#11151a";
 
 #ifdef Q_OS_LINUX
@@ -326,7 +326,7 @@ int main(int argc, char** argv)
     palette.setColor(QPalette::PlaceholderText, QColor(kBrandTextDim));
     palette.setColor(QPalette::Button, QColor(kBrandSurface));
     palette.setColor(QPalette::ButtonText, QColor(kBrandText));
-    palette.setColor(QPalette::Highlight, QColor(kBrandNeon));
+    palette.setColor(QPalette::Highlight, QColor(kBrandGreen));
     palette.setColor(QPalette::HighlightedText, QColor(kBrandAccentInk));
     palette.setColor(QPalette::ToolTipBase, QColor(kBrandSurface));
     palette.setColor(QPalette::ToolTipText, QColor(kBrandText));

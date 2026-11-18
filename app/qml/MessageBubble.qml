@@ -869,7 +869,7 @@ Item {
                             height: Math.max(2, level * wave.kMaxHeight)
                             anchors.verticalCenter: parent.verticalCenter
                             radius: 1
-                            color: index < wave.playedBars ? Theme.neon : Theme.textDim
+                            color: index < wave.playedBars ? Theme.green : Theme.textDim
                         }
                     }
                     TapHandler {
@@ -1149,7 +1149,7 @@ Item {
                             anchors.fill: parent
                             radius: parent.radius
                             color: "transparent"
-                            border.color: Theme.neon
+                            border.color: Theme.green
                             border.width: 1
                             visible: opacity > 0
                             opacity: 0

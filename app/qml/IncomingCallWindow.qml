@@ -24,7 +24,7 @@ Window {
     Rectangle {
         anchors.fill: parent
         color: Theme.bg
-        border.color: Theme.neon
+        border.color: Theme.green
         border.width: 2
 
         ColumnLayout {

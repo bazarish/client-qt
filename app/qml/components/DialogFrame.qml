@@ -22,7 +22,7 @@ Rectangle {
         anchors.fill: parent
         radius: frame.radius
         color: "transparent"
-        border.color: frame.destructive ? Theme.neon : Theme.green
+        border.color: frame.destructive ? Theme.green : Theme.green
         border.width: 1
     }
 

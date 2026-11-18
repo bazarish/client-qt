@@ -31,7 +31,7 @@ Dialog {
     background: DialogFrame { destructive: true }
     header: Label {
         text: qsTr("Delete account")
-        color: Theme.neon
+        color: Theme.green
         font.pixelSize: Theme.fontTitle
         font.weight: Font.DemiBold
         padding: 14
