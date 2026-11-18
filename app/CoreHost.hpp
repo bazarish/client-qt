@@ -59,6 +59,7 @@ public:
     bool windowActive() const { return windowActive_; }
     bool callScreenShown() const { return callScreenShown_; }
     void declineRinging();
+    void markChatRead(const QString& accountId, const QString& peer);
     void prepareForExit();
     void networkChanged();
     void networkLost();
@@ -78,6 +79,7 @@ signals:
         const QString& title, const QString& body);
     void reactionNotificationRequested(const QString& accountId, const QString& peer,
         const QString& title, const QString& body);
+    void chatAllRead(const QString& accountId, const QString& peer);
     void readyToExit();
     void windowBroken(const QString& reason);
     void languageChosen(const QString& code);

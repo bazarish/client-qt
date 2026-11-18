@@ -45,6 +45,8 @@ const int kIncomingMessageMetaType = qRegisterMetaType<bazarish::client::Incomin
     "bazarish::client::IncomingMessage");
 
 constexpr int kReadSyncIdleMs = 4000;
+// The newest rows a chat read from a notice looks through for the contact's last message.
+constexpr int kReadScanRows = 50;
 constexpr int kPresenceOrderSettleMs = 2000;
 constexpr int kCommandTickMs = 200;
 constexpr qint64 kCommandVisibleAfterMs = 400;
@@ -471,6 +473,9 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
                 = qMax(lastReadAckedId_.value(peer, 0), store_.lastReadId(peer));
             readElsewhereAtMs_[peer] = qMax(readElsewhereAtMs_.value(peer, 0), throughMs);
             emit events_.chatChanged(peer);
+            if (store_.unreadCount(peer) == 0) {
+                emit chatAllRead(peer);
+            }
         });
     connect(&ingest_, &MessageIngest::editArrived, this,
         [this](const QString& peer, const qint64 localId, const QString& ref) {
@@ -839,6 +844,18 @@ void CoreAccount::markRead(
         return;
     }
     emit commands_.requestSendReceipt(peer, e2eId);
+}
+
+void CoreAccount::markChatRead(const QString& peer)
+{
+    const QVector<StoredMessage> latest = store_.latestMessages(peer, kReadScanRows);
+    for (auto it = latest.crbegin(); it != latest.crend(); ++it) {
+        if (!it->outgoing && !it->e2eId.isEmpty() && it->type != QLatin1String("system")) {
+            markRead(peer, it->id, it->e2eId, it->ts);
+            break;
+        }
+    }
+    emit chatAllRead(peer);
 }
 
 void CoreAccount::onSyncProgress(

@@ -59,7 +59,7 @@ public class BazarishService extends QtServiceBase {
             Shade.whenListening(listener);
         }
         if (intent.getAction() != null) {
-            Shade.act(intent.getAction());
+            Shade.act(intent);
         }
         return START_NOT_STICKY;
     }
@@ -94,6 +94,15 @@ public class BazarishService extends QtServiceBase {
 
     static PendingIntent declining(Context context) {
         return acting(context, Shade.ACTION_DECLINE, DECLINE_REQUEST);
+    }
+
+    // One per chat: the request code tells chats apart, the extras name the chat.
+    static PendingIntent markingRead(Context context, String account, String peer) {
+        return PendingIntent.getService(context, (account + "/" + peer).hashCode(),
+            new Intent(context, BazarishService.class).setAction(Shade.ACTION_MARK_READ)
+                .putExtra(Shade.EXTRA_ACCOUNT, account)
+                .putExtra(Shade.EXTRA_PEER, peer),
+            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     private static PendingIntent acting(Context context, String action, int request) {

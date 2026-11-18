@@ -5482,6 +5482,12 @@
       "es": "Esperando la conexión…",
       "zh": "正在等待连接…",
       "ar": "بانتظار الاتصال…"
+    },
+    "Mark as read": {
+      "ru": "Прочитано",
+      "es": "Marcar como leído",
+      "zh": "标为已读",
+      "ar": "تعليم كمقروء"
     }
   }
 }

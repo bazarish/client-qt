@@ -243,6 +243,13 @@ void CoreHost::declineRinging()
     }
 }
 
+void CoreHost::markChatRead(const QString& accountId, const QString& peer)
+{
+    if (CoreAccount* const account = sessionFor(accountId)) {
+        account->markChatRead(peer);
+    }
+}
+
 void CoreHost::networkChanged()
 {
     bazarish::log::info("a network became the default: reconnecting at once");
@@ -630,6 +637,9 @@ void CoreHost::openSession(const QString& id, const QString& passphrase, const b
                 : tr("Reaction %1").arg(emoji);
             emit reactionNotificationRequested(account->accountId(), peer, fromName, body);
         });
+    connect(account, &CoreAccount::chatAllRead, this, [this, account](const QString& peer) {
+        emit chatAllRead(account->accountId(), peer);
+    });
     connect(account, &CoreAccount::callChanged, this, &CoreHost::updateRinging);
     connect(account, &CoreAccount::changed, this, &CoreHost::refreshAccounts);
 

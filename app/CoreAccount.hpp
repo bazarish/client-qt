@@ -74,6 +74,8 @@ public:
     void goOnline();
     void goOffline();
     void rebuildI2pLinks();
+    // Through the newest message the contact sent, as a reader at the bottom of the chat would.
+    void markChatRead(const QString& peer);
     void setPresenceFocused(bool focused);
     void setPresenceAway(bool away);
     void leavePresenceNow();
@@ -86,6 +88,7 @@ signals:
     void callChanged();
     void messageNotification(const QString& peer, const QString& fromName, const QString& preview);
     void reactionNotification(const QString& peer, const QString& fromName, const QString& emoji);
+    void chatAllRead(const QString& peer);
 
 private slots:
     void noteCommandQueued();

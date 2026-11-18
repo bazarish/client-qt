@@ -31,6 +31,7 @@ private:
     QString presenceLine() const;
     void notifyMessage(const QString& accountId, const QString& peer, const QString& title,
         const QString& body, bool reaction);
+    void clearMessage(const QString& accountId, const QString& peer);
     void followRinging();
 
     CoreHost& core_;

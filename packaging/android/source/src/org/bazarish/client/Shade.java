@@ -12,6 +12,7 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.drawable.Icon;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.media.Ringtone;
@@ -48,6 +49,7 @@ public final class Shade {
     static final String ACTION_ANSWER = "org.bazarish.client.ANSWER";
     static final String ACTION_RING = "org.bazarish.client.RING";
     static final String ACTION_DECLINE = "org.bazarish.client.DECLINE";
+    static final String ACTION_MARK_READ = "org.bazarish.client.MARK_READ";
     // Not exported: what a notice asks of the window cannot come from another app.
     static final String NOTICE_ENTRY = "org.bazarish.client.NoticeEntry";
     static final int PRESENCE_ID = 1;
@@ -75,9 +77,10 @@ public final class Shade {
     private static boolean listening = false;
     private static final List<ResultReceiver> waiting = new ArrayList<>();
     private static boolean nativesReady = false;
-    private static final List<String> heldActions = new ArrayList<>();
+    private static final List<Intent> heldActions = new ArrayList<>();
 
     static native void callDeclined();
+    static native void markRead(String account, String peer);
     static native void networkChanged();
     static native void networkLost();
     static native void screenChanged(boolean on);
@@ -102,7 +105,7 @@ public final class Shade {
     }
 
     // A button of a notice can start this process anew, before Qt has said what it answers to.
-    static synchronized void act(String action) {
+    static synchronized void act(Intent action) {
         if (!nativesReady) {
             heldActions.add(action);
             return;
@@ -112,7 +115,7 @@ public final class Shade {
 
     public static synchronized void nativesRegistered() {
         nativesReady = true;
-        for (String action : heldActions) {
+        for (Intent action : heldActions) {
             run(action);
         }
         heldActions.clear();
@@ -172,9 +175,14 @@ public final class Shade {
         }
     }
 
-    private static void run(String action) {
-        if (ACTION_DECLINE.equals(action)) {
+    private static void run(Intent action) {
+        if (ACTION_DECLINE.equals(action.getAction())) {
             callDeclined();
+        } else if (ACTION_MARK_READ.equals(action.getAction())) {
+            String account = action.getStringExtra(EXTRA_ACCOUNT);
+            String peer = action.getStringExtra(EXTRA_PEER);
+            clearMessage(account, peer);
+            markRead(account, peer);
         }
     }
 
@@ -221,8 +229,8 @@ public final class Shade {
     }
 
     public static void notifyMessage(String account, String peer, String title, String body,
-            boolean reaction) {
-        Notification shown = new Notification.Builder(
+            boolean reaction, String markReadLabel) {
+        Notification.Builder built = new Notification.Builder(
                 app, reaction ? CHANNEL_REACTIONS : messagesChannel())
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
@@ -230,8 +238,15 @@ public final class Shade {
             .setStyle(new Notification.BigTextStyle().bigText(body))
             .setCategory(Notification.CATEGORY_MESSAGE)
             .setContentIntent(opening(account, peer))
-            .setAutoCancel(true)
-            .build();
+            .setAutoCancel(true);
+        if (!reaction) {
+            built.addAction(new Notification.Action.Builder(
+                    Icon.createWithResource(app, R.drawable.ic_notification), markReadLabel,
+                    BazarishService.markingRead(app, account, peer))
+                .setSemanticAction(Notification.Action.SEMANTIC_ACTION_MARK_AS_READ)
+                .build());
+        }
+        Notification shown = built.build();
         if (reaction && systemSounds) {
             buzzForReaction();
         } else if (reaction) {
@@ -436,6 +451,10 @@ public final class Shade {
 
     public static void cancelCall() {
         app.getSystemService(NotificationManager.class).cancel(CALL_ID);
+    }
+
+    public static void clearMessage(String account, String peer) {
+        app.getSystemService(NotificationManager.class).cancel(account + "/" + peer, MESSAGE_ID);
     }
 
     static void clearMessages(Context context) {

@@ -57,6 +57,15 @@ void callDeclined(JNIEnv*, jclass)
     inCoreThread([](CoreHost& core) { core.declineRinging(); });
 }
 
+void markRead(JNIEnv*, jclass, const jstring account, const jstring peer)
+{
+    const QString accountId = QJniObject(account).toString();
+    const QString fingerprint = QJniObject(peer).toString();
+    inCoreThread([accountId, fingerprint](CoreHost& core) {
+        core.markChatRead(accountId, fingerprint);
+    });
+}
+
 void networkChanged(JNIEnv*, jclass)
 {
     inCoreThread([](CoreHost& core) { core.networkChanged(); });
@@ -81,6 +90,7 @@ AndroidShade::AndroidShade(CoreHost& core, Notifier& notifier, Translations& tra
 {
     const JNINativeMethod natives[] = {
         {"callDeclined", "()V", reinterpret_cast<void*>(callDeclined)},
+        {"markRead", "(Ljava/lang/String;Ljava/lang/String;)V", reinterpret_cast<void*>(markRead)},
         {"networkChanged", "()V", reinterpret_cast<void*>(networkChanged)},
         {"networkLost", "()V", reinterpret_cast<void*>(networkLost)},
         {"screenChanged", "(Z)V", reinterpret_cast<void*>(screenChanged)},
@@ -102,6 +112,7 @@ AndroidShade::AndroidShade(CoreHost& core, Notifier& notifier, Translations& tra
 
     connect(&notifier, &Notifier::announced, this, &AndroidShade::notifyMessage);
     connect(&notifier, &Notifier::arrivedInSight, this, &AndroidShade::buzzForMessage);
+    connect(&core_, &CoreHost::chatAllRead, this, &AndroidShade::clearMessage);
     connect(&core_, &CoreHost::accountsChanged, this, [this]() {
         const QString line = presenceLine();
         if (line != line_) {
@@ -216,10 +227,21 @@ void AndroidShade::notifyMessage(const QString& accountId, const QString& peer,
     const QJniObject fingerprint = javaString(peer);
     const QJniObject heading = javaString(title);
     const QJniObject text = javaString(body);
+    const QJniObject markRead = javaString(tr("Mark as read"));
     QJniObject::callStaticMethod<void>(kShade, "notifyMessage",
-        "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Z)V",
+        "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Z"
+        "Ljava/lang/String;)V",
         account.object<jstring>(), fingerprint.object<jstring>(), heading.object<jstring>(),
-        text.object<jstring>(), static_cast<jboolean>(reaction));
+        text.object<jstring>(), static_cast<jboolean>(reaction), markRead.object<jstring>());
+}
+
+void AndroidShade::clearMessage(const QString& accountId, const QString& peer)
+{
+    const QJniObject account = javaString(accountId);
+    const QJniObject fingerprint = javaString(peer);
+    QJniObject::callStaticMethod<void>(kShade, "clearMessage",
+        "(Ljava/lang/String;Ljava/lang/String;)V", account.object<jstring>(),
+        fingerprint.object<jstring>());
 }
 
 void AndroidShade::followRinging()
