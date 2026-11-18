@@ -86,6 +86,9 @@ public class BazarishActivity extends QtActivity {
     // Qt cannot start twice in one process, and its teardown hangs; the core keeps the rest.
     @Override
     protected void onDestroy() {
+        if (isChangingConfigurations()) {
+            startActivity(Intent.makeRestartActivityTask(getComponentName()));
+        }
         Process.killProcess(Process.myPid());
     }
 }
