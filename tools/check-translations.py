@@ -103,7 +103,7 @@ def is_prose(literal, shown=False):
 
 # A text of one sentence carries no full stop; a text of several keeps them all.
 LAST_STOP = re.compile(r'(?<![.])[.\u3002]$')
-INNER_STOP = re.compile(r'[.!?\u3002\uff01\uff1f](?:\s|$)|[\u3002\uff01\uff1f]')
+INNER_STOP = re.compile(r'[.!?\u061f\u3002\uff01\uff1f](?:\s|$)|[\u3002\uff01\uff1f]')
 
 
 def stops_one_sentence(text):

@@ -27,7 +27,7 @@
       "ru": " (в очереди: %1)",
       "es": " (en cola: %1)",
       "zh": "（队列：%1）",
-      "ar": " (في الطابور: ⁦%1⁩)"
+      "ar": " (في قائمة الانتظار: ⁦%1⁩)"
     },
     "%1 %2": {
       "ru": "%1 %2",
@@ -44,12 +44,12 @@
     "%1 accepted your contact request": {
       "ru": "%1 принял ваш запрос на добавление",
       "es": "%1 ha aceptado tu solicitud de contacto",
-      "zh": "%1 接受了你的联系请求",
-      "ar": "قبل ⁦%1⁩ طلب التواصل"
+      "zh": "%1 接受了你的联系人请求",
+      "ar": "قبل ⁦%1⁩ طلب التواصل منك"
     },
     "%1 cleared the chat": {
       "ru": "%1 очистил переписку",
-      "es": "%1 ha borrado el chat",
+      "es": "%1 ha vaciado el chat",
       "zh": "%1 清空了该聊天",
       "ar": "أفرغ ⁦%1⁩ المحادثة"
     },
@@ -63,7 +63,7 @@
       "ru": "из них картинок и голосовых: %1",
       "es": "de eso, %1 son imágenes y notas de voz",
       "zh": "其中 %1 项是图片和语音",
-      "ar": "منها ⁦%1⁩ صورة ورسالة صوتية"
+      "ar": "منها ⁦%1⁩ للصور والرسائل الصوتية"
     },
     "%1 · %2 in / %3 out · %4 leasesets": {
       "ru": "%1 · %2 вх. / %3 исх. · лизсетов: %4",
@@ -80,13 +80,13 @@
     "Account settings": {
       "ru": "Настройки аккаунта",
       "es": "Ajustes de la cuenta",
-      "zh": "账户设置",
+      "zh": "账号设置",
       "ar": "إعدادات الحساب"
     },
     "Accounts already present there stay where they were: %1": {
       "ru": "Аккаунты, которые там уже есть, остались на прежнем месте: %1",
       "es": "Las cuentas que ya estaban allí siguen en su sitio: %1",
-      "zh": "那里已有的账户保留在原处：%1",
+      "zh": "那里已有的账号保留在原处：%1",
       "ar": "الحسابات الموجودة هناك بقيت في مكانها: ⁦%1⁩"
     },
     "Allow bazari.sh links to open in the app": {
@@ -98,7 +98,7 @@
     "A short name (alias) can be bought in the registry:": {
       "ru": "Короткое имя (алиас) можно купить в реестре:",
       "es": "Un nombre corto (alias) se compra en el registro:",
-      "zh": "短名称（别名）可以在注册处购买：",
+      "zh": "短名称（别名）可以在登记处购买：",
       "ar": "يمكن شراء اسم قصير (اسم مستعار) من السجل:"
     },
     "The server is not answering": {
@@ -218,14 +218,14 @@
     "A SOCKS5 proxy the router reaches the I2P network through. Leave empty to connect straight out.": {
       "ru": "Прокси SOCKS5, через который роутер подключается к сети I2P. Оставьте пустым, чтобы подключаться напрямую.",
       "es": "Un proxy SOCKS5 por el que el router se conecta a la red I2P. Déjalo vacío para conectar directamente.",
-      "zh": "路由通过这个 SOCKS5 代理连接到 I2P 网络。留空则直接连接。",
+      "zh": "路由器通过这个 SOCKS5 代理连接到 I2P 网络。留空则直接连接。",
       "ar": "وسيط SOCKS5 يتصل الموجّه عبره بشبكة I2P. اتركه فارغًا للاتصال مباشرةً."
     },
     "A device that joins later starts empty: to have something on a new device, send or forward it again": {
       "ru": "Новое устройство начинает с пустой переписки. Чтобы на нём что-то появилось, отправьте или перешлите это заново.",
       "es": "Un dispositivo que se suma después empieza vacío: para tener algo en uno nuevo, vuelve a enviarlo o reenviarlo",
       "zh": "后加入的设备从空白开始：要让新设备上也有内容，请重新发送或转发一次",
-      "ar": "الجهاز الذي ينضم لاحقًا يبدأ فارغًا: لكي يصل شيء إلى جهاز جديد، أعِد إرساله أو إعادة توجيهه"
+      "ar": "الجهاز الذي ينضم لاحقًا يبدأ فارغًا: لكي يصل شيء إلى جهاز جديد، أعِد إرساله أو أعِد توجيهه"
     },
     "A new address is published": {
       "ru": "Новый адрес опубликован",
@@ -243,7 +243,7 @@
       "ru": "Адрес ресида должен быть https-ссылкой: %1",
       "es": "La dirección de reseed debe ser una URL https: %1",
       "zh": "Reseed 地址必须是 https 链接：%1",
-      "ar": "يجب أن يكون عنوان الريسيد رابط https: ⁦%1⁩"
+      "ar": "يجب أن يكون عنوان reseed رابط https: ⁦%1⁩"
     },
     "About %1 of it is free space compacting returns to the disk": {
       "ru": "Из них около %1 — свободное место. Сжатие вернёт его диску.",
@@ -255,7 +255,7 @@
       "ru": "Принять",
       "es": "Responder",
       "zh": "接听",
-      "ar": "رد"
+      "ar": "قبول"
     },
     "Accepted by your server": {
       "ru": "Принято вашим сервером",
@@ -290,8 +290,8 @@
     "All account data and the router's state live next to the app. Switching moves them, closes every account and needs the app started again.": {
       "ru": "Все данные аккаунтов и состояние роутера хранятся рядом с приложением. Переключение перенесёт их, закроет все аккаунты и потребует запустить приложение заново.",
       "es": "Todos los datos de las cuentas y el estado del router viven junto a la aplicación. Cambiar los mueve, cierra todas las cuentas y obliga a iniciar la aplicación de nuevo.",
-      "zh": "所有账号数据和路由状态都存放在应用旁边。切换会迁移它们、关闭所有账号，并需要重新启动应用。",
-      "ar": "تعيش كل بيانات الحسابات وحالة الموجّه بجوار التطبيق. والتبديل ينقلها، ويغلق كل الحسابات، ويتطلب تشغيل التطبيق من جديد."
+      "zh": "所有账号数据和路由器状态都存放在应用旁边。切换会迁移它们、关闭所有账号，并需要重新启动应用。",
+      "ar": "تُخزَّن كل بيانات الحسابات وحالة الموجّه بجوار التطبيق. والتبديل ينقلها، ويغلق كل الحسابات، ويتطلب تشغيل التطبيق من جديد."
     },
     "Add a facade": {
       "ru": "Добавить фасад",
@@ -302,8 +302,8 @@
     "Add a reseed": {
       "ru": "Добавить ресид",
       "es": "Añadir un reseed",
-      "zh": "添加 reseed",
-      "ar": "إضافة مصدر بذر"
+      "zh": "添加 reseed 源",
+      "ar": "إضافة عنوان reseed"
     },
     "Add or switch account": {
       "ru": "Добавить аккаунт или сменить",
@@ -351,7 +351,7 @@
       "ru": "Согласие на запрос контакта",
       "es": "Aceptando una solicitud de contacto",
       "zh": "正在同意联系人请求",
-      "ar": "جارٍ الموافقة على طلب اتصال"
+      "ar": "جارٍ الموافقة على طلب تواصل"
     },
     "Agreeing…": {
       "ru": "Подтверждение…",
@@ -375,25 +375,25 @@
       "ru": "На сервере его уже нет",
       "es": "Ya no está en el servidor",
       "zh": "服务器上已经没有它",
-      "ar": "لم يبق على الخادم"
+      "ar": "لم يعد موجودًا على الخادم"
     },
     "Already in your contacts": {
       "ru": "Уже у вас в контактах",
       "es": "Ya está en tus contactos",
       "zh": "已在你的联系人中",
-      "ar": "موجود في جهات اتصالك"
+      "ar": "موجود بالفعل في جهات اتصالك"
     },
     "An invite cannot be formed before your destination is up. Publishing takes a few minutes.": {
       "ru": "Приглашение нельзя собрать, пока назначение не опубликовано. Публикация занимает несколько минут.",
-      "es": "No se puede formar una invitación antes de que tu destino esté arriba. Publicar tarda unos minutos.",
+      "es": "No se puede crear una invitación hasta que tu destino esté publicado. La publicación tarda unos minutos.",
       "zh": "在目的地建立之前无法生成邀请。发布需要几分钟。",
-      "ar": "لا يمكن تكوين دعوة قبل أن تقوم وجهتك. والنشر يستغرق بضع دقائق."
+      "ar": "لا يمكن تكوين دعوة قبل أن تُنشر وجهتك. والنشر يستغرق بضع دقائق."
     },
     "Another device of yours published it. Until the two agree, some mail reaches nobody.": {
       "ru": "Его опубликовало другое ваше устройство. Пока адреса различаются, часть почты не доставляется.",
-      "es": "Lo publicó otro dispositivo tuyo. Hasta que ambas coincidan, parte del correo no llega.",
+      "es": "La publicó otro dispositivo tuyo. Mientras las dos direcciones no coincidan, parte del correo no llega a nadie.",
       "zh": "是你的另一台设备发布了它。两者一致之前，部分邮件无法送达。",
-      "ar": "نشرها جهاز آخر لك. وإلى أن يتطابق العنوانان، لا يصل جزء من البريد."
+      "ar": "نشره جهاز آخر من أجهزتك. وإلى أن يتطابق العنوانان، لا يصل جزء من البريد."
     },
     "Any unicode…": {
       "ru": "Любой символ…",
@@ -405,7 +405,7 @@
       "ru": "Каждый, у кого есть ссылка, сможет с вами связаться",
       "es": "Cualquiera que tenga el enlace podrá contactarte",
       "zh": "任何拿到链接的人都能联系到你",
-      "ar": "كل من لديه الرابط يستطيع الاتصال بك"
+      "ar": "كل من لديه الرابط يستطيع التواصل معك"
     },
     "Ask my other devices for contacts": {
       "ru": "Запросить контакты у своих устройств",
@@ -429,19 +429,19 @@
       "ru": "Запрос к реестру алиасов…",
       "es": "Consultando el registro de alias…",
       "zh": "正在询问别名登记处…",
-      "ar": "جارٍ سؤال سجل الأسماء…"
+      "ar": "جارٍ الاستعلام من سجل الأسماء المستعارة…"
     },
     "Asking the registry over I2P…": {
       "ru": "Реестр опрашивается через I2P…",
       "es": "Consultando el registro por I2P…",
-      "zh": "正在通过 I2P 询问注册服务…",
-      "ar": "جارٍ سؤال السجل عبر I2P…"
+      "zh": "正在通过 I2P 询问登记处…",
+      "ar": "جارٍ الاستعلام من السجل عبر I2P…"
     },
     "Asking your other devices": {
       "ru": "Запрос к вашим устройствам",
       "es": "Preguntando a tus otros dispositivos",
       "zh": "正在询问你的其他设备",
-      "ar": "جارٍ سؤال أجهزتك الأخرى"
+      "ar": "جارٍ الاستعلام من أجهزتك الأخرى"
     },
     "Asking for the member list": {
       "ru": "Запрос списка участников",
@@ -453,13 +453,13 @@
       "ru": "Запрос к серверу…",
       "es": "Preguntando a tu servidor…",
       "zh": "正在询问服务器…",
-      "ar": "جارٍ سؤال خادمك…"
+      "ar": "جارٍ الاستعلام من خادمك…"
     },
     "Asking…": {
       "ru": "Запрашивается…",
       "es": "Preguntando…",
       "zh": "正在询问…",
-      "ar": "جارٍ السؤال…"
+      "ar": "جارٍ الاستعلام…"
     },
     "Asking the sender…": {
       "ru": "Запрос к отправителю…",
@@ -505,9 +505,9 @@
     },
     "Lock account": {
       "ru": "Закрыть аккаунт",
-      "es": "Bloquear la cuenta",
+      "es": "Cerrar la cuenta",
       "zh": "锁定账号",
-      "ar": "قفل الحساب"
+      "ar": "إغلاق الحساب"
     },
     "Mar": {
       "ru": "мар",
@@ -649,7 +649,7 @@
     },
     "Backup password": {
       "ru": "Пароль резервной копии",
-      "es": "Contraseña de la copia",
+      "es": "Contraseña de la copia de seguridad",
       "zh": "备份密码",
       "ar": "كلمة مرور النسخة الاحتياطية"
     },
@@ -686,14 +686,14 @@
     "Blocked: messages and calls from this contact are dropped, and its pass is revoked. An outgoing message lifts the block.": {
       "ru": "Заблокирован. Сообщения и звонки от контакта отбрасываются, пропуск отозван. Исходящее сообщение снимает блокировку.",
       "es": "Bloqueado: los mensajes y llamadas de este contacto se descartan y su pase está revocado. Un mensaje tuyo levanta el bloqueo.",
-      "zh": "已屏蔽：来自该联系人的消息和来电会被丢弃，其凭据已撤销。你发出一条消息即解除屏蔽。",
+      "zh": "已屏蔽：来自该联系人的消息和来电会被丢弃，其通行凭据已撤销。你发出一条消息即解除屏蔽。",
       "ar": "محظورة: تُسقَط رسائل جهة الاتصال ومكالماتها، وسُحب تصريحها. ورسالة صادرة ترفع الحظر."
     },
     "Broken picture": {
       "ru": "Изображение повреждено",
       "es": "Imagen dañada",
       "zh": "图片已损坏",
-      "ar": "صورة معطوبة"
+      "ar": "صورة تالفة"
     },
     "Building it…": {
       "ru": "Строится…",
@@ -739,7 +739,7 @@
     },
     "Cannot read the settings file %1. Fix or delete it, then start Bazarish again.": {
       "ru": "Не удаётся прочитать файл настроек %1. Исправьте или удалите его и запустите Bazarish снова.",
-      "es": "No se puede leer el archivo de configuración %1. Corríjalo o elimínelo y vuelva a iniciar Bazarish.",
+      "es": "No se puede leer el archivo de configuración %1. Corrígelo o elimínalo y vuelve a iniciar Bazarish.",
       "zh": "无法读取设置文件 %1。请修复或删除该文件，然后重新启动 Bazarish。",
       "ar": "تعذّرت قراءة ملف الإعدادات ⁦%1⁩. أصلحه أو احذفه، ثم شغّل Bazarish من جديد."
     },
@@ -757,9 +757,9 @@
     },
     "Challenge from the site": {
       "ru": "Запрос от сайта",
-      "es": "Reto del sitio",
-      "zh": "来自站点的质询",
-      "ar": "تحدٍّ من الموقع"
+      "es": "Desafío del sitio",
+      "zh": "来自网站的质询",
+      "ar": "طلب من الموقع"
     },
     "Change name": {
       "ru": "Сменить имя",
@@ -817,14 +817,14 @@
     },
     "Clear": {
       "ru": "Очистить",
-      "es": "Vaciar",
+      "es": "Borrar",
       "zh": "清空",
       "ar": "إفراغ"
     },
     "Clear chat": {
       "ru": "Очистить переписку",
-      "es": "Vaciar la conversación",
-      "zh": "清空对话",
+      "es": "Vaciar el chat",
+      "zh": "清空聊天",
       "ar": "إفراغ المحادثة"
     },
     "Clear everywhere": {
@@ -859,13 +859,13 @@
     },
     "Clearing a chat": {
       "ru": "Очистка переписки",
-      "es": "Borrando un chat",
+      "es": "Vaciando un chat",
       "zh": "正在清空聊天",
       "ar": "جارٍ إفراغ محادثة"
     },
     "Clearing a chat for both sides": {
       "ru": "Очистка переписки у обеих сторон",
-      "es": "Borrando un chat en ambos lados",
+      "es": "Vaciando un chat en ambos lados",
       "zh": "正在为双方清空聊天",
       "ar": "جارٍ إفراغ محادثة عند الطرفين"
     },
@@ -921,7 +921,7 @@
       "ru": "%1 выключил таймер автоудаления",
       "es": "%1 desactivó el temporizador de borrado automático",
       "zh": "%1 关闭了自动删除计时器",
-      "ar": "⁦%1⁩ أوقف مؤقت الحذف التلقائي"
+      "ar": "أوقف ⁦%1⁩ مؤقت الحذف التلقائي"
     },
     "You set the auto-delete timer to %1": {
       "ru": "Вы установили таймер автоудаления на %1",
@@ -933,7 +933,7 @@
       "ru": "%1 установил таймер автоудаления на %2",
       "es": "%1 puso el temporizador de borrado automático en %2",
       "zh": "%1 将自动删除计时器设为 %2",
-      "ar": "⁦%1⁩ ضبط مؤقت الحذف التلقائي على ⁦%2⁩"
+      "ar": "ضبط ⁦%1⁩ مؤقت الحذف التلقائي على ⁦%2⁩"
     },
     "Setting the auto-delete timer": {
       "ru": "Установка таймера автоудаления",
@@ -944,7 +944,7 @@
     "Clearing a message from the mailbox": {
       "ru": "Удаление сообщения из почтового ящика",
       "es": "Borrando un mensaje del buzón",
-      "zh": "正在从信箱清除消息",
+      "zh": "正在从邮箱清除消息",
       "ar": "جارٍ إزالة رسالة من صندوق البريد"
     },
     "Close": {
@@ -987,7 +987,7 @@
       "ru": "Повторите пароль",
       "es": "Repite la contraseña",
       "zh": "再次输入密码",
-      "ar": "أعد كتابة كلمة السر"
+      "ar": "أعد كتابة كلمة المرور"
     },
     "Confirming a message was read": {
       "ru": "Подтверждение прочтения",
@@ -1100,7 +1100,7 @@
     "Contact request sent": {
       "ru": "Запрос на добавление отправлен",
       "es": "Solicitud de contacto enviada",
-      "zh": "联系请求已发送",
+      "zh": "联系人请求已发送",
       "ar": "أُرسل طلب التواصل"
     },
     "Copied": {
@@ -1166,14 +1166,14 @@
     "Looking up %1 in the alias registry…": {
       "ru": "Поиск %1 в реестре алиасов…",
       "es": "Buscando %1 en el registro de alias…",
-      "zh": "正在别名注册表中查找 %1…",
-      "ar": "جارٍ البحث عن %1 في سجل الأسماء المستعارة…"
+      "zh": "正在别名登记处查找 %1…",
+      "ar": "جارٍ البحث عن ⁦%1⁩ في سجل الأسماء المستعارة…"
     },
     "Looking up %1 in the alias registry: %2": {
       "ru": "Поиск %1 в реестре алиасов: %2",
       "es": "Buscando %1 en el registro de alias: %2",
-      "zh": "正在别名注册表中查找 %1：%2",
-      "ar": "جارٍ البحث عن %1 في سجل الأسماء المستعارة: %2"
+      "zh": "正在别名登记处查找 %1：%2",
+      "ar": "جارٍ البحث عن ⁦%1⁩ في سجل الأسماء المستعارة: ⁦%2⁩"
     },
     "Fetching the contact card…": {
       "ru": "Запрос карточки контакта…",
@@ -1185,13 +1185,13 @@
       "ru": "Запрос карточки контакта: %1",
       "es": "Obteniendo la tarjeta del contacto: %1",
       "zh": "正在获取联系人名片：%1",
-      "ar": "جارٍ جلب بطاقة جهة الاتصال: %1"
+      "ar": "جارٍ جلب بطاقة جهة الاتصال: ⁦%1⁩"
     },
     "Sending the contact request…": {
       "ru": "Отправка запроса в контакты…",
       "es": "Enviando la solicitud de contacto…",
       "zh": "正在发送联系人请求…",
-      "ar": "جارٍ إرسال طلب الاتصال…"
+      "ar": "جارٍ إرسال طلب التواصل…"
     },
     "choosing an address…": {
       "ru": "выбор адреса…",
@@ -1340,7 +1340,7 @@
     "Delegated until %1": {
       "ru": "Делегировано до %1",
       "es": "Delegado hasta %1",
-      "zh": "委托至 %1",
+      "zh": "委派至 %1",
       "ar": "مفوَّض حتى ⁦%1⁩"
     },
     "Delegating it to your server…": {
@@ -1358,7 +1358,7 @@
     "Delegation term": {
       "ru": "Срок делегирования",
       "es": "Plazo de la delegación",
-      "zh": "委托期限",
+      "zh": "委派期限",
       "ar": "مدة التفويض"
     },
     "Delete": {
@@ -1375,8 +1375,8 @@
     },
     "Delete chat": {
       "ru": "Удалить переписку",
-      "es": "Eliminar la conversación",
-      "zh": "删除对话",
+      "es": "Eliminar el chat",
+      "zh": "删除聊天",
       "ar": "حذف المحادثة"
     },
     "Delete contact": {
@@ -1401,7 +1401,7 @@
       "ru": "Удалить выбранные сообщения?",
       "es": "¿Eliminar los mensajes seleccionados?",
       "zh": "删除所选消息？",
-      "ar": "حذف الرسائل المحددة؟"
+      "ar": "أتريد حذف الرسائل المحددة؟"
     },
     "Delete this device's copy only": {
       "ru": "Удалить только копию на этом устройстве",
@@ -1412,20 +1412,20 @@
     "Delete this message for everyone? It is removed from the recipient too, with no trace.": {
       "ru": "Удалить это сообщение у всех? Оно будет удалено и у получателя, без следа.",
       "es": "¿Eliminar este mensaje para todos? Desaparece también del destinatario, sin rastro.",
-      "zh": "要为所有人删除这条消息吗？它也会从收件人那里消失，不留痕迹。",
-      "ar": "أتريد حذف هذه الرسالة لدى الجميع؟ ستُحذف من المستلم أيضًا دون أثر"
+      "zh": "要为所有人删除这条消息吗？它也会从接收方那里删除，不留痕迹。",
+      "ar": "أتريد حذف هذه الرسالة لدى الجميع؟ ستُحذف من المستلم أيضًا دون أثر."
     },
     "Delete this message from this device? This cannot be undone.": {
       "ru": "Удалить это сообщение с этого устройства? Отменить нельзя.",
       "es": "¿Eliminar este mensaje de este dispositivo? No se puede deshacer.",
       "zh": "要从本设备删除这条消息吗？此操作无法撤销。",
-      "ar": "أتريد حذف هذه الرسالة من هذا الجهاز؟ لا يمكن التراجع"
+      "ar": "أتريد حذف هذه الرسالة من هذا الجهاز؟ لا يمكن التراجع."
     },
     "Delete this message? It is removed from your other devices too.": {
       "ru": "Удалить это сообщение? Оно удалится и на других ваших устройствах.",
       "es": "¿Eliminar este mensaje? También se elimina de tus otros dispositivos.",
       "zh": "删除这条消息？它也会从你的其他设备上删除。",
-      "ar": "حذف هذه الرسالة؟ ستُحذف من أجهزتك الأخرى أيضًا"
+      "ar": "أتريد حذف هذه الرسالة؟ ستُحذف من أجهزتك الأخرى أيضًا."
     },
     "Deleted on the server": {
       "ru": "Удалён на сервере",
@@ -1465,9 +1465,9 @@
     },
     "Destination key ready; connect to publish it": {
       "ru": "Ключ назначения готов. Подключитесь, чтобы его опубликовать.",
-      "es": "La clave de destino está lista. Conéctate para publicarla.",
-      "zh": "目的地密钥已就绪。请连接以发布它。",
-      "ar": "مفتاح الوجهة جاهز. اتصل لنشره."
+      "es": "La clave de destino está lista; conéctate para publicarla",
+      "zh": "目的地密钥已就绪，请连接以发布它",
+      "ar": "مفتاح الوجهة جاهز؛ اتصل لنشره"
     },
     "Direct network connections: %1": {
       "ru": "Прямых сетевых соединений: %1",
@@ -1497,19 +1497,19 @@
       "ru": "Изменить",
       "es": "Editar",
       "zh": "编辑",
-      "ar": "تحرير"
+      "ar": "تعديل"
     },
     "Edit message…": {
       "ru": "Правка сообщения…",
       "es": "Editar el mensaje…",
       "zh": "编辑消息…",
-      "ar": "تحرير الرسالة…"
+      "ar": "تعديل الرسالة…"
     },
     "Editing message": {
       "ru": "Правка сообщения",
       "es": "Editando el mensaje",
       "zh": "正在编辑消息",
-      "ar": "تحرير الرسالة"
+      "ar": "تعديل الرسالة"
     },
     "Embedded": {
       "ru": "Встроенный",
@@ -1555,7 +1555,7 @@
     },
     "Enter the code shown on the other device": {
       "ru": "Введите код с другого устройства",
-      "es": "Introduzca el código del otro dispositivo",
+      "es": "Introduce el código que se muestra en el otro dispositivo",
       "zh": "输入另一台设备上显示的验证码",
       "ar": "أدخل الرمز الظاهر على الجهاز الآخر"
     },
@@ -1568,8 +1568,8 @@
     "Everything kept here goes, on this device and on every other device of this account": {
       "ru": "Всё содержимое будет удалено на этом устройстве и на остальных устройствах аккаунта",
       "es": "Todo lo guardado aquí desaparece, en este dispositivo y en todos los demás de esta cuenta",
-      "zh": "这里保存的一切都会消失——本设备如此，本账号的其他设备亦然",
-      "ar": "يذهب كل ما هو محفوظ هنا، على هذا الجهاز وعلى سائر أجهزة هذا الحساب"
+      "zh": "这里保存的所有内容都将删除，包括本设备和本账号的其他所有设备",
+      "ar": "سيُحذف كل ما هو محفوظ هنا، على هذا الجهاز وعلى سائر أجهزة هذا الحساب"
     },
     "Exporting your backup": {
       "ru": "Выгрузка резервной копии",
@@ -1599,7 +1599,7 @@
       "ru": "Не удалось: %1",
       "es": "Ha fallado: %1",
       "zh": "失败：%1",
-      "ar": "أخفق: ⁦%1⁩"
+      "ar": "فشل: ⁦%1⁩"
     },
     "File": {
       "ru": "Файл",
@@ -1652,8 +1652,8 @@
     "Give the router's address first": {
       "ru": "Сначала укажите адрес роутера",
       "es": "Indica antes la dirección del router",
-      "zh": "请先给出路由的地址",
-      "ar": "أعطِ عنوان الموجّه أولًا"
+      "zh": "请先填写路由器的地址",
+      "ar": "أدخل عنوان الموجّه أولًا"
     },
     "Global settings": {
       "ru": "Общие настройки",
@@ -1670,7 +1670,7 @@
     "Handed to the recipient's server": {
       "ru": "Передано серверу получателя",
       "es": "Entregado al servidor del destinatario",
-      "zh": "已交给收件人的服务器",
+      "zh": "已交给接收方的服务器",
       "ar": "سُلِّمت إلى خادم المستلم"
     },
     "Hide": {
@@ -1700,7 +1700,7 @@
     "I2P router": {
       "ru": "Роутер I2P",
       "es": "Router I2P",
-      "zh": "I2P 路由",
+      "zh": "I2P 路由器",
       "ar": "موجّه I2P"
     },
     "I2P status": {
@@ -1717,21 +1717,21 @@
     },
     "I2P will be carried by the engine inside this application. The I2P backend is chosen at startup. Your accounts are closed; restart to apply.": {
       "ru": "I2P будет работать через встроенный движок. I2P бекэнд выбирается на старте. Аккаунты закрыты. Перезапустите приложение.",
-      "es": "I2P lo llevará el motor que hay dentro de esta aplicación. El backend de I2P se elige al arrancar. Tus cuentas están cerradas. Reinicia la aplicación.",
-      "zh": "I2P 将由本程序内部的引擎承载。I2P 后端在启动时选定。账号已关闭。请重启应用。",
-      "ar": "سيحمل I2P المحرّك الموجود داخل هذا التطبيق. تُختار خدمة I2P الخلفية عند بدء التشغيل. وقد أُغلقت حساباتك. أعد تشغيل التطبيق."
+      "es": "I2P funcionará con el motor integrado en esta aplicación. El backend de I2P se elige al iniciar. Tus cuentas están cerradas; reinicia para aplicar el cambio.",
+      "zh": "I2P 将由本应用内部的引擎承载。I2P 后端在启动时选定。账号已关闭。请重启应用。",
+      "ar": "سيعمل I2P عبر المحرّك المدمج في هذا التطبيق. تُختار طريقة الاتصال بـ I2P عند بدء التشغيل. أُغلقت حساباتك؛ أعد التشغيل لتطبيق التغيير."
     },
     "I2P will be carried by an external router. The I2P backend is chosen at startup. Your accounts are closed; restart to apply.": {
       "ru": "I2P будет работать через внешний роутер. I2P бекэнд выбирается на старте. Аккаунты закрыты. Перезапустите приложение.",
-      "es": "I2P lo llevará un router externo. El backend de I2P se elige al arrancar. Tus cuentas están cerradas. Reinicia la aplicación.",
+      "es": "I2P funcionará a través de un router externo. El backend de I2P se elige al iniciar. Tus cuentas están cerradas; reinicia para aplicar el cambio.",
       "zh": "I2P 将由外部路由器承载。I2P 后端在启动时选定。账号已关闭。请重启应用。",
-      "ar": "سيحمل I2P موجّه خارجي. تُختار خدمة I2P الخلفية عند بدء التشغيل. وقد أُغلقت حساباتك. أعد تشغيل التطبيق."
+      "ar": "سيعمل I2P عبر موجّه خارجي. تُختار طريقة الاتصال بـ I2P عند بدء التشغيل. أُغلقت حساباتك؛ أعد التشغيل لتطبيق التغيير."
     },
     "I2P will be carried by the external gateway. The I2P backend is chosen at startup. Your accounts are closed; restart to apply.": {
       "ru": "I2P будет работать через внешний шлюз. I2P бекэнд выбирается на старте. Аккаунты закрыты. Перезапустите приложение.",
-      "es": "I2P lo llevará la pasarela externa. El backend de I2P se elige al arrancar. Tus cuentas están cerradas. Reinicia la aplicación.",
+      "es": "I2P funcionará a través de la pasarela externa. El backend de I2P se elige al iniciar. Tus cuentas están cerradas; reinicia para aplicar el cambio.",
       "zh": "I2P 将由外部网关承载。I2P 后端在启动时选定。账号已关闭。请重启应用。",
-      "ar": "ستحمل I2P البوابة الخارجية. تُختار خدمة I2P الخلفية عند بدء التشغيل. وقد أُغلقت حساباتك. أعد تشغيل التطبيق."
+      "ar": "سيعمل I2P عبر البوابة الخارجية. تُختار طريقة الاتصال بـ I2P عند بدء التشغيل. أُغلقت حساباتك؛ أعد التشغيل لتطبيق التغيير."
     },
     "Identity fingerprint": {
       "ru": "Отпечаток личности",
@@ -1743,7 +1743,7 @@
       "ru": "Если не видите в списке адрес, на который зашли, не подписывайте",
       "es": "Si la dirección por la que entraste no está en la lista, no firmes",
       "zh": "如果你进入时用的地址不在列表里，请不要签名",
-      "ar": "إن لم يكن العنوان الذي دخلت منه في القائمة، فلا توقّع"
+      "ar": "إن لم يكن العنوان الذي زرته في القائمة، فلا توقّع"
     },
     "In call": {
       "ru": "Разговор",
@@ -1797,17 +1797,17 @@
       "ru": "Тёмная",
       "es": "Oscuro",
       "zh": "深色",
-      "ar": "داكن"
+      "ar": "داكنة"
     },
     "Light": {
       "ru": "Светлая",
       "es": "Claro",
       "zh": "浅色",
-      "ar": "فاتح"
+      "ar": "فاتحة"
     },
     "Hi, add me?": {
       "ru": "Привет, добавишь меня?",
-      "es": "Hola, ¿me agregas?",
+      "es": "Hola, ¿me añades?",
       "zh": "你好，可以加我吗？",
       "ar": "مرحبًا، هل تضيفني؟"
     },
@@ -1838,14 +1838,14 @@
     "Later": {
       "ru": "Позже",
       "es": "Más tarde",
-      "zh": "以后再说",
+      "zh": "稍后",
       "ar": "لاحقًا"
     },
     "Lets contacts see a green mark when you receive": {
       "ru": "Контакты увидят зелёную отметку, когда вы получите сообщение",
       "es": "Tus contactos verán una marca verde cuando recibas el mensaje",
       "zh": "联系人会在你收到消息后看到绿色标记",
-      "ar": "سيرى مراسلوك علامة خضراء عند استلامك الرسالة"
+      "ar": "تتيح لجهات اتصالك رؤية علامة خضراء عند استلامك الرسالة"
     },
     "Listen": {
       "ru": "Прослушать",
@@ -1867,9 +1867,9 @@
     },
     "Locked account": {
       "ru": "Закрытый аккаунт",
-      "es": "Cuenta bloqueada",
-      "zh": "已上锁的账号",
-      "ar": "حساب مقفل"
+      "es": "Cuenta cerrada",
+      "zh": "已锁定的账号",
+      "ar": "حساب مغلق"
     },
     "Looking up the server's I2P address": {
       "ru": "Поиск адреса сервера в I2P",
@@ -1909,8 +1909,8 @@
     },
     "Messages and calls from this contact stop arriving, and the pass it held is revoked at your server. The conversation stays. An outgoing message lifts the block.": {
       "ru": "Сообщения и звонки от этого контакта перестанут приходить. Его пропуск будет отозван на вашем сервере. Переписка останется. Исходящее сообщение снимает блокировку.",
-      "es": "Dejan de llegar los mensajes y las llamadas de este contacto, y su pase queda revocado en tu servidor. La conversación se queda. Un mensaje tuyo levanta el bloqueo.",
-      "zh": "来自该联系人的消息和来电将不再到达，其通行凭据会在你的服务器上被撤销。对话保留。你发出一条消息即解除屏蔽。",
+      "es": "Dejan de llegar los mensajes y las llamadas de este contacto, y su pase queda revocado en tu servidor. El chat se conserva. Un mensaje tuyo levanta el bloqueo.",
+      "zh": "来自该联系人的消息和来电将不再到达，其通行凭据会在你的服务器上被撤销。聊天记录保留。你发出一条消息即解除屏蔽。",
       "ar": "تتوقف رسائل جهة الاتصال ومكالماتها، ويُسحب تصريحها لدى خادمك. وتبقى المحادثة. ورسالة صادرة واحدة ترفع الحظر."
     },
     "Message…": {
@@ -1969,8 +1969,8 @@
     },
     "New chat": {
       "ru": "Новый чат",
-      "es": "Conversación nueva",
-      "zh": "新对话",
+      "es": "Chat nuevo",
+      "zh": "新聊天",
       "ar": "محادثة جديدة"
     },
     "New device": {
@@ -2101,14 +2101,14 @@
     },
     "No reseed answered. This device has no network database.": {
       "ru": "Ни один ресид не ответил. У этого устройства нет базы сети.",
-      "es": "Ningún resembrado respondió. Este dispositivo no tiene base de datos de red.",
-      "zh": "没有引导地址应答。本设备没有网络数据库。",
-      "ar": "لم يُجب أي عنوان تهيئة. لا توجد قاعدة بيانات شبكة على هذا الجهاز."
+      "es": "Ningún reseed respondió. Este dispositivo no tiene base de datos de red.",
+      "zh": "没有 reseed 源应答。本设备没有网络数据库。",
+      "ar": "لم يُجب أي عنوان reseed. لا توجد قاعدة بيانات شبكة على هذا الجهاز."
     },
     "No router answering at the address below": {
       "ru": "По адресу ниже роутер не отвечает",
       "es": "Ningún router responde en la dirección de abajo",
-      "zh": "下面的地址没有路由应答",
+      "zh": "下面的地址没有路由器应答",
       "ar": "لا يستجيب أي موجّه عند العنوان أدناه"
     },
     "No tunnel to the server": {
@@ -2162,7 +2162,7 @@
     "Nothing running right now": {
       "ru": "Сейчас ничего не выполняется",
       "es": "Ahora mismo no hay nada en marcha",
-      "zh": "当前没有正在进行的事情",
+      "zh": "当前没有正在进行的任务",
       "ar": "لا شيء قيد التنفيذ الآن"
     },
     "Nothing stored yet": {
@@ -2174,14 +2174,14 @@
     "Nothing was deleted. The key that ends the account is inside this profile, and this build cannot read it.": {
       "ru": "Ничего не удалено. Ключ для закрытия аккаунта находится в этом профиле. Эта сборка его не читает.",
       "es": "No se ha borrado nada. La clave que cierra la cuenta está dentro de este perfil, y esta compilación no puede leerla.",
-      "zh": "什么也没有删除。终止账号的密钥在这个配置文件里，而本构建读不了它。",
+      "zh": "未删除任何内容。终止账号的密钥在这个配置文件里，而此版本无法读取它。",
       "ar": "لم يُحذف شيء. المفتاح الذي يُنهي الحساب داخل هذا الملف الشخصي، وهذه النسخة لا تستطيع قراءته."
     },
     "Nothing was deleted. Try again when it is reachable - this profile holds the only key that can ask it to.": {
       "ru": "Ничего не удалено. Повторите, когда сервер ответит. Нужный ключ есть только в этом профиле.",
       "es": "No se ha borrado nada. Inténtalo cuando esté accesible: este perfil guarda la única clave con la que pedírselo.",
-      "zh": "什么也没有删除。待服务器可达时再试：只有这个配置文件持有可以提出该请求的密钥。",
-      "ar": "لم يُحذف شيء. أعد المحاولة حين يصبح قابلًا للبلوغ: فهذا الملف الشخصي يحمل المفتاح الوحيد الذي يطلب ذلك منه."
+      "zh": "未删除任何内容。请在服务器可达时重试：只有这个配置文件持有能发出该请求的密钥。",
+      "ar": "لم يُحذف شيء. أعد المحاولة حين يصبح الخادم متاحًا: فهذا الملف الشخصي وحده يحمل المفتاح الذي يمكنه طلب ذلك."
     },
     "Nothing yet": {
       "ru": "Пока пусто",
@@ -2193,7 +2193,7 @@
       "ru": "Уведомления",
       "es": "Notificaciones",
       "zh": "通知",
-      "ar": "التنبيهات"
+      "ar": "الإشعارات"
     },
     "Now at: %1": {
       "ru": "Сейчас здесь: %1",
@@ -2209,7 +2209,7 @@
     },
     "Off, a caller is refused automatically": {
       "ru": "Когда выключено, звонящий автоматически получит отказ",
-      "es": "Desactivado, quien llama recibe un rechazo automático",
+      "es": "Si está desactivado, las llamadas se rechazan automáticamente",
       "zh": "关闭时，来电者会自动收到拒绝",
       "ar": "عند الإيقاف، يتلقى المتصل رفضًا تلقائيًا"
     },
@@ -2222,13 +2222,13 @@
     "One or two transit routers, chosen at random.": {
       "ru": "Один или два транзитных узла, случайным образом.",
       "es": "Uno o dos routers de tránsito, elegidos al azar.",
-      "zh": "一个或两个中转路由，随机选择。",
+      "zh": "一个或两个中转路由器，随机选择。",
       "ar": "موجّه عابر واحد أو موجّهان، يُختاران عشوائيًا."
     },
     "One transit router in the tunnel between you and the rest of the network. The fastest.": {
       "ru": "Один транзитный узел в туннеле между вами и остальной сетью. Самый быстрый вариант.",
       "es": "Un router de tránsito en el túnel entre tú y el resto de la red. El más rápido.",
-      "zh": "隧道中只有一个中转路由，位于你与网络其余部分之间。最快。",
+      "zh": "隧道中只有一个中转路由器，位于你与网络其余部分之间。最快。",
       "ar": "موجّه عابر واحد في النفق بينك وبين بقية الشبكة. الأسرع."
     },
     "Only updates this device and your invite link": {
@@ -2271,13 +2271,13 @@
       "ru": "Пароль",
       "es": "Contraseña",
       "zh": "密码",
-      "ar": "كلمة السر"
+      "ar": "كلمة المرور"
     },
     "Passphrase (optional, protects the database)": {
       "ru": "Пароль (необязательно, защищает базу данных)",
       "es": "Contraseña (opcional, protege la base de datos)",
       "zh": "密码（可选，保护数据库）",
-      "ar": "كلمة سر (اختيارية، تحمي قاعدة البيانات)"
+      "ar": "كلمة المرور (اختيارية، تحمي قاعدة البيانات)"
     },
     "This passphrase cannot be used": {
       "ru": "Этот пароль использовать нельзя",
@@ -2305,8 +2305,8 @@
     },
     "If you run your own gateway or a friend shared a link to one, enter its address. A gateway lowers the load on the processor, which matters for devices that run on battery. It also helps when you talk to family and friends on the same server. If there is no link or you do not trust whoever gave it, skip this step: the app will run its built-in I2P router.": {
       "ru": "Если у вас есть свой шлюз, либо ссылкой поделился друг, укажите адрес. Шлюз снижает нагрузку на процессор, что важно для устройств, работающих от батареи. Он пригодится и для общения с семьёй и друзьями на одном сервере. Если ссылки нет или вы не доверяете тому, кто её дал, пропустите этот шаг — приложение запустит встроенный I2P-роутер.",
-      "es": "Si tienes tu propia pasarela o un amigo compartió un enlace a una, indica su dirección. Una pasarela reduce la carga del procesador, lo que importa en los dispositivos que funcionan con batería. También ayuda si hablas con familia y amigos en el mismo servidor. Si no tienes enlace o no confías en quien te lo dio, salta este paso: la aplicación levantará su router I2P integrado.",
-      "zh": "如果你有自己的网关，或者朋友分享了网关链接，请填写其地址。网关可以降低处理器负载，这对依靠电池运行的设备很重要。与家人和朋友在同一台服务器上交流时，它也很有帮助。如果没有链接，或者你不信任给你链接的人，请跳过这一步：程序将启动内置 I2P 路由。",
+      "es": "Si tienes tu propia pasarela o un amigo compartió un enlace a una, indica su dirección. Una pasarela reduce la carga del procesador, lo que importa en los dispositivos que funcionan con batería. También ayuda si hablas con familia y amigos en el mismo servidor. Si no tienes enlace o no confías en quien te lo dio, omite este paso: la aplicación iniciará su router I2P integrado.",
+      "zh": "如果你有自己的网关，或者朋友分享了网关链接，请填写其地址。网关可以降低处理器负载，这对依靠电池运行的设备很重要。与家人和朋友在同一台服务器上交流时，它也很有帮助。如果没有链接，或者你不信任给你链接的人，请跳过这一步：应用将启动内置 I2P 路由器。",
       "ar": "إن كانت لديك بوابتك الخاصة أو شارك صديق رابطًا إليها، فأدخل عنوانها. تخفّف البوابة الحمل عن المعالج، وهذا مهم للأجهزة التي تعمل بالبطارية. وتفيد أيضًا عند التواصل مع العائلة والأصدقاء على الخادم نفسه. إن لم يكن لديك رابط أو كنت لا تثق بمن أعطاك إياه، فتخطَّ هذه الخطوة: سيشغّل التطبيق موجّه I2P المدمج."
     },
     "Welcome to Bazarish": {
@@ -2323,9 +2323,9 @@
     },
     "Paste the challenge": {
       "ru": "Вставьте запрос",
-      "es": "Pega el reto",
+      "es": "Pega el desafío",
       "zh": "粘贴质询",
-      "ar": "الصِق التحدي"
+      "ar": "الصِق الطلب"
     },
     "Paste the pairing link, or scan it from the other device": {
       "ru": "Вставьте ссылку подключения или отсканируйте её с другого устройства",
@@ -2415,7 +2415,7 @@
       "ru": "Привязка %1 к этому аккаунту",
       "es": "Apuntando %1 aquí",
       "zh": "正在把 %1 指向这里",
-      "ar": "جارٍ ربط ⁦%1⁩ بهنا"
+      "ar": "جارٍ ربط ⁦%1⁩ بهذا الحساب"
     },
     "Points here": {
       "ru": "Указывает сюда",
@@ -2445,7 +2445,7 @@
       "ru": "Расположите аватар",
       "es": "Encuadra tu avatar",
       "zh": "调整你的头像",
-      "ar": "اضبط موضع صورتك"
+      "ar": "اضبط موضع صورتك الرمزية"
     },
     "Preparing": {
       "ru": "Подготовка",
@@ -2558,7 +2558,7 @@
     "Publishing. This takes a few minutes": {
       "ru": "Публикация. Занимает несколько минут",
       "es": "Publicando. Tarda unos minutos",
-      "zh": "正在发布。需要几分钟。",
+      "zh": "正在发布。需要几分钟",
       "ar": "جارٍ النشر. يستغرق ذلك دقائق"
     },
     "Publishing…": {
@@ -2571,7 +2571,7 @@
       "ru": "В очереди…",
       "es": "En cola…",
       "zh": "排队中…",
-      "ar": "في الطابور…"
+      "ar": "في قائمة الانتظار…"
     },
     "Quit": {
       "ru": "Выйти",
@@ -2600,13 +2600,13 @@
     "Reaching the recipient's server…": {
       "ru": "Соединение с сервером получателя…",
       "es": "Contactando con el servidor del destinatario…",
-      "zh": "正在联系收件人的服务器…",
+      "zh": "正在联系接收方的服务器…",
       "ar": "جارٍ الوصول إلى خادم المستلم…"
     },
     "React": {
       "ru": "Реакция",
       "es": "Reaccionar",
-      "zh": "添加反应",
+      "zh": "回应",
       "ar": "تفاعل"
     },
     "Reaction %1 for %2": {
@@ -2667,7 +2667,7 @@
       "ru": "Записать заново",
       "es": "Grabar de nuevo",
       "zh": "重新录音",
-      "ar": "سجّل مجددًا"
+      "ar": "إعادة التسجيل"
     },
     "Registered; registering this device": {
       "ru": "Аккаунт зарегистрирован. Регистрация устройства",
@@ -2689,8 +2689,8 @@
     },
     "Remove every message in this chat. The chat itself stays.": {
       "ru": "Удалить все сообщения этой переписки. Сама переписка останется.",
-      "es": "Borrar todos los mensajes de esta conversación. La conversación se queda.",
-      "zh": "删除此对话中的所有消息。对话本身保留。",
+      "es": "Borrar todos los mensajes de este chat. El chat se conserva.",
+      "zh": "删除此聊天中的所有消息。聊天本身保留。",
       "ar": "حذف كل رسائل هذه المحادثة. تبقى المحادثة نفسها."
     },
     "Remove from this device anyway": {
@@ -2709,7 +2709,7 @@
       "ru": "Убрать аватар?",
       "es": "¿Quitar tu avatar?",
       "zh": "要移除你的头像吗？",
-      "ar": "أتريد إزالة صورتك؟"
+      "ar": "أتريد إزالة صورتك الرمزية؟"
     },
     "Removed %1 messages and compacted the database": {
       "ru": "Удалено сообщений: %1. База сжата",
@@ -2739,7 +2739,7 @@
       "ru": "Удаление аватара",
       "es": "Quitando tu avatar",
       "zh": "正在移除头像",
-      "ar": "جارٍ إزالة صورتك"
+      "ar": "جارٍ إزالة صورتك الرمزية"
     },
     "Renew": {
       "ru": "Обновить",
@@ -2779,21 +2779,21 @@
     },
     "Reseeding from the link": {
       "ru": "Ресид по адресу из ссылки",
-      "es": "Resembrando desde el enlace",
-      "zh": "正在按链接中的地址引导",
-      "ar": "تهيئة من العنوان في الرابط"
+      "es": "Reseed desde el enlace",
+      "zh": "正在从链接中的地址 reseed",
+      "ar": "جارٍ تنفيذ reseed من العنوان في الرابط"
     },
     "Reseeds": {
       "ru": "Ресиды",
       "es": "Reseeds",
       "zh": "Reseed 源",
-      "ar": "مصادر إعادة البذر"
+      "ar": "عناوين reseed"
     },
     "Reseeds — fetched over clearnet, before I2P is up:": {
       "ru": "Ресиды — загружаются по обычному интернету до запуска I2P:",
-      "es": "Reseeds: se descargan por la internet ordinaria, antes de levantar I2P:",
+      "es": "Reseeds: se descargan por la internet ordinaria, antes de que arranque I2P:",
       "zh": "Reseed 源——在 I2P 启动前经由普通互联网获取：",
-      "ar": "مصادر إعادة البذر — تُجلب عبر الإنترنت العادي قبل قيام I2P:"
+      "ar": "عناوين reseed — يُتصل بها عبر الإنترنت العادي قبل تشغيل I2P:"
     },
     "Resend": {
       "ru": "Отправить снова",
@@ -2834,7 +2834,7 @@
     "Routers known": {
       "ru": "Известно роутеров",
       "es": "Routers conocidos",
-      "zh": "已知路由数",
+      "zh": "已知路由器数",
       "ar": "الموجّهات المعروفة"
     },
     "Routing published: your card now carries this destination": {
@@ -2917,14 +2917,14 @@
     },
     "Search chats…": {
       "ru": "Поиск по чатам…",
-      "es": "Buscar conversaciones…",
-      "zh": "搜索对话…",
+      "es": "Buscar chats…",
+      "zh": "搜索聊天…",
       "ar": "ابحث في المحادثات…"
     },
     "Search in conversation…": {
       "ru": "Поиск в переписке…",
-      "es": "Buscar en la conversación…",
-      "zh": "在对话中搜索…",
+      "es": "Buscar en el chat…",
+      "zh": "在聊天中搜索…",
       "ar": "ابحث داخل المحادثة…"
     },
     "Select": {
@@ -2935,8 +2935,8 @@
     },
     "Select a chat or start a new one": {
       "ru": "Выберите чат или начните новый",
-      "es": "Elige una conversación o empieza una nueva",
-      "zh": "选择一个对话，或开始新的对话",
+      "es": "Elige un chat o empieza uno nuevo",
+      "zh": "选择一个聊天，或开始新的聊天",
       "ar": "اختر محادثة أو ابدأ واحدة جديدة"
     },
     "Selected: %1": {
@@ -2984,7 +2984,7 @@
     "Sending a contact request…": {
       "ru": "Запрос на добавление отправляется…",
       "es": "Enviando la solicitud de contacto…",
-      "zh": "正在发送联系请求…",
+      "zh": "正在发送联系人请求…",
       "ar": "جارٍ إرسال طلب التواصل…"
     },
     "Sending a reaction": {
@@ -3020,7 +3020,7 @@
     "Sending to the recipient's server…": {
       "ru": "Отправка на сервер получателя…",
       "es": "Enviando al servidor del destinatario…",
-      "zh": "正在发送到收件人的服务器…",
+      "zh": "正在发送到接收方的服务器…",
       "ar": "جارٍ الإرسال إلى خادم المستلم…"
     },
     "Sending to your contacts…": {
@@ -3069,7 +3069,7 @@
       "ru": "Установка аватара",
       "es": "Estableciendo tu avatar",
       "zh": "正在设置头像",
-      "ar": "جارٍ تعيين صورتك"
+      "ar": "جارٍ تعيين صورتك الرمزية"
     },
     "Share contact": {
       "ru": "Поделиться контактом",
@@ -3134,14 +3134,14 @@
     "Starting the I2P router": {
       "ru": "Роутер I2P запускается",
       "es": "Arrancando el router I2P",
-      "zh": "正在启动 I2P 路由",
+      "zh": "正在启动 I2P 路由器",
       "ar": "جارٍ تشغيل موجّه I2P"
     },
     "Starting with the built-in reseeds": {
       "ru": "Запуск со встроенными ресидами",
-      "es": "Iniciando con los resembrados integrados",
-      "zh": "改用内置引导地址启动",
-      "ar": "البدء بعناوين التهيئة المدمجة"
+      "es": "Iniciando con los reseeds integrados",
+      "zh": "正在使用内置 reseed 源启动",
+      "ar": "البدء بعناوين reseed المدمجة"
     },
     "Starting": {
       "ru": "Запускается",
@@ -3201,13 +3201,13 @@
       "ru": "Снять с публикации",
       "es": "Retirar de la red",
       "zh": "下线",
-      "ar": "سحبه من الشبكة"
+      "ar": "إلغاء النشر"
     },
     "Take offline?": {
       "ru": "Снять с публикации?",
       "es": "¿Retirar de la red?",
       "zh": "要下线吗？",
-      "ar": "سحبه من الشبكة؟"
+      "ar": "أتريد إلغاء النشر؟"
     },
     "Take photo": {
       "ru": "Снять",
@@ -3219,7 +3219,7 @@
       "ru": "Снятие с публикации…",
       "es": "Retirando de la red…",
       "zh": "正在下线…",
-      "ar": "جارٍ السحب…"
+      "ar": "جارٍ إلغاء النشر…"
     },
     "Telling your other devices": {
       "ru": "Оповещение ваших устройств",
@@ -3267,7 +3267,7 @@
       "ru": "Бэкенд I2P выбирается при старте, его смена требует перезапуск",
       "es": "El backend de I2P se elige al iniciar: cambiarlo requiere reiniciar",
       "zh": "I2P 后端在启动时选定，更换需要重启",
-      "ar": "تُختار واجهة I2P الخلفية عند التشغيل، وتغييرها يتطلب إعادة التشغيل"
+      "ar": "تُختار طريقة الاتصال بـ I2P عند بدء التشغيل: يتطلب تغييرها إعادة التشغيل"
     },
     "The I2P tunnels are being built": {
       "ru": "Строятся туннели I2P",
@@ -3277,9 +3277,9 @@
     },
     "The account ends on the server and goes from this device. This cannot be undone.\n\nRemoving from this device only forgets this device: the account and its mail stay.": {
       "ru": "Аккаунт будет закрыт на сервере и удалён с этого устройства. Отменить нельзя.\n\nПри удалении с устройства сервер забудет только его. Аккаунт и его почта останутся.",
-      "es": "La cuenta se cierra en el servidor y desaparece de este dispositivo. No se puede deshacer.\n\nQuitarla de este dispositivo solo olvida este dispositivo: la cuenta y su correo se quedan.",
+      "es": "La cuenta se cierra en el servidor y desaparece de este dispositivo. No se puede deshacer.\n\nQuitarla de este dispositivo solo olvida este dispositivo: la cuenta y su correo se conservan.",
       "zh": "账号将在服务器上终止，并从本设备消失。此操作无法撤销。\n\n仅从本设备移除只会忘记本设备：账号及其邮件保留。",
-      "ar": "يُنهى الحساب على الخادم ويذهب من هذا الجهاز. ولا يمكن التراجع.\n\nأما الإزالة من هذا الجهاز فتنسى هذا الجهاز وحده: يبقى الحساب وبريده."
+      "ar": "يُنهى الحساب على الخادم ويُزال من هذا الجهاز. ولا يمكن التراجع.\n\nأما الإزالة من هذا الجهاز وحده فتجعل الخادم ينسى هذا الجهاز فقط: يبقى الحساب وبريده."
     },
     "The account is on this device": {
       "ru": "Аккаунт на этом устройстве",
@@ -3302,13 +3302,13 @@
     "The application is running from a temporary directory (%1), which is cleared on reboot. Move it to a folder of its own first.": {
       "ru": "Программа запущена из временного каталога (%1), который очищается при перезагрузке. Сначала перенесите её в собственную папку.",
       "es": "La aplicación se ejecuta desde un directorio temporal (%1) que se vacía al reiniciar. Muévela antes a una carpeta propia.",
-      "zh": "程序运行在临时目录（%1）中，该目录重启时会被清空。请先把它移到自己的文件夹。",
+      "zh": "应用运行在临时目录（%1）中，该目录重启时会被清空。请先把它移到单独的文件夹。",
       "ar": "يعمل التطبيق من مجلد مؤقت (⁦%1⁩) يُفرَّغ عند إعادة التشغيل. انقله أولًا إلى مجلد خاص به."
     },
     "The contact request did not finish": {
       "ru": "Запрос на добавление не завершился",
       "es": "La solicitud de contacto no se completó",
-      "zh": "联系请求未完成",
+      "zh": "联系人请求未完成",
       "ar": "لم يكتمل طلب التواصل"
     },
     "This message did not leave this device": {
@@ -3344,20 +3344,20 @@
     "The file goes straight between you and your contact. Your contact asks for a one-time I2P tunnel. Your app has to be online to hand the file over when they ask.": {
       "ru": "Файл передаётся напрямую между вами и собеседником. Контакт запросит одноразовый туннель I2P. Ваше приложение должно быть онлайн, чтобы отдать файл в момент запроса.",
       "es": "El archivo va directo entre tú y tu contacto. Tu contacto pedirá un túnel I2P de un solo uso. Tu aplicación debe estar en línea para entregarlo en ese momento.",
-      "zh": "文件在你与联系人之间直接传输。联系人会请求一条一次性 I2P 隧道。你的程序需要在线，才能在对方请求时交付文件。",
-      "ar": "ينتقل الملف مباشرةً بينك وبين مراسلك. يطلب مراسلك نفقًا لمرة واحدة في I2P. ويجب أن يكون تطبيقك متصلًا ليسلّم الملف عند الطلب."
+      "zh": "文件在你与联系人之间直接传输。联系人会请求一条一次性 I2P 隧道。你的应用需要在线，才能在对方请求时交付文件。",
+      "ar": "ينتقل الملف مباشرةً بينك وبين جهة الاتصال. تطلب جهة الاتصال نفقًا لمرة واحدة في I2P. ويجب أن يكون تطبيقك متصلًا ليسلّم الملف عند الطلب."
     },
     "The first connection over I2P can take several minutes. Do not close the app.": {
       "ru": "Первое соединение через I2P может занять несколько минут. Не закрывайте приложение.",
       "es": "La primera conexión por I2P puede tardar varios minutos. No cierres la aplicación.",
-      "zh": "首次通过 I2P 连接可能需要数分钟。请勿关闭程序。",
+      "zh": "首次通过 I2P 连接可能需要数分钟。请勿关闭应用。",
       "ar": "قد يستغرق الاتصال الأول عبر I2P دقائق عدة. لا تغلق التطبيق."
     },
     "The gateway takes connections over HTTPS, so this application looks like ordinary web traffic. It removes the need for a local I2P router. The gateway sees the I2P addresses you reach, so it has to be one you trust. End-to-end protection of your data is unaffected.": {
       "ru": "Шлюз принимает подключения по протоколу HTTPS, активность приложения становится похожей на обычный веб-трафик. Его использование снимает потребность в локальном I2P-роутере. Шлюз видит адреса I2P, к которым вы обращаетесь, поэтому должен быть доверенным. Сквозная защита личных данных не страдает.",
-      "es": "La pasarela acepta conexiones por HTTPS, así que la actividad de la aplicación se parece a tráfico web corriente. Su uso quita la necesidad de un router I2P local. La pasarela ve las direcciones I2P a las que acudes, así que tiene que ser de confianza. El cifrado de extremo a extremo de tus datos no se ve afectado.",
-      "zh": "网关通过 HTTPS 接受连接，程序的活动因此看起来像普通网页流量。使用网关就不再需要本地 I2P 路由。网关能看到你访问的 I2P 地址，因此必须是你信任的。端到端加密保护不受影响。",
-      "ar": "تستقبل البوابة الاتصالات عبر HTTPS، فيبدو نشاط التطبيق كحركة ويب عادية. ويغني استخدامها عن موجّه I2P محلي. وترى البوابة عناوين I2P التي تقصدها، فلا بدّ أن تكون موثوقة. ولا يتأثر التشفير التام بين الطرفين لبياناتك."
+      "es": "La pasarela acepta conexiones por HTTPS, así que la actividad de la aplicación se parece a tráfico web corriente. Elimina la necesidad de un router I2P local. La pasarela ve las direcciones I2P a las que te conectas, así que tiene que ser de confianza. La protección de extremo a extremo de tus datos no se ve afectada.",
+      "zh": "网关通过 HTTPS 接受连接，因此应用的活动看起来像普通网页流量。使用网关就不再需要本地 I2P 路由器。网关能看到你访问的 I2P 地址，因此必须是你信任的。数据的端到端保护不受影响。",
+      "ar": "تستقبل البوابة الاتصالات عبر HTTPS، فيبدو نشاط التطبيق كحركة ويب عادية. ويغني استخدامها عن موجّه I2P محلي. وترى البوابة عناوين I2P التي تقصدها، فلا بدّ أن تكون موثوقة. ولا تتأثر حماية بياناتك من طرف إلى طرف."
     },
     "The last %1 events of this account, newest first": {
       "ru": "Последние %1 событий этого аккаунта, новые сверху",
@@ -3369,7 +3369,7 @@
       "ru": "Новое устройство получило аккаунт",
       "es": "El nuevo dispositivo tiene la cuenta",
       "zh": "新设备已获得账号",
-      "ar": "الجهاز الجديد لديه الحساب"
+      "ar": "تسلّم الجهاز الجديد الحساب"
     },
     "The panel on the right shows the progress": {
       "ru": "Ход операции виден на панели справа",
@@ -3386,7 +3386,7 @@
     "The registry did not take the update. It will be tried again.": {
       "ru": "Реестр не принял обновление. Попытка повторится.",
       "es": "El registro no aceptó la actualización. Se intentará de nuevo.",
-      "zh": "注册服务未接受此次更新。稍后会重试。",
+      "zh": "登记处未接受此次更新。稍后会重试。",
       "ar": "لم يقبل السجل التحديث. ستُعاد المحاولة."
     },
     "The request was refused - their server is busy": {
@@ -3404,13 +3404,13 @@
     "The router answered": {
       "ru": "Роутер ответил",
       "es": "El router ha respondido",
-      "zh": "路由已响应",
+      "zh": "路由器已响应",
       "ar": "استجاب الموجّه"
     },
     "The router is at %1": {
       "ru": "Роутер находится на %1",
       "es": "El router está en %1",
-      "zh": "路由位于 %1",
+      "zh": "路由器位于 %1",
       "ar": "الموجّه عند ⁦%1⁩"
     },
     "Not running": {
@@ -3481,9 +3481,9 @@
     },
     "This account is locked": {
       "ru": "Этот аккаунт закрыт",
-      "es": "Esta cuenta está bloqueada",
-      "zh": "这个账号已上锁",
-      "ar": "هذا الحساب مقفل"
+      "es": "Esta cuenta está cerrada",
+      "zh": "此账号已锁定",
+      "ar": "هذا الحساب مغلق"
     },
     "This account is no longer password-protected": {
       "ru": "Этот аккаунт больше не защищён паролем",
@@ -3505,21 +3505,21 @@
     },
     "This account is switched off — switch it on to write": {
       "ru": "Аккаунт выключен — включите его, чтобы писать",
-      "es": "Esta cuenta está apagada: enciéndela para escribir",
-      "zh": "此账号已关闭——开启后方可书写",
-      "ar": "هذا الحساب مُطفأ — فعّله لتكتب"
+      "es": "Esta cuenta está desactivada: actívala para escribir",
+      "zh": "此账号已停用——启用后才能发消息",
+      "ar": "هذا الحساب معطّل — فعّله لتكتب"
     },
     "This add cannot be tried again from here": {
       "ru": "Это добавление здесь уже не повторить",
-      "es": "Esta alta no se puede reintentar desde aquí",
+      "es": "Este intento de añadir no se puede repetir desde aquí",
       "zh": "这次添加无法在此重试",
       "ar": "لا يمكن إعادة محاولة هذه الإضافة من هنا"
     },
     "This challenge cannot be signed": {
       "ru": "Этот запрос подписать нельзя",
-      "es": "Este reto no se puede firmar",
+      "es": "Este desafío no se puede firmar",
       "zh": "这个质询无法签名",
-      "ar": "لا يمكن توقيع هذا التحدي"
+      "ar": "لا يمكن توقيع هذا الطلب"
     },
     "This contact has not allowed you to write": {
       "ru": "Контакт не разрешил вам писать",
@@ -3537,7 +3537,7 @@
       "ru": "В приглашении нет адреса для связи с этим аккаунтом",
       "es": "Esta invitación no trae ninguna dirección para contactar con esa cuenta",
       "zh": "该邀请不包含联系此账号的地址",
-      "ar": "لا يحمل هذا الرابط عنوانًا للوصول إلى ذلك الحساب"
+      "ar": "لا تحمل هذه الدعوة عنوانًا للوصول إلى ذلك الحساب"
     },
     "This is not a SOCKS5 proxy": {
       "ru": "Это не прокси SOCKS5",
@@ -3578,8 +3578,8 @@
     "This profile could not be opened": {
       "ru": "Профиль не открылся",
       "es": "No se pudo abrir este perfil",
-      "zh": "无法打开此配置",
-      "ar": "لم يُفتح هذا الملف"
+      "zh": "无法打开此配置文件",
+      "ar": "تعذّر فتح هذا الملف الشخصي"
     },
     "This removes your personal I2P address from the server. Your account becomes unreachable for other users. It makes sense if you plan to change servers and are withdrawing your address to publish it in the new place.": {
       "ru": "Это действие снимет с сервера ваш индивидуальный адрес I2P. Ваш аккаунт станет недосягаем для обращений от других пользователей. Операция имеет смысл, если вы планируете сменить сервер и отзываете ваш адрес, чтобы опубликовать его на новом месте.",
@@ -3596,8 +3596,8 @@
     "Three transit routers in the tunnels, the I2P default. The highest latency.": {
       "ru": "Три транзитных узла в туннелях, стандарт I2P. Самая большая задержка.",
       "es": "Tres routers de tránsito en los túneles, el valor predeterminado de I2P. La mayor latencia.",
-      "zh": "隧道中三个中转路由，I2P 的默认值。延迟最高。",
-      "ar": "ثلاثة موجّهات عابرة في الأنفاق، وهو إعداد I2P الافتراضي. أعلى زمن استجابة."
+      "zh": "隧道中有三个中转路由器，即 I2P 的默认值。延迟最高。",
+      "ar": "ثلاثة موجّهات عابرة في الأنفاق، وهو إعداد I2P الافتراضي. أعلى زمن تأخير."
     },
     "To %1": {
       "ru": "Кому: %1",
@@ -3637,14 +3637,14 @@
     },
     "Trim every chat": {
       "ru": "Подрезать все переписки",
-      "es": "Recortar todas las conversaciones",
-      "zh": "精简所有对话",
+      "es": "Recortar todos los chats",
+      "zh": "精简所有聊天",
       "ar": "تقليم كل المحادثات"
     },
     "Trimming and compacting the database": {
       "ru": "Подрезка и сжатие базы данных",
       "es": "Recortando y compactando la base de datos",
-      "zh": "正在修剪并压缩数据库",
+      "zh": "正在精简并压缩数据库",
       "ar": "جارٍ تقليم قاعدة البيانات وضغطها"
     },
     "Trimming happens only on this device": {
@@ -3685,27 +3685,27 @@
     },
     "Unlock": {
       "ru": "Открыть",
-      "es": "Desbloquear",
+      "es": "Abrir",
       "zh": "解锁",
-      "ar": "فتح القفل"
+      "ar": "فتح"
     },
     "Unlock %1": {
       "ru": "Открыть %1",
-      "es": "Desbloquear %1",
+      "es": "Abrir %1",
       "zh": "解锁 %1",
       "ar": "فتح ⁦%1⁩"
     },
     "Unlock account": {
       "ru": "Открыть аккаунт",
-      "es": "Desbloquear la cuenta",
+      "es": "Abrir la cuenta",
       "zh": "解锁账号",
-      "ar": "فتح قفل الحساب"
+      "ar": "فتح الحساب"
     },
     "Unlock and delete": {
       "ru": "Открыть и удалить",
-      "es": "Desbloquear y eliminar",
+      "es": "Abrir y eliminar",
       "zh": "解锁并删除",
-      "ar": "فتح القفل والحذف"
+      "ar": "الفتح والحذف"
     },
     "Unpin chat": {
       "ru": "Открепить",
@@ -3753,7 +3753,7 @@
       "ru": "Использовать внешний роутер I2P",
       "es": "Usar un router I2P externo",
       "zh": "使用外部 I2P 路由器",
-      "ar": "استخدم موجّه I2P خارجيًا"
+      "ar": "استخدام موجّه I2P خارجي"
     },
     "Version": {
       "ru": "Версия",
@@ -3831,7 +3831,7 @@
       "ru": "Без пароля серверу ничего не сказать. Аккаунт останется на сервере. Ключа для его закрытия не будет.",
       "es": "Sin la contraseña no se le puede decir nada al servidor. La cuenta seguiría allí sin ninguna clave con la que cerrarla.",
       "zh": "没有密码就无法向服务器传达任何指令。账号会留在那里，而再无可以终止它的密钥。",
-      "ar": "من دون كلمة السر لا يمكن قول شيء للخادم. وسيبقى الحساب لديه بلا مفتاح يُنهيه."
+      "ar": "من دون كلمة المرور لا يمكن مخاطبة الخادم. وسيبقى الحساب لديه بلا مفتاح يُنهيه."
     },
     "Working": {
       "ru": "Выполняется",
@@ -3895,7 +3895,7 @@
     },
     "You cleared the chat for everyone": {
       "ru": "Вы очистили переписку у всех",
-      "es": "Has borrado el chat para todos",
+      "es": "Has vaciado el chat para todos",
       "zh": "你已为所有人清空该聊天",
       "ar": "لقد أفرغت المحادثة عند الجميع"
     },
@@ -3908,8 +3908,8 @@
     "Your address changes. Every invite link you have handed out stops working and the old address stops answering at once. Your contacts are sent the new details automatically, and your aliases are repointed by themselves. This helps in the rare case of shaking off spam. Do not take this step unless you are sure why you need it.": {
       "ru": "Адрес изменится. Все выданные ссылки-приглашения перестанут работать, а старый адрес сразу перестанет отвечать. Контактам новые данные разошлются автоматически, алиасы переназначатся сами. Это помогает в редком случае, когда нужно избавиться от спама. Не делайте этого, если не уверены, зачем.",
       "es": "Tu dirección cambia. Todos los enlaces de invitación que hayas repartido dejan de funcionar y la dirección anterior deja de responder de inmediato. Tus contactos reciben los datos nuevos automáticamente y tus alias se reapuntan por sí solos. Esto ayuda en el caso poco frecuente de quitarse el spam de encima. No lo hagas si no tienes claro para qué.",
-      "zh": "你的地址会改变。已经发出的邀请链接全部失效，旧地址立即停止回应。新的联系资料会自动发给你的联系人，别名也会自行重新指向。这在少见的摆脱垃圾请求的情况下有用。若不清楚为何需要，请不要这样做。",
-      "ar": "سيتغيّر عنوانك. تتوقف كل روابط الدعوة التي وزّعتها عن العمل، ويتوقف العنوان القديم عن الإجابة فورًا. تُرسل بياناتك الجديدة إلى جهات اتصالك تلقائيًا، وتُعاد أسماؤك المستعارة إلى العنوان الجديد من تلقاء نفسها. هذا يفيد في الحالة النادرة للتخلص من المزعجين. لا تفعل ذلك إن لم تكن واثقًا من سببه."
+      "zh": "你的地址会改变。已经发出的邀请链接全部失效，旧地址立即停止回应。新的联系资料会自动发给你的联系人，别名也会自行重新指向。这在少数需要摆脱垃圾信息的情况下有用。若不清楚为何需要，请不要这样做。",
+      "ar": "سيتغيّر عنوانك. تتوقف كل روابط الدعوة التي وزّعتها عن العمل، ويتوقف العنوان القديم عن الإجابة فورًا. تُرسل بياناتك الجديدة إلى جهات اتصالك تلقائيًا، وتُعاد أسماؤك المستعارة إلى العنوان الجديد من تلقاء نفسها. يفيد هذا في الحالة النادرة التي تحتاج فيها إلى التخلص من الرسائل المزعجة. لا تفعل ذلك إن لم تكن واثقًا من سببه."
     },
     "Your aliases are up to date": {
       "ru": "Алиасы актуальны",
@@ -3927,7 +3927,7 @@
       "ru": "У контактов останется копия, которую они получили ранее. Она сменится, когда вы поставите новую.",
       "es": "Tus contactos conservan la copia que ya tienen hasta que pongas una nueva",
       "zh": "在你设置新的之前，联系人保留他们手上已有的那一份",
-      "ar": "يحتفظ مراسلوك بالنسخة التي لديهم حتى تضع واحدة جديدة"
+      "ar": "تحتفظ جهات اتصالك بالنسخة التي لديها حتى تضع واحدة جديدة"
     },
     "Your data moved back to your user folder. Bazarish has to be started again to use it.": {
       "ru": "Данные вернулись в пользовательскую папку. Чтобы ими пользоваться, запустите Bazarish заново.",
@@ -3950,14 +3950,14 @@
     "Your account is a key pair": {
       "ru": "Ваш аккаунт — это пара ключей",
       "es": "Tu cuenta es un par de claves",
-      "zh": "你的账户就是一对密钥",
+      "zh": "你的账号就是一对密钥",
       "ar": "حسابك زوج مفاتيح"
     },
     "Your messages among them (%1) are removed from the other side too, the rest only from this device": {
       "ru": "Ваши сообщения среди них (%1) удалятся и у собеседника, остальные — только на этом устройстве",
       "es": "Tus mensajes entre ellos (%1) también se eliminan para tu interlocutor; el resto, solo de este dispositivo",
       "zh": "其中你发送的 %1 条消息在对方那里也会删除，其余只从此设备上删除",
-      "ar": "رسائلك بينها (⁦%1⁩) ستُحذف لدى الطرف الآخر أيضًا، والباقي من هذا الجهاز فقط"
+      "ar": "رسائلك من بينها (⁦%1⁩) ستُحذف لدى الطرف الآخر أيضًا، والباقي من هذا الجهاز فقط"
     },
     "Your name": {
       "ru": "Ваше имя",
@@ -3980,7 +3980,7 @@
     "Your server holds this account until its operator approves it — you cannot send or receive yet": {
       "ru": "Аккаунт ожидает одобрения оператором. Отправка и приём пока недоступны",
       "es": "Tu servidor retiene esta cuenta hasta que su operador la apruebe: todavía no puedes enviar ni recibir",
-      "zh": "服务器会扣留此账号，直到其运营者批准——你暂时无法收发",
+      "zh": "在运营者批准之前，服务器会暂缓启用此账号——你暂时无法收发消息",
       "ar": "يحتفظ خادمك بهذا الحساب حتى يوافق عليه مشغّله — ولا يمكنك الإرسال أو الاستقبال بعد"
     },
     "Your server is serving %1; this device holds %2. No other device answered with the keys to the served one.": {
@@ -4003,8 +4003,8 @@
     },
     "Your server will serve this address instead. Contacts holding the old one cannot write to you until your next message. If another device of yours is offline, wait until it is on.": {
       "ru": "Сервер станет обслуживать этот адрес. Контакты со старым адресом не смогут вам написать до вашего следующего сообщения. Если другое ваше устройство не в сети, дождитесь его включения.",
-      "es": "Tu servidor pasará a servir esta dirección. Los contactos con la antigua no podrán escribirte hasta tu próximo mensaje. Si otro dispositivo tuyo está sin conexión, espera a encenderlo.",
-      "zh": "服务器将改为服务这个地址。持有旧地址的联系人在你的下一条消息之前无法给你写信。若你的另一台设备不在线，请等它开机。",
+      "es": "Tu servidor pasará a servir esta dirección. Los contactos con la antigua no podrán escribirte hasta tu próximo mensaje. Si otro dispositivo tuyo está sin conexión, espera a que esté encendido.",
+      "zh": "服务器将改为服务这个地址。持有旧地址的联系人在你发出下一条消息之前无法给你发消息。若你的另一台设备不在线，请等它上线。",
       "ar": "سيخدم خادمك هذا العنوان بدلًا من السابق. ومن لديه العنوان القديم لا يستطيع الكتابة إليك حتى رسالتك التالية. وإن كان جهاز آخر لك غير متصل، فانتظر تشغيله."
     },
     "[file]": {
@@ -4071,7 +4071,7 @@
       "ru": "изменено",
       "es": "editado",
       "zh": "已编辑",
-      "ar": "مُحرَّرة"
+      "ar": "مُعدَّلة"
     },
     "expired": {
       "ru": "истекло",
@@ -4101,13 +4101,13 @@
       "ru": "оставьте пустым, если не нужен",
       "es": "déjalo vacío si no quieres ninguna",
       "zh": "不需要则留空",
-      "ar": "اتركه فارغًا إن لم ترغب بها"
+      "ar": "اتركه فارغًا إن لم تكن بحاجة إليه"
     },
     "locked": {
       "ru": "закрыт",
-      "es": "bloqueada",
-      "zh": "已上锁",
-      "ar": "مقفل"
+      "es": "cerrada",
+      "zh": "已锁定",
+      "ar": "مغلق"
     },
     "name": {
       "ru": "имя",
@@ -4173,7 +4173,7 @@
       "ru": "привязывается…",
       "es": "apuntándolo aquí…",
       "zh": "正在指向这里…",
-      "ar": "جارٍ ربطه بهنا…"
+      "ar": "جارٍ ربطه بهذا الحساب…"
     },
     "ready": {
       "ru": "готов",
@@ -4243,9 +4243,9 @@
     },
     "this account is switched off: the server connection is saved, switch the account on to connect": {
       "ru": "аккаунт выключен. Соединение с сервером сохранено. Включите аккаунт для подключения",
-      "es": "esta cuenta está apagada: la conexión con el servidor está guardada, enciéndela para conectar",
-      "zh": "该账号已关闭：服务器连接已保存，开启账号即可连接",
-      "ar": "هذا الحساب مُطفأ: الاتصال بالخادم محفوظ، فعّل الحساب للاتصال"
+      "es": "esta cuenta está desactivada: la conexión con el servidor está guardada, activa la cuenta para conectar",
+      "zh": "该账号已停用：服务器连接已保存，启用账号即可连接",
+      "ar": "هذا الحساب معطّل: الاتصال بالخادم محفوظ، فعّل الحساب للاتصال"
     },
     "this picture is no longer on this device": {
       "ru": "этой картинки на устройстве больше нет",
@@ -4273,9 +4273,9 @@
     },
     "🔒 Locked": {
       "ru": "🔒 Закрыт",
-      "es": "🔒 Bloqueada",
+      "es": "🔒 Cerrada",
       "zh": "🔒 已锁定",
-      "ar": "🔒 مُقفل"
+      "ar": "🔒 مغلق"
     },
     "%1: %2": {
       "ru": "%1: %2",
@@ -4293,7 +4293,7 @@
       "ru": "Удалить у всех?",
       "es": "¿Eliminar para todos?",
       "zh": "为所有人删除？",
-      "ar": "حذف لدى الجميع؟"
+      "ar": "أتريد الحذف لدى الجميع؟"
     },
     "Exclude": {
       "ru": "Исключить",
@@ -4311,7 +4311,7 @@
       "ru": "Исключить %1?",
       "es": "¿Excluir a %1?",
       "zh": "移出 %1？",
-      "ar": "استبعاد ⁦%1⁩؟"
+      "ar": "أتريد استبعاد ⁦%1⁩؟"
     },
     "Members: %1": {
       "ru": "Участников: %1",
@@ -4352,7 +4352,7 @@
     "Request contact": {
       "ru": "Запросить контакт",
       "es": "Pedir contacto",
-      "zh": "请求联系",
+      "zh": "请求添加联系人",
       "ar": "طلب التواصل"
     },
     "Subscribers: %1": {
@@ -4376,14 +4376,14 @@
     "Write": {
       "ru": "Написать",
       "es": "Escribir",
-      "zh": "写信",
+      "zh": "发消息",
       "ar": "مراسلة"
     },
     "Block %1?": {
       "ru": "Заблокировать %1?",
       "es": "¿Bloquear a %1?",
       "zh": "屏蔽 %1？",
-      "ar": "حظر ⁦%1⁩؟"
+      "ar": "أتريد حظر ⁦%1⁩؟"
     },
     "Block %1": {
       "ru": "Заблокировать %1",
@@ -4527,13 +4527,13 @@
       "ru": "Изменение уведомлений контакта",
       "es": "Cambiando las notificaciones de un contacto",
       "zh": "正在更改联系人的通知",
-      "ar": "جارٍ تغيير تنبيهات جهة اتصال"
+      "ar": "جارٍ تغيير إشعارات جهة اتصال"
     },
     "Changing whether a contact may call": {
       "ru": "Изменение права контакта на звонки",
       "es": "Cambiando si un contacto puede llamar",
       "zh": "正在更改联系人能否来电",
-      "ar": "جارٍ تغيير سماح جهة اتصال بالاتصال"
+      "ar": "جارٍ تغيير إذن المكالمات لجهة اتصال"
     },
     "Clearing the connection log": {
       "ru": "Очистка журнала соединения",
@@ -4586,20 +4586,20 @@
     "Changing the delegation term": {
       "ru": "Изменение срока делегирования",
       "es": "Cambiando el plazo de la delegación",
-      "zh": "正在更改委托期限",
+      "zh": "正在更改委派期限",
       "ar": "جارٍ تغيير مدة التفويض"
     },
     "Taking your address offline": {
       "ru": "Снятие адреса с публикации",
       "es": "Retirando tu dirección de la red",
       "zh": "正在让你的地址下线",
-      "ar": "جارٍ سحب عنوانك من الشبكة"
+      "ar": "جارٍ إلغاء نشر عنوانك"
     },
     "Dropping a contact request": {
       "ru": "Удаление запроса контакта",
       "es": "Descartando una solicitud de contacto",
       "zh": "正在丢弃联系人请求",
-      "ar": "جارٍ إسقاط طلب اتصال"
+      "ar": "جارٍ حذف طلب تواصل"
     },
     "Starting a call": {
       "ru": "Начало звонка",
@@ -4677,7 +4677,7 @@
       "ru": "Жду ответ сайта…",
       "es": "Esperando la respuesta del sitio…",
       "zh": "正在等待网站回应…",
-      "ar": "جارٍ انتظار رد الموقع…"
+      "ar": "في انتظار رد الموقع…"
     },
     "The site accepted the signature": {
       "ru": "Сайт принял подпись",
@@ -4802,7 +4802,7 @@
     "The account is too large to move to another device": {
       "ru": "Аккаунт слишком велик для переноса на другое устройство",
       "es": "La cuenta es demasiado grande para pasarla a otro dispositivo",
-      "zh": "账户太大，无法转移到另一台设备",
+      "zh": "账号太大，无法转移到另一台设备",
       "ar": "الحساب أكبر من أن يُنقل إلى جهاز آخر"
     },
     "Another device is already being added": {
@@ -4850,7 +4850,7 @@
     "The recipient was removed before delivery": {
       "ru": "Получатель удалён до доставки",
       "es": "El destinatario se eliminó antes de la entrega",
-      "zh": "收件人在送达前已被删除",
+      "zh": "接收方在送达前已被删除",
       "ar": "حُذف المستلم قبل التسليم"
     },
     "The message went out of date before delivery": {
@@ -4862,31 +4862,31 @@
     "The message could not be encrypted for the recipient": {
       "ru": "Сообщение не удалось зашифровать для получателя",
       "es": "No se pudo cifrar el mensaje para el destinatario",
-      "zh": "无法为收件人加密消息",
+      "zh": "无法为接收方加密消息",
       "ar": "تعذر تشفير الرسالة للمستلم"
     },
     "The router address must be a local IPv4 address": {
       "ru": "Адрес роутера должен быть локальным адресом IPv4",
       "es": "La dirección del router debe ser una dirección IPv4 local",
-      "zh": "路由地址必须是本地 IPv4 地址",
+      "zh": "路由器地址必须是本地 IPv4 地址",
       "ar": "يجب أن يكون عنوان الموجّه عنوان IPv4 محليًا"
     },
     "No router answers at this address": {
       "ru": "По этому адресу роутер не отвечает",
       "es": "Ningún router responde en esta dirección",
-      "zh": "此地址没有路由应答",
+      "zh": "此地址没有路由器应答",
       "ar": "لا يستجيب أي موجّه على هذا العنوان"
     },
     "The router refused the SAM connection": {
       "ru": "Роутер отклонил подключение SAM",
       "es": "El router rechazó la conexión SAM",
-      "zh": "路由拒绝了 SAM 连接",
+      "zh": "路由器拒绝了 SAM 连接",
       "ar": "رفض الموجّه اتصال SAM"
     },
     "The router answered incorrectly": {
       "ru": "Роутер ответил некорректно",
       "es": "El router respondió de forma incorrecta",
-      "zh": "路由的应答不正确",
+      "zh": "路由器的应答不正确",
       "ar": "ردّ الموجّه بشكل غير صحيح"
     },
     "Cut": {
@@ -4929,7 +4929,7 @@
       "ru": "Запрос контакта слишком длинный",
       "es": "La solicitud de contacto es demasiado larga",
       "zh": "联系人请求过长",
-      "ar": "طلب الاتصال طويل جدًا"
+      "ar": "طلب التواصل طويل جدًا"
     },
     "The contact's server refused the request": {
       "ru": "Сервер контакта отклонил запрос",
@@ -4946,19 +4946,19 @@
     "The recipient's server refused this message": {
       "ru": "Сервер получателя отклонил сообщение",
       "es": "El servidor del destinatario rechazó el mensaje",
-      "zh": "收件人的服务器拒绝了此消息",
+      "zh": "接收方的服务器拒绝了此消息",
       "ar": "رفض خادم المستلم هذه الرسالة"
     },
     "The recipient's mailbox is full": {
       "ru": "Почтовый ящик получателя переполнен",
       "es": "El buzón del destinatario está lleno",
-      "zh": "收件人的邮箱已满",
+      "zh": "接收方的邮箱已满",
       "ar": "صندوق بريد المستلم ممتلئ"
     },
     "The message is too large for the recipient's server": {
       "ru": "Сообщение слишком велико для сервера получателя",
       "es": "El mensaje es demasiado grande para el servidor del destinatario",
-      "zh": "此消息对收件人的服务器来说太大",
+      "zh": "此消息对接收方的服务器来说太大",
       "ar": "الرسالة كبيرة جدًا على خادم المستلم"
     },
     "Allow screen capture": {
@@ -4969,15 +4969,15 @@
     },
     "Getting the challenge": {
       "ru": "Получаю запрос",
-      "es": "Obteniendo el reto",
+      "es": "Obteniendo el desafío",
       "zh": "正在获取质询",
-      "ar": "جارٍ جلب التحدي"
+      "ar": "جارٍ جلب الطلب"
     },
     "The challenge did not arrive": {
       "ru": "Запрос не получен",
-      "es": "El reto no llegó",
+      "es": "El desafío no llegó",
       "zh": "未收到质询",
-      "ar": "لم يصل التحدي"
+      "ar": "لم يصل الطلب"
     },
     "Received": {
       "ru": "Получено",
@@ -5018,20 +5018,20 @@
     "Account not added": {
       "ru": "Аккаунт не добавлен",
       "es": "Cuenta no añadida",
-      "zh": "未添加账户",
-      "ar": "لم تُضف الحساب"
+      "zh": "未添加账号",
+      "ar": "لم يُضَف الحساب"
     },
     "Changing online status": {
       "ru": "Смена статуса «в сети»",
       "es": "Cambiando el estado en línea",
       "zh": "正在更改在线状态",
-      "ar": "تغيير حالة الاتصال"
+      "ar": "جارٍ تغيير حالة الاتصال"
     },
     "Contacts see when the app is open and when you type, and you see theirs": {
       "ru": "Контакты видят, когда приложение открыто и когда вы набираете текст, и вы видите это же у них",
       "es": "Los contactos ven cuándo la aplicación está abierta y cuándo escribes, y tú ves lo mismo de ellos",
       "zh": "联系人可以看到应用何时打开以及你何时在输入，你也能看到他们的",
-      "ar": "يرى مراسلوك متى يكون التطبيق مفتوحًا ومتى تكتب، وترى أنت الشيء نفسه منهم"
+      "ar": "ترى جهات اتصالك متى يكون التطبيق مفتوحًا ومتى تكتب، وترى أنت الشيء نفسه لديها"
     },
     "Not restored": {
       "ru": "Не восстановлено",
@@ -5048,25 +5048,25 @@
     "This account was created as a bot or a group and cannot be opened here": {
       "ru": "Этот аккаунт создан как бот или группа и здесь не открывается",
       "es": "Esta cuenta se creó como bot o grupo y no se puede abrir aquí",
-      "zh": "此账户创建为机器人或群组，无法在此打开",
+      "zh": "此账号创建为机器人或群组，无法在此打开",
       "ar": "أُنشئ هذا الحساب كبوت أو مجموعة ولا يمكن فتحه هنا"
     },
     "This account was created as a bot or a group": {
       "ru": "Этот аккаунт создан как бот или группа",
       "es": "Esta cuenta se creó como bot o grupo",
-      "zh": "此账户创建为机器人或群组",
+      "zh": "此账号创建为机器人或群组",
       "ar": "أُنشئ هذا الحساب كبوت أو مجموعة"
     },
     "This account was created as a bot": {
       "ru": "Этот аккаунт создан как бот",
       "es": "Esta cuenta se creó como bot",
-      "zh": "此账户创建为机器人",
+      "zh": "此账号创建为机器人",
       "ar": "أُنشئ هذا الحساب كبوت"
     },
     "This account was created as a group": {
       "ru": "Этот аккаунт создан как группа",
       "es": "Esta cuenta se creó como grupo",
-      "zh": "此账户创建为群组",
+      "zh": "此账号创建为群组",
       "ar": "أُنشئ هذا الحساب كمجموعة"
     },
     "bot": {
@@ -5222,7 +5222,7 @@
     "No transit routers": {
       "ru": "Без транзитных узлов",
       "es": "Sin routers de tránsito",
-      "zh": "没有中转路由",
+      "zh": "没有中转路由器",
       "ar": "بلا موجّهات عابرة"
     },
     "expires in %1": {
@@ -5325,7 +5325,7 @@
       "ru": "Отозвать устройство?",
       "es": "¿Revocar este dispositivo?",
       "zh": "撤销此设备？",
-      "ar": "إبطال هذا الجهاز؟"
+      "ar": "أتريد إبطال هذا الجهاز؟"
     },
     "The device loses access to the account and its new mail. This cannot be undone.": {
       "ru": "Устройство теряет доступ к аккаунту и новой почте. Отменить нельзя.",
@@ -5355,13 +5355,13 @@
       "ru": "Звонок не отклонён: %1",
       "es": "La llamada no se ha rechazado: %1",
       "zh": "未能拒绝通话：%1",
-      "ar": "لم يُرفَض الاتصال: ⁦%1⁩"
+      "ar": "لم تُرفض المكالمة: ⁦%1⁩"
     },
     "The call was not ended: %1": {
       "ru": "Звонок не завершён: %1",
       "es": "La llamada no se ha finalizado: %1",
       "zh": "未能结束通话：%1",
-      "ar": "لم يُنهَ الاتصال: ⁦%1⁩"
+      "ar": "لم تُنهَ المكالمة: ⁦%1⁩"
     },
     "Read mark for your other devices": {
       "ru": "Отметка о прочтении для ваших устройств",
@@ -5385,7 +5385,7 @@
       "ru": "Связь с сервером перестраивается",
       "es": "Se están reconstruyendo los enlaces con el servidor",
       "zh": "正在重建与服务器的连接",
-      "ar": "يجري إعادة بناء الاتصال بالخادم"
+      "ar": "تجري إعادة بناء الاتصال بالخادم"
     },
     "A message could not be read": {
       "ru": "Сообщение не удалось прочитать",
@@ -5403,13 +5403,13 @@
       "ru": "Выберите устройства для отзыва после восстановления",
       "es": "Elige los dispositivos que revocar tras la restauración",
       "zh": "选择恢复后要撤销的设备",
-      "ar": "اختر الأجهزة التي تُلغى بعد الاستعادة"
+      "ar": "اختر الأجهزة التي تُبطَل بعد الاستعادة"
     },
     "Revoke all others": {
       "ru": "Отозвать все остальные",
       "es": "Revocar todos los demás",
       "zh": "撤销其他所有设备",
-      "ar": "إلغاء كل الأجهزة الأخرى"
+      "ar": "إبطال كل الأجهزة الأخرى"
     },
     "Keep all": {
       "ru": "Оставить все",
@@ -5438,7 +5438,7 @@
     "The server operator declined this account": {
       "ru": "Оператор сервера отклонил этот аккаунт",
       "es": "El operador del servidor rechazó esta cuenta",
-      "zh": "服务器运营者拒绝了此账户",
+      "zh": "服务器运营者拒绝了此账号",
       "ar": "رفض مشغل الخادم هذا الحساب"
     },
     "The server mailbox is almost full": {
