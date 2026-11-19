@@ -35,9 +35,10 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         ConnectionStrip {
+            id: connectionStrip
             width: strips.width
             session: root.session
-            onTapped: routerStatus.open()
+            onTapped: connectionStrip.isOffline ? accountSwitcher.open() : routerStatus.open()
         }
         EpochReserveStrip {
             width: strips.width
