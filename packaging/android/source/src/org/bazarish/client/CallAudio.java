@@ -23,6 +23,8 @@ public final class CallAudio {
     };
     private static final int[] kSpeakerDevices = {AudioDeviceInfo.TYPE_BUILTIN_SPEAKER};
     private static final int kBufferedFrames = 4;
+    // Played ahead, so a playout thread that wakes late does not leave the speaker without audio.
+    private static final int kCushionFrames = 2;
 
     private static int users = 0;
     private static boolean speaker = false;
@@ -121,7 +123,15 @@ public final class CallAudio {
 
         public Playback(int sampleRate, int frameBytes) {
             join();
-            track = openTrack(AudioAttributes.USAGE_VOICE_COMMUNICATION, sampleRate, frameBytes);
+            AudioTrack opened
+                = openTrack(AudioAttributes.USAGE_VOICE_COMMUNICATION, sampleRate, frameBytes);
+            byte[] cushion = new byte[frameBytes * kCushionFrames];
+            if (opened.write(cushion, 0, cushion.length, AudioTrack.WRITE_BLOCKING)
+                    != cushion.length) {
+                opened.release();
+                throw new IllegalStateException("the call audio did not start");
+            }
+            track = opened;
         }
 
         public void write(ByteBuffer pcm, int bytes) {
@@ -130,7 +140,7 @@ public final class CallAudio {
                 return;
             }
             pcm.position(0).limit(bytes);
-            if (playing.write(pcm, bytes, AudioTrack.WRITE_NON_BLOCKING) < 0) {
+            if (playing.write(pcm, bytes, AudioTrack.WRITE_BLOCKING) != bytes) {
                 throw new IllegalStateException("the call audio did not play");
             }
         }
