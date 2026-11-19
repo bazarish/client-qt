@@ -204,6 +204,7 @@ WindowPopup {
                                             .arg(modelData.tunnelsOut).arg(modelData.leaseSets)
                                     TextMetrics { id: fullWidth; font: destStatus.font; text: destStatus.full }
                                     text: modelData.localRoute ? qsTr("gateway routing")
+                                        : I2p.samEnabled ? stateText
                                         : fullWidth.advanceWidth <= width ? full : compact
                                     color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                     wrapMode: Text.Wrap; Layout.fillWidth: true
