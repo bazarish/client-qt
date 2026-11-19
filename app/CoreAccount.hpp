@@ -105,6 +105,7 @@ private:
     void recountUnread();
     void signLogin(const QString& challenge);
     void sendLogin(const QString& challenge);
+    QString loginUnavailableText() const;
     void showLoginStage(const QString& op, const QString& challenge, qint64 startedAtMs,
         client::FetchStage stage);
     void finishLoginSend(const QString& op, const QString& challenge, qint64 startedAtMs,
@@ -238,6 +239,7 @@ private:
     QThread thread_;
     QPointer<SessionWorker> worker_;
     std::shared_ptr<client::LoginSigner> loginSigner_;
+    bool loginRefused_ = false;
     // The one challenge fetch in flight; a new one or the window's back gives it up.
     QString loginFetchOp_;
     QString loginFetchLink_;

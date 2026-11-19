@@ -174,6 +174,7 @@ signals:
     void commandFinished();
     void addressMismatch(const QString& servedHost, const QString& ourHost);
     void loginSignerReady(std::shared_ptr<bazarish::client::LoginSigner> signer);
+    void loginSignerRefused();
     void opBegin(const QString& opId, const QString& kind, const QString& title,
         const QString& status);
     void opDone(const QString& opId, bool ok, const QString& status);

@@ -838,7 +838,11 @@ void SessionWorker::openAccount(
         [self]() { QMetaObject::invokeMethod(self, "takeCourierNews", Qt::QueuedConnection); });
     session_->onOwnDevicesChanged(
         [this]() { QMetaObject::invokeMethod(this, "emitDeviceState", Qt::QueuedConnection); });
-    emit loginSignerReady(session_->loginSigner());
+    if (session_->isPrimary()) {
+        emit loginSignerReady(session_->loginSigner());
+    } else {
+        emit loginSignerRefused();
+    }
     emitKeptOverview();
     session_->onAddressDecision([this](const std::string& served, const std::string& ours) {
         emit addressMismatch(QString::fromStdString(served), QString::fromStdString(ours));

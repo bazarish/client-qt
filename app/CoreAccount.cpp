@@ -380,6 +380,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(worker_, &SessionWorker::loginSignerReady, this,
         [this](std::shared_ptr<bazarish::client::LoginSigner> signer) {
             loginSigner_ = std::move(signer);
+    connect(worker_, &SessionWorker::loginSignerRefused, this, [this]() { loginRefused_ = true; });
         });
     connect(worker_, &SessionWorker::opened, this,
         [this](const QString& fingerprint, const QString& displayName, const bool connected) {
@@ -978,12 +979,17 @@ void CoreAccount::signLogin(const QString& challenge)
         this, [this, blob]() { emit events_.loginSigned(blob); }, Qt::QueuedConnection);
 }
 
+QString CoreAccount::loginUnavailableText() const
+{
+    return loginRefused_ ? tr("Only the primary device signs in by key")
+                         : tr("This account is still opening");
+}
+
 void CoreAccount::sendLogin(const QString& challenge)
 {
     const qint64 startedAt = nowMillis();
     if (!loginSigner_) {
-        emit events_.loginSendState(
-            challenge, eLoginRefused, tr("This account is still opening"), startedAt);
+        emit events_.loginSendState(challenge, eLoginRefused, loginUnavailableText(), startedAt);
         return;
     }
     const QString op = QStringLiteral("login:") + QString::number(++commandSeq_);
@@ -1034,7 +1040,7 @@ void CoreAccount::finishLoginSend(const QString& op, const QString& challenge,
 void CoreAccount::fetchLogin(const QString& link)
 {
     if (!loginSigner_) {
-        emit events_.loginFetchState(link, false, tr("This account is still opening"), {});
+        emit events_.loginFetchState(link, false, loginUnavailableText(), {});
         return;
     }
     cancelLoginFetch(loginFetchLink_);
