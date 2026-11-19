@@ -388,7 +388,8 @@ Item {
         enabled: !delegate.isSystem && !delegate.textSelecting && !delegate.choosing
         acceptedButtons: Qt.LeftButton
         onLongPressed: {
-            if (!delegate.systemsTouch(holdHandler.point.scenePressPosition)) {
+            const pressed = holdHandler.point.scenePressPosition
+            if (!delegate.systemsTouch(pressed) && !delegate.within(wave, pressed)) {
                 App.holdFeedback()
                 delegate.openMenu()
             }
@@ -868,14 +869,31 @@ Item {
                             color: index < wave.playedBars ? Theme.green : Theme.textDim
                         }
                     }
+                    function seekTo(x) {
+                        if (!(model.attDurationMs > 0)) {
+                            return
+                        }
+                        const fraction = Math.min(1, Math.max(0, x / wave.width))
+                        delegate.session.playVoice(model.e2eId,
+                            Math.round(fraction * model.attDurationMs))
+                    }
                     TapHandler {
-                        onTapped: function(point) {
-                            if (!(model.attDurationMs > 0)) {
-                                return
+                        onTapped: function(point) { wave.seekTo(point.position.x) }
+                    }
+                    DragHandler {
+                        id: waveDrag
+                        property real lastX: 0
+                        target: null
+                        yAxis.enabled: false
+                        onCentroidChanged: {
+                            if (active) {
+                                lastX = centroid.position.x
                             }
-                            const fraction = Math.min(1, Math.max(0, point.position.x / wave.width))
-                            delegate.session.playVoice(model.e2eId,
-                                Math.round(fraction * model.attDurationMs))
+                        }
+                        onActiveChanged: {
+                            if (!active) {
+                                wave.seekTo(lastX)
+                            }
                         }
                     }
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
