@@ -34,6 +34,25 @@ QString notAnswering(const FarSide side)
     throw std::logic_error("no far side to name");
 }
 
+QString notFound(const FarSide side)
+{
+    switch (side) {
+    case FarSide::eServer:
+        return QObject::tr("The server's address is not found in I2P yet");
+    case FarSide::eSite:
+        return QObject::tr("The site's address is not found in I2P yet");
+    case FarSide::eRegistry:
+        return QObject::tr("The alias registry's address is not found in I2P yet");
+    case FarSide::eContactServer:
+        return QObject::tr("The contact's server is not found in I2P yet");
+    case FarSide::eContact:
+        return QObject::tr("The contact is not found in I2P yet");
+    case FarSide::eDevice:
+        return QObject::tr("The other device is not found in I2P yet");
+    }
+    throw std::logic_error("no far side to name");
+}
+
 QString refused(const FarSide side)
 {
     switch (side) {
@@ -100,6 +119,8 @@ QString linkFailureText(const int failure, const FarSide side)
         return refused(side);
     case client::LinkFailure::eServerMalformed:
         return answeredIncorrectly(side);
+    case client::LinkFailure::eAddressNotFound:
+        return notFound(side);
     }
     throw std::logic_error("no words for this link failure");
 }

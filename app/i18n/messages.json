@@ -5435,6 +5435,42 @@
       "zh": "I2P 路由器正在接入网络",
       "ar": "موجّه I2P يتصل بالشبكة"
     },
+    "The server's address is not found in I2P yet": {
+      "ru": "Адрес сервера пока не найден в сети I2P",
+      "es": "La dirección del servidor aún no se encuentra en I2P",
+      "zh": "尚未在 I2P 中找到服务器的地址",
+      "ar": "لم يُعثر بعد على عنوان الخادم في I2P"
+    },
+    "The site's address is not found in I2P yet": {
+      "ru": "Адрес сайта пока не найден в сети I2P",
+      "es": "La dirección del sitio aún no se encuentra en I2P",
+      "zh": "尚未在 I2P 中找到网站的地址",
+      "ar": "لم يُعثر بعد على عنوان الموقع في I2P"
+    },
+    "The alias registry's address is not found in I2P yet": {
+      "ru": "Адрес реестра алиасов пока не найден в сети I2P",
+      "es": "La dirección del registro de alias aún no se encuentra en I2P",
+      "zh": "尚未在 I2P 中找到别名登记处的地址",
+      "ar": "لم يُعثر بعد على عنوان سجل الأسماء المستعارة في I2P"
+    },
+    "The contact's server is not found in I2P yet": {
+      "ru": "Сервер контакта пока не найден в сети I2P",
+      "es": "El servidor del contacto aún no se encuentra en I2P",
+      "zh": "尚未在 I2P 中找到联系人的服务器",
+      "ar": "لم يُعثر بعد على خادم جهة الاتصال في I2P"
+    },
+    "The contact is not found in I2P yet": {
+      "ru": "Контакт пока не найден в сети I2P",
+      "es": "El contacto aún no se encuentra en I2P",
+      "zh": "尚未在 I2P 中找到联系人",
+      "ar": "لم يُعثر بعد على جهة الاتصال في I2P"
+    },
+    "The other device is not found in I2P yet": {
+      "ru": "Другое устройство пока не найдено в сети I2P",
+      "es": "El otro dispositivo aún no se encuentra en I2P",
+      "zh": "尚未在 I2P 中找到另一台设备",
+      "ar": "لم يُعثر بعد على الجهاز الآخر في I2P"
+    },
     "A message could not be read": {
       "ru": "Сообщение не удалось прочитать",
       "es": "No se pudo leer un mensaje",
