@@ -933,6 +933,11 @@ Item {
             Repeater {
                 model: delegate.linkPlates
                 Rectangle {
+                    id: plate
+                    property bool copied: false
+                    readonly property int kCopiedMs: 1500
+                    readonly property int kCheckGrowMs: 120
+                    readonly property real kCheckGrowth: 1.25
                     Layout.fillWidth: true
                     implicitWidth: plateRow.implicitWidth + 16
                     implicitHeight: plateRow.implicitHeight + 16
@@ -969,6 +974,36 @@ Item {
                                 elide: Text.ElideMiddle
                                 Layout.fillWidth: true
                             }
+                        }
+                        IconButton {
+                            id: plateCopy
+                            iconName: plate.copied ? "check" : "copy"
+                            tint: plate.copied ? Theme.green : Theme.textDim
+                            Accessible.name: plate.copied ? qsTr("Copied") : qsTr("Copy link")
+                            onClicked: {
+                                App.copyText(modelData.uri)
+                                plate.copied = true
+                                copiedFor.restart()
+                                checkPop.restart()
+                            }
+                            SequentialAnimation {
+                                id: checkPop
+                                NumberAnimation {
+                                    target: plateCopy; property: "scale"
+                                    to: plate.kCheckGrowth; duration: plate.kCheckGrowMs
+                                    easing.type: Easing.OutQuad
+                                }
+                                NumberAnimation {
+                                    target: plateCopy; property: "scale"
+                                    to: 1; duration: plate.kCheckGrowMs
+                                    easing.type: Easing.InQuad
+                                }
+                            }
+                        }
+                        Timer {
+                            id: copiedFor
+                            interval: plate.kCopiedMs
+                            onTriggered: plate.copied = false
                         }
                         MenuButton {
                             iconName: delegate.plateIcons[modelData.kind]
