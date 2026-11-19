@@ -5513,6 +5513,12 @@
       "zh": "此设备已无法访问该账户",
       "ar": "لم يعد لهذا الجهاز وصول إلى الحساب"
     },
+    "This device forgets the account. The account and its mail stay on the server.": {
+      "ru": "Устройство забудет аккаунт. Аккаунт и его почта останутся на сервере.",
+      "es": "Este dispositivo olvida la cuenta. La cuenta y su correo siguen en el servidor.",
+      "zh": "此设备将忘记该账户。账户及其邮件仍保留在服务器上。",
+      "ar": "ينسى هذا الجهاز الحساب. يبقى الحساب وبريده على الخادم."
+    },
     "A message could not be read": {
       "ru": "Сообщение не удалось прочитать",
       "es": "No se pudo leer un mensaje",

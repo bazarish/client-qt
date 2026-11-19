@@ -813,13 +813,14 @@ WindowPopup {
                         spacing: 8
                         MenuButton {
                             Layout.fillWidth: true
-                            enabled: App.deletingId.length === 0
-                                && root.session !== null && root.session.primaryDevice
+                            enabled: App.deletingId.length === 0 && root.session !== null
                             iconName: "trash"
                             text: App.deletingId.length > 0 ? qsTr("Deleting…") : qsTr("Delete account")
                             danger: true
-                            onClicked: deleteDialog.show(
-                                root.session ? root.session.accountId : "", "")
+                            onClicked: {
+                                deleteDialog.localOnly = !root.session.primaryDevice
+                                deleteDialog.show(root.session.accountId, "")
+                            }
                         }
                     }
                 }
