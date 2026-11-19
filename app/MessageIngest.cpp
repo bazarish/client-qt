@@ -6,6 +6,8 @@
 #include "SystemNotes.hpp"
 #include "TranscriptStore.hpp"
 
+#include <MessageTypes.hpp>
+
 #include <QByteArray>
 
 namespace bazarish::app {
@@ -55,6 +57,17 @@ public:
     std::string unreadable() const override
     {
         return encodeSystemNote(QT_TR_NOOP("A message could not be read")).toStdString();
+    }
+
+    std::string callRecord(const std::string& outcome) const override
+    {
+        if (outcome == client::kCallMarkAnswered) {
+            return encodeSystemNote(QT_TR_NOOP("Call")).toStdString();
+        }
+        if (outcome == client::kCallMarkDeclined) {
+            return encodeSystemNote(QT_TR_NOOP("Call declined")).toStdString();
+        }
+        return encodeSystemNote(QT_TR_NOOP("Call not answered")).toStdString();
     }
 
     void rowAdded(const std::string& peer, const std::int64_t id, const bool own) override

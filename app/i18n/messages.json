@@ -5381,6 +5381,24 @@
       "zh": "正在重建与服务器的连接",
       "ar": "تجري إعادة بناء الاتصال بالخادم"
     },
+    "Call": {
+      "ru": "Звонок",
+      "es": "Llamada",
+      "zh": "通话",
+      "ar": "مكالمة"
+    },
+    "Call declined": {
+      "ru": "Звонок отклонён",
+      "es": "Llamada rechazada",
+      "zh": "通话已拒绝",
+      "ar": "مكالمة مرفوضة"
+    },
+    "Call not answered": {
+      "ru": "Звонок без ответа",
+      "es": "Llamada sin respuesta",
+      "zh": "通话未接听",
+      "ar": "مكالمة بلا رد"
+    },
     "A message could not be read": {
       "ru": "Сообщение не удалось прочитать",
       "es": "No se pudo leer un mensaje",

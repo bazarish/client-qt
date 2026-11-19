@@ -1339,6 +1339,9 @@ void SessionWorker::flushCallLog()
         return;
     }
     for (const Session::CompletedCall& call : session_->takeCallLog()) {
+        if (call.record) {
+            emit messageReceived(*call.record);
+        }
         emit callLogged(
             QString::fromStdString(call.peer), call.incoming, static_cast<int>(call.outcome));
     }
