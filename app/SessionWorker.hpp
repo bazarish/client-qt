@@ -241,7 +241,7 @@ signals:
     void overviewFailed();
     void mailboxUsage(qulonglong usedBytes, qulonglong quotaBytes);
     void deviceState(const QString& deviceId, bool primary, const QVariantList& ownDevices,
-        qint64 epochReserveUntil, bool epochReserveLow);
+        qint64 epochReserveUntil, bool epochReserveLow, bool revoked);
     void contactDevices(const QString& peer, const QVariantList& devices);
     void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         const QString& stage, bool peerRinging, qint64 connectedAtMs);
@@ -263,6 +263,7 @@ private:
     QString lastInviteProblem_;
     void emitContacts();
     Q_INVOKABLE void emitDeviceState();
+    Q_INVOKABLE void deviceRevoked();
     QVariantList toldDeviceState_;
     void armDayTimer();
     QTimer* dayTimer_ = nullptr;

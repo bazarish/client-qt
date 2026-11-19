@@ -5501,6 +5501,18 @@
       "zh": "已清空",
       "ar": "تم المسح"
     },
+    "Device key revoked": {
+      "ru": "Ключ устройства отозван",
+      "es": "Clave del dispositivo revocada",
+      "zh": "设备密钥已被撤销",
+      "ar": "أُلغي مفتاح الجهاز"
+    },
+    "This device no longer has access to the account": {
+      "ru": "У этого устройства больше нет доступа к аккаунту",
+      "es": "Este dispositivo ya no tiene acceso a la cuenta",
+      "zh": "此设备已无法访问该账户",
+      "ar": "لم يعد لهذا الجهاز وصول إلى الحساب"
+    },
     "A message could not be read": {
       "ru": "Сообщение не удалось прочитать",
       "es": "No se pudo leer un mensaje",

@@ -903,14 +903,28 @@ void SessionWorker::openAccount(
     });
     emitInvite();
     emitI2pKeyState();
+    session_->onDeviceRevoked([this]() {
+        QMetaObject::invokeMethod(this, "deviceRevoked", Qt::QueuedConnection);
+    });
     session_->setSwitchedOff(!startOnline);
-    if (startOnline) {
+    const bool online = !session_->switchedOff();
+    if (online) {
         startMaintenance();
     }
-    if (connected && startOnline) {
+    if (connected && online) {
         startReceiving();
         sync();
     }
+}
+
+void SessionWorker::deviceRevoked()
+{
+    if (!session_) {
+        return;
+    }
+    session_->noteDeviceRevoked();
+    setSyncEnabled(false);
+    emitDeviceState();
 }
 
 void SessionWorker::emitDeviceState()
@@ -939,13 +953,14 @@ void SessionWorker::emitDeviceState()
     const qint64 reserveUntil
         = QDateTime::currentSecsSinceEpoch() + session_->ownEpochReserveSeconds();
     const bool reserveLow = session_->ownEpochReserveLow();
+    const bool revoked = session_->deviceRevoked();
     const QVariantList told{
-        deviceId, primary, own, reserveUntil / bazarish::kSecondsPerDay, reserveLow};
+        deviceId, primary, own, reserveUntil / bazarish::kSecondsPerDay, reserveLow, revoked};
     if (told == toldDeviceState_) {
         return;
     }
     toldDeviceState_ = told;
-    emit deviceState(deviceId, primary, own, reserveUntil, reserveLow);
+    emit deviceState(deviceId, primary, own, reserveUntil, reserveLow, revoked);
 }
 
 void SessionWorker::armDayTimer()
@@ -1120,10 +1135,11 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
 
 void SessionWorker::setSyncEnabled(bool on)
 {
-    bazarish::log::info("account switched {}", on ? "on" : "off");
     if (session_) {
         session_->setSwitchedOff(!on);
+        on = !session_->switchedOff();
     }
+    bazarish::log::info("account switched {}", on ? "on" : "off");
     if (on) {
         startReceiving();
         sync();

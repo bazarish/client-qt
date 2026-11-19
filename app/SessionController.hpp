@@ -44,6 +44,7 @@ class SessionController : public QObject {
     Q_PROPERTY(QVariantList devicesToReview READ devicesToReview NOTIFY devicesChanged)
     Q_PROPERTY(QString deviceId READ deviceId NOTIFY deviceStateChanged)
     Q_PROPERTY(bool primaryDevice READ primaryDevice NOTIFY deviceStateChanged)
+    Q_PROPERTY(bool deviceRevoked READ deviceRevoked NOTIFY deviceStateChanged)
     Q_PROPERTY(qint64 epochReserveUntil READ epochReserveUntil NOTIFY deviceStateChanged)
     Q_PROPERTY(bool epochReserveLow READ epochReserveLow NOTIFY deviceStateChanged)
     Q_PROPERTY(int contactDevicesRevision READ contactDevicesRevision NOTIFY contactDevicesChanged)
@@ -172,6 +173,7 @@ public:
     QVariantList devicesToReview() const;
     QString deviceId() const { return deviceId_; }
     bool primaryDevice() const { return primaryDevice_; }
+    bool deviceRevoked() const { return deviceRevoked_; }
     qint64 epochReserveUntil() const { return epochReserveUntil_; }
     bool epochReserveLow() const { return epochReserveLow_; }
     int contactDevicesRevision() const { return contactDevicesRevision_; }
@@ -568,7 +570,7 @@ private slots:
     void onMailboxUsage(qulonglong usedBytes, qulonglong quotaBytes);
     void onI2pKeyState(bool hasKey, const QString& address);
     void onDeviceState(const QString& deviceId, bool primary, const QVariantList& ownDevices,
-        qint64 epochReserveUntil, bool epochReserveLow);
+        qint64 epochReserveUntil, bool epochReserveLow, bool revoked);
     void onContactDevices(const QString& peer, const QVariantList& devices);
     void onVoiceLoaded(const QString& e2eId, const QByteArray& bytes);
     void requestPicturesFor(const QList<StoredMessage>& messages);
@@ -719,6 +721,7 @@ private:
     QVariantList ownDevices_;
     QString deviceId_;
     bool primaryDevice_ = false;
+    bool deviceRevoked_ = false;
     qint64 epochReserveUntil_ = 0;
     bool epochReserveLow_ = false;
     QHash<QString, QVariantList> contactDevices_;

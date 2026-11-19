@@ -9,6 +9,7 @@ Rectangle {
     property var session: null
     signal tapped()
 
+    readonly property bool revoked: root.session !== null && root.session.deviceRevoked
     readonly property bool isOffline: root.session !== null && !root.session.online
     readonly property bool isConnecting: root.session !== null && root.session.online
         && !root.session.reachable
@@ -25,10 +26,10 @@ Rectangle {
     readonly property int kPadding: 4
     readonly property int kSideMargin: 12
 
-    visible: root.session !== null && root.session.connected
-        && (root.isOffline || root.isConnecting || root.heldForApproval || root.refused)
+    visible: root.session !== null && (root.revoked || root.session.connected
+        && (root.isOffline || root.isConnecting || root.heldForApproval || root.refused))
     implicitHeight: line.implicitHeight + 2 * root.kPadding
-    color: Theme.warnFill
+    color: root.revoked ? Theme.dangerFill : Theme.warnFill
 
     RowLayout {
         id: line
@@ -39,17 +40,19 @@ Rectangle {
         anchors.rightMargin: root.kSideMargin
         spacing: 8
         Label {
-            text: root.refused ? qsTr("Not approved")
+            text: root.revoked ? qsTr("Device key revoked")
+                : root.refused ? qsTr("Not approved")
                 : root.heldForApproval ? qsTr("Waiting for approval")
                 : root.isOffline ? qsTr("Disconnected")
                 : root.noNetwork ? qsTr("No network")
                 : qsTr("Connecting…")
-            color: Theme.warnInk
+            color: root.revoked ? Theme.dangerInk : Theme.warnInk
             font.pixelSize: Theme.fontSmall
             font.weight: Font.DemiBold
         }
         Label {
-            text: root.refused
+            text: root.revoked ? qsTr("This device no longer has access to the account")
+                : root.refused
                 ? (root.session.approvalNote.length > 0
                     ? root.session.approvalNote
                     : qsTr("The server operator declined this account"))
@@ -58,7 +61,7 @@ Rectangle {
                     ? root.session.approvalNote
                     : qsTr("Your server holds this account until its operator approves it — you cannot send or receive yet"))
                 : (root.isOffline ? qsTr("This account is not syncing") : root.whyNotReachable)
-            color: Theme.warnInk
+            color: root.revoked ? Theme.dangerInk : Theme.warnInk
             font.pixelSize: Theme.fontSmall
             elide: Text.ElideRight
             Layout.fillWidth: true

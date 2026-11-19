@@ -38,7 +38,8 @@ Item {
             id: connectionStrip
             width: strips.width
             session: root.session
-            onTapped: connectionStrip.isOffline ? accountSwitcher.open() : routerStatus.open()
+            onTapped: connectionStrip.revoked ? settings.open()
+                : connectionStrip.isOffline ? accountSwitcher.open() : routerStatus.open()
         }
         EpochReserveStrip {
             width: strips.width

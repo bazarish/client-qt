@@ -37,6 +37,25 @@ WindowPopup {
             onCloseClicked: root.close()
         }
 
+        Rectangle {
+            visible: root.session !== null && root.session.deviceRevoked
+            Layout.fillWidth: true
+            implicitHeight: revokedNote.implicitHeight + 2 * Theme.contentInset
+            color: Theme.dangerFill
+            Label {
+                id: revokedNote
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.leftMargin: Theme.contentInset
+                anchors.rightMargin: Theme.contentInset
+                text: qsTr("Device key revoked")
+                color: Theme.dangerInk
+                font.weight: Font.DemiBold
+                wrapMode: Text.Wrap
+            }
+        }
+
         ScrollView {
             id: settingsScroll
             Layout.fillWidth: true
