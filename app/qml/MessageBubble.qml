@@ -257,10 +257,10 @@ Item {
         acceptedDevices: PointerDevice.TouchScreen
         yAxis.enabled: false
         onActiveTranslationChanged: {
-            const drawn = Math.abs(activeTranslation.x)
+            const drawn = Math.max(0, -activeTranslation.x)
             const eased = drawn <= delegate.kActionPull ? drawn
                 : delegate.kActionPull + (drawn - delegate.kActionPull) * delegate.kPullResistance
-            delegate.pull = Math.sign(activeTranslation.x) * Math.min(delegate.kMaxPull, eased)
+            delegate.pull = -Math.min(delegate.kMaxPull, eased)
         }
         onActiveChanged: {
             if (active) {
@@ -274,8 +274,6 @@ Item {
             }
             if (delegate.pull <= -delegate.kActionPull) {
                 delegate.reply()
-            } else if (delegate.pull >= delegate.kActionPull) {
-                delegate.forwardRequested(model.e2eId)
             }
             springBack.start()
         }
@@ -291,15 +289,13 @@ Item {
     Icon {
         readonly property bool armed: Math.abs(delegate.pull) >= delegate.kActionPull
         visible: delegate.pull !== 0
-        name: delegate.pull < 0 ? "reply" : "forward"
+        name: "reply"
         size: 20
         color: armed ? Theme.green : Theme.textDim
         opacity: Math.min(1, Math.abs(delegate.pull) / delegate.kActionPull)
         scale: armed ? 1.15 : 0.6 + 0.4 * opacity
         Behavior on scale { NumberAnimation { duration: 90 } }
-        x: delegate.pull < 0
-            ? Math.min(bubble.x + bubble.width + delegate.pull + 8, delegate.width - width - 12)
-            : Math.max(bubble.x + delegate.pull - 8 - width, 12)
+        x: Math.min(bubble.x + bubble.width + delegate.pull + 8, delegate.width - width - 12)
         anchors.verticalCenter: bubble.verticalCenter
     }
 
