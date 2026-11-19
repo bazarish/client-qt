@@ -5381,23 +5381,41 @@
       "zh": "正在重建与服务器的连接",
       "ar": "تجري إعادة بناء الاتصال بالخادم"
     },
-    "Call": {
-      "ru": "Звонок",
-      "es": "Llamada",
-      "zh": "通话",
-      "ar": "مكالمة"
+    "Incoming call answered": {
+      "ru": "Входящий звонок принят",
+      "es": "Llamada entrante atendida",
+      "zh": "来电已接听",
+      "ar": "مكالمة واردة تمّ الرد عليها"
     },
-    "Call declined": {
-      "ru": "Звонок отклонён",
-      "es": "Llamada rechazada",
-      "zh": "通话已拒绝",
-      "ar": "مكالمة مرفوضة"
+    "Incoming call declined": {
+      "ru": "Входящий звонок отклонён",
+      "es": "Llamada entrante rechazada",
+      "zh": "来电已拒绝",
+      "ar": "مكالمة واردة مرفوضة"
     },
-    "Call not answered": {
-      "ru": "Звонок без ответа",
-      "es": "Llamada sin respuesta",
-      "zh": "通话未接听",
-      "ar": "مكالمة بلا رد"
+    "Incoming call missed": {
+      "ru": "Входящий звонок пропущен",
+      "es": "Llamada entrante perdida",
+      "zh": "未接来电",
+      "ar": "مكالمة واردة فائتة"
+    },
+    "Outgoing call answered": {
+      "ru": "Исходящий звонок принят",
+      "es": "Llamada saliente atendida",
+      "zh": "去电已接听",
+      "ar": "مكالمة صادرة تمّ الرد عليها"
+    },
+    "Outgoing call declined": {
+      "ru": "Исходящий звонок отклонён",
+      "es": "Llamada saliente rechazada",
+      "zh": "去电被拒绝",
+      "ar": "مكالمة صادرة مرفوضة"
+    },
+    "Outgoing call not answered": {
+      "ru": "Исходящий звонок без ответа",
+      "es": "Llamada saliente sin respuesta",
+      "zh": "去电无人接听",
+      "ar": "مكالمة صادرة بلا رد"
     },
     "A message could not be read": {
       "ru": "Сообщение не удалось прочитать",

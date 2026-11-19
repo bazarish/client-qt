@@ -59,15 +59,21 @@ public:
         return encodeSystemNote(QT_TR_NOOP("A message could not be read")).toStdString();
     }
 
-    std::string callRecord(const std::string& outcome) const override
+    std::string callRecord(const bool incoming, const std::string& outcome) const override
     {
         if (outcome == client::kCallMarkAnswered) {
-            return encodeSystemNote(QT_TR_NOOP("Call")).toStdString();
+            return encodeSystemNote(incoming ? QT_TR_NOOP("Incoming call answered")
+                                             : QT_TR_NOOP("Outgoing call answered"))
+                .toStdString();
         }
         if (outcome == client::kCallMarkDeclined) {
-            return encodeSystemNote(QT_TR_NOOP("Call declined")).toStdString();
+            return encodeSystemNote(incoming ? QT_TR_NOOP("Incoming call declined")
+                                             : QT_TR_NOOP("Outgoing call declined"))
+                .toStdString();
         }
-        return encodeSystemNote(QT_TR_NOOP("Call not answered")).toStdString();
+        return encodeSystemNote(incoming ? QT_TR_NOOP("Incoming call missed")
+                                         : QT_TR_NOOP("Outgoing call not answered"))
+            .toStdString();
     }
 
     void rowAdded(const std::string& peer, const std::int64_t id, const bool own) override
