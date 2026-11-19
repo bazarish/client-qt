@@ -17,7 +17,7 @@ inline const QSet<QByteArray> kSelfDescribingCommands = {
     "requestAddByInvite", "requestAddByAlias", "requestAcceptContact",
     "requestExport", "requestSaveAttachment", "requestActivateAliasServicing",
     "requestPublishThisDeviceAddress", "requestPublishFreshAddress",
-    "requestRevokeDevice", "requestReviewDevices",
+    "requestRevokeDevice", "requestForgetDeviceMail", "requestReviewDevices",
     "requestCloseAccountOnServer", "requestGeneratePersonalKey", "requestLoadPersonalKey",
     "requestReplacePersonalKey", "requestPublishPersonalDest", "requestSetAliasBinding",
     "requestSetAliasWord",
@@ -156,6 +156,7 @@ signals:
     void requestPublishPersonalDest();
     void requestDisablePersonalDest();
     void requestRevokeDevice(const QString& deviceId);
+    void requestForgetDeviceMail(const QString& deviceId);
     void requestReviewDevices(const QStringList& revoke);
     void readContactDevices(const QString& peer);
     void requestForgetPendingAdd(const QString& opId);

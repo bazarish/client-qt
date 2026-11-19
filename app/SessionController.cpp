@@ -1730,6 +1730,11 @@ void SessionController::revokeDevice(const QString& deviceId)
     emit commands_.requestRevokeDevice(deviceId);
 }
 
+void SessionController::forgetDeviceMail(const QString& deviceId)
+{
+    emit commands_.requestForgetDeviceMail(deviceId);
+}
+
 void SessionController::refreshContactDevices(const QString& peer)
 {
     emit commands_.readContactDevices(peer);

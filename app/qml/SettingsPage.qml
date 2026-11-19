@@ -26,6 +26,8 @@ WindowPopup {
 
     property string pendingExportFile: ""
     property bool pendingExportPrimary: true
+    readonly property int kDeviceActionSize: 28
+    readonly property int kDeviceActionIcon: 14
 
     contentItem: ColumnLayout {
         spacing: 0
@@ -321,6 +323,12 @@ WindowPopup {
                             required property var modelData
                             readonly property color ink: modelData.revoked ? Theme.danger
                                 : (modelData.current ? Theme.text : Theme.textDim)
+                            readonly property bool manages: root.session !== null
+                                && root.session.primaryDevice && !modelData.current && !modelData.revoked
+                            readonly property bool showsQueue: !modelData.revoked && !modelData.current
+                                && modelData.queue > 0 && root.session !== null && root.session.overviewKnown
+                            readonly property color queueInk: showsQueue
+                                ? root.shownColor(root.session.overviewFresh, ink) : ink
                             Layout.fillWidth: true
                             spacing: 8
                             Fingerprint {
@@ -329,43 +337,63 @@ WindowPopup {
                                 color: deviceRow.ink
                                 font.pixelSize: Theme.fontSmall
                             }
-                            Label {
-                                text: deviceRow.modelData.primary ? qsTr("Primary") : qsTr("Secondary")
-                                color: deviceRow.ink
-                                font.pixelSize: Theme.fontSmall
-                            }
-                            Label {
-                                readonly property bool showsQueue: !deviceRow.modelData.revoked
-                                    && !deviceRow.modelData.current && deviceRow.modelData.queue > 0
-                                    && root.session !== null && root.session.overviewKnown
-                                text: deviceRow.modelData.revoked ? qsTr("Revoked")
-                                    : (deviceRow.modelData.current ? qsTr("(this device)")
-                                        : (showsQueue
-                                            ? qsTr(" (queue: %1)").arg(deviceRow.modelData.queue)
-                                            : ""))
-                                color: showsQueue ? root.shownColor(root.session.overviewFresh, deviceRow.ink)
-                                    : deviceRow.ink
-                                font.pixelSize: Theme.fontSmall
-                                elide: Text.ElideRight
+                            RowLayout {
+                                spacing: 0
                                 Layout.fillWidth: true
-                            }
-                            Label {
-                                text: qsTr("Revoke")
-                                visible: root.session !== null && root.session.primaryDevice
-                                    && !deviceRow.modelData.current && !deviceRow.modelData.revoked
-                                color: revokeArea.containsMouse ? Theme.danger : Theme.textDim
-                                font.pixelSize: Theme.fontSmall
-                                font.underline: revokeArea.containsMouse
-                                MouseArea {
-                                    id: revokeArea
-                                    anchors.fill: parent
-                                    anchors.margins: -4
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        revokeConfirm.deviceId = deviceRow.modelData.deviceId
-                                        revokeConfirm.open()
+                                Label {
+                                    text: deviceRow.modelData.primary ? qsTr("Primary") : qsTr("Secondary")
+                                    color: deviceRow.ink
+                                    font.pixelSize: Theme.fontSmall
+                                }
+                                Label {
+                                    readonly property string status: deviceRow.modelData.revoked ? qsTr("Revoked")
+                                        : (deviceRow.modelData.current ? qsTr("(this device)")
+                                            : (deviceRow.showsQueue
+                                                ? "(" + qsTr("message queue: %1").arg(deviceRow.modelData.queue)
+                                                    + (deviceRow.manages ? " \u2013 " : ")")
+                                                : ""))
+                                    text: status.length > 0 ? " " + status : ""
+                                    color: deviceRow.showsQueue ? deviceRow.queueInk : deviceRow.ink
+                                    font.pixelSize: Theme.fontSmall
+                                    elide: Text.ElideRight
+                                }
+                                Label {
+                                    visible: deviceRow.showsQueue && deviceRow.manages
+                                    text: qsTr("Clear")
+                                    color: clearArea.containsMouse ? Theme.danger : deviceRow.queueInk
+                                    font.pixelSize: Theme.fontSmall
+                                    font.underline: true
+                                    MouseArea {
+                                        id: clearArea
+                                        anchors.fill: parent
+                                        anchors.margins: -4
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            clearConfirm.deviceId = deviceRow.modelData.deviceId
+                                            clearConfirm.open()
+                                        }
                                     }
+                                }
+                                Label {
+                                    visible: deviceRow.showsQueue && deviceRow.manages
+                                    text: ")"
+                                    color: deviceRow.queueInk
+                                    font.pixelSize: Theme.fontSmall
+                                }
+                                Item { Layout.fillWidth: true }
+                            }
+                            IconButton {
+                                visible: deviceRow.manages
+                                implicitWidth: root.kDeviceActionSize
+                                implicitHeight: root.kDeviceActionSize
+                                iconName: "close"
+                                iconSize: root.kDeviceActionIcon
+                                tint: Theme.danger
+                                Accessible.name: qsTr("Revoke")
+                                onClicked: {
+                                    revokeConfirm.deviceId = deviceRow.modelData.deviceId
+                                    revokeConfirm.open()
                                 }
                             }
                         }
@@ -900,6 +928,42 @@ WindowPopup {
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
                 text: qsTr("The device loses access to the account and its new mail. This cannot be undone.")
+            }
+        }
+    }
+
+    Dialog {
+        id: clearConfirm
+        property string deviceId: ""
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        focus: true
+        width: Math.min(Theme.dialogWidth, root.width - Theme.windowSideRoom)
+        background: DialogFrame { }
+        header: WindowHeader {
+            title: qsTr("Clear this device's queue?")
+            showClose: false
+        }
+        footer: DialogButtons {
+            acceptText: qsTr("Clear")
+            danger: true
+            onAccepted: clearConfirm.accept()
+            onRejected: clearConfirm.reject()
+        }
+        onAccepted: if (root.session && clearConfirm.deviceId.length > 0) {
+            root.session.forgetDeviceMail(clearConfirm.deviceId)
+        }
+        contentItem: ColumnLayout {
+            spacing: 8
+            Label {
+                Layout.fillWidth: true
+                Layout.leftMargin: 14
+                Layout.rightMargin: 14
+                wrapMode: Text.Wrap
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSmall
+                text: qsTr("The server deletes the mail for %1. The device registers again the next time it connects.")
+                    .arg(clearConfirm.deviceId)
             }
         }
     }

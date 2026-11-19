@@ -2505,6 +2505,20 @@ void SessionWorker::revokeDevice(const QString& deviceId)
     emitDeviceState();
 }
 
+void SessionWorker::forgetDeviceMail(const QString& deviceId)
+{
+    if (!session_) {
+        return;
+    }
+    runOp(QStringLiteral("device-forget"), QStringLiteral("status"),
+        tr("Clearing a device's queue"), tr("Telling your server…"), [this, &deviceId]() {
+            session_->forgetDeviceMail(deviceId.toStdString());
+            emit actionOk(tr("The device's queue is cleared"));
+            return tr("Cleared");
+        });
+    emitDeviceState();
+}
+
 void SessionWorker::reviewDevices(const QStringList& revoke)
 {
     if (!session_) {

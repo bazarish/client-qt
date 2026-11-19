@@ -161,6 +161,7 @@ public slots:
     // While the Account page is open one held request keeps its overview current.
     void watchOverview(bool open);
     void revokeDevice(const QString& deviceId);
+    void forgetDeviceMail(const QString& deviceId);
     void reviewDevices(const QStringList& revoke);
     void readContactDevices(const QString& peer);
     void closeAccountOnServer();
