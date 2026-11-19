@@ -537,7 +537,7 @@ void SessionWorker::startEventWaiter()
     eventWaiterRunning_ = std::make_shared<std::atomic<bool>>(true);
     mailGate_.restart();
     eventWaiter_ = std::thread([this, context, running = eventWaiterRunning_]() {
-        std::unique_ptr<bazarish::client::Client> waiter;
+        std::shared_ptr<bazarish::client::Client> waiter;
         // A held wait answers late by design: until the server has answered, it is not held.
         bool answered = false;
         // What the first answer after coming online lists is the backlog.
@@ -554,6 +554,11 @@ void SessionWorker::startEventWaiter()
             try {
                 if (!waiter) {
                     waiter = bazarish::client::Session::makeEventClient(context);
+                    const std::lock_guard<std::mutex> lock(waiterClientMutex_);
+                    if (!running->load()) {
+                        return;
+                    }
+                    waiterClient_ = waiter;
                 }
                 std::vector<std::string> owed;
                 {
@@ -746,15 +751,25 @@ void SessionWorker::stopEventWaiter()
     }
     drainDone_.notify_all();
     mailGate_.stop();
-    // The waiter sits inside a held request; only taking its link down ends it before the hold does.
+    {
+        const std::lock_guard<std::mutex> lock(waiterClientMutex_);
+        if (waiterClient_) {
+            waiterClient_->close();
+        }
+    }
     if (session_) {
         session_->releaseI2pLinks();
     }
     if (eventWaiter_.joinable()) {
+        bazarish::log::info("waiting for the mail wait to end");
         eventWaiter_.join();
     }
     eventWaiter_ = std::thread();
     eventWaiterRunning_.reset();
+    {
+        const std::lock_guard<std::mutex> lock(waiterClientMutex_);
+        waiterClient_.reset();
+    }
     const std::lock_guard<std::mutex> lock(drainMutex_);
     streamed_.clear();
     streamEnded_ = true;
@@ -1102,6 +1117,7 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
 
 void SessionWorker::setSyncEnabled(bool on)
 {
+    bazarish::log::info("account switched {}", on ? "on" : "off");
     if (session_) {
         session_->setSwitchedOff(!on);
     }
@@ -1114,6 +1130,7 @@ void SessionWorker::setSyncEnabled(bool on)
         stopApprovalWaiter();
         stopMaintenance();
     }
+    bazarish::log::info("account is {}", on ? "receiving" : "quiet");
 }
 
 void SessionWorker::rebuildI2pLinks()

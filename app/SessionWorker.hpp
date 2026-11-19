@@ -316,6 +316,8 @@ private:
     QTimer* callTimer_ = nullptr;
     std::thread eventWaiter_;
     bazarish::client::MailWaitGate mailGate_;
+    std::mutex waiterClientMutex_;
+    std::shared_ptr<bazarish::client::Client> waiterClient_;
     std::shared_ptr<std::atomic<bool>> eventWaiterRunning_;
     void startEventWaiter();
     void streamMailbox(bazarish::client::Client& waiter,
