@@ -223,7 +223,11 @@ Item {
         function onCallChanged() { root.followCall() }
     }
 
-    AccountSwitcher { id: accountSwitcher }
+    Component { id: createWizardComponent; CreateAccountWizard {} }
+    AccountSwitcher {
+        id: accountSwitcher
+        onCreateRequested: root.StackView.view.push(createWizardComponent)
+    }
     RouterStatusPage { id: routerStatus; onBack: { routerStatus.close(); appSettings.open() } }
     StoragePage { id: storagePage; onBack: { storagePage.close(); settings.open() } }
     function offerGateway(link) { appSettings.offerGateway(link) }

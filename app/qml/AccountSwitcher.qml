@@ -6,6 +6,7 @@ import Bazarish
 
 WindowPopup {
     id: root
+    signal createRequested()
     Connections {
         target: App
         function onAccountOpened() { root.close() }
@@ -161,11 +162,11 @@ WindowPopup {
             focusPolicy: Theme.pressFocus
             Layout.fillWidth: true
             Layout.margins: 12
-            text: qsTr("Manage")
+            text: qsTr("Create account")
             hoverEnabled: true
-            onClicked: { root.close(); App.requestAddAccount() }
+            onClicked: { root.close(); root.createRequested() }
             background: Rectangle { radius: 10; color: parent.down ? Theme.accentDown : (parent.hovered ? Theme.accentHover : Theme.accent) }
-            contentItem: IconLabel { name: "gear"; color: Theme.accentText }
+            contentItem: IconLabel { name: "plus"; color: Theme.accentText }
         }
     }
 }
