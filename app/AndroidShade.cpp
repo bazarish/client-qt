@@ -270,6 +270,7 @@ void AndroidShade::followRinging()
         QJniObject::callStaticMethod<void>(kShade, "callTalking", "(Z)V", jboolean(talking_));
     }
     AndroidCallAudio::holdNearEar(talking_ && !core_.speakerOn());
+    AndroidCallAudio::holdRadioAwake(core_.callLive());
     if (ringing && !callShown_ && !core_.windowActive()) {
         const QJniObject account = javaString(core_.ringingAccount());
         const QJniObject fingerprint = javaString(core_.ringingPeerFingerprint());

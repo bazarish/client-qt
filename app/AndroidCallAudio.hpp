@@ -71,6 +71,7 @@ public:
 namespace AndroidCallAudio {
 void setSpeaker(bool on);
 void holdNearEar(bool on);
+void holdRadioAwake(bool on);
 }
 
 }  // namespace bazarish::app

@@ -36,10 +36,6 @@ public final class CallAudio {
         AudioManager manager = Shade.app.getSystemService(AudioManager.class);
         if (users++ == 0) {
             manager.setMode(AudioManager.MODE_IN_COMMUNICATION);
-            // A dozing Wi-Fi radio takes in the call's audio only at the access point's beacons.
-            radioAwake = Shade.app.getSystemService(WifiManager.class)
-                .createWifiLock(WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "bazarish:call");
-            radioAwake.acquire();
         }
         route(manager);
     }
@@ -51,8 +47,6 @@ public final class CallAudio {
         AudioManager manager = Shade.app.getSystemService(AudioManager.class);
         manager.clearCommunicationDevice();
         manager.setMode(AudioManager.MODE_NORMAL);
-        radioAwake.release();
-        radioAwake = null;
         holdNearEar(false);
     }
 
@@ -72,6 +66,18 @@ public final class CallAudio {
         } else if (!on && nearEar != null) {
             nearEar.release();
             nearEar = null;
+        }
+    }
+
+    // A dozing Wi-Fi radio takes in the call's audio only at the access point's beacons.
+    public static synchronized void holdRadioAwake(boolean on) {
+        if (on && radioAwake == null) {
+            radioAwake = Shade.app.getSystemService(WifiManager.class)
+                .createWifiLock(WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "bazarish:call");
+            radioAwake.acquire();
+        } else if (!on && radioAwake != null) {
+            radioAwake.release();
+            radioAwake = null;
         }
     }
 

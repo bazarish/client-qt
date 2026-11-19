@@ -146,6 +146,11 @@ void holdNearEar(const bool on)
     QJniObject::callStaticMethod<void>(kCallAudio, "holdNearEar", "(Z)V", jboolean(on));
 }
 
+void holdRadioAwake(const bool on)
+{
+    QJniObject::callStaticMethod<void>(kCallAudio, "holdRadioAwake", "(Z)V", jboolean(on));
+}
+
 }  // namespace AndroidCallAudio
 
 }  // namespace bazarish::app
