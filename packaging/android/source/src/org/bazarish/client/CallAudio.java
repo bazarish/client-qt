@@ -8,6 +8,7 @@ import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.AudioTrack;
 import android.media.MediaRecorder;
+import android.net.wifi.WifiManager;
 import android.os.PowerManager;
 
 import java.nio.ByteBuffer;
@@ -26,6 +27,7 @@ public final class CallAudio {
     private static int users = 0;
     private static boolean speaker = false;
     private static PowerManager.WakeLock nearEar = null;
+    private static WifiManager.WifiLock radioAwake = null;
 
     private CallAudio() {}
 
@@ -34,6 +36,10 @@ public final class CallAudio {
         AudioManager manager = Shade.app.getSystemService(AudioManager.class);
         if (users++ == 0) {
             manager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+            // A dozing Wi-Fi radio takes in the call's audio only at the access point's beacons.
+            radioAwake = Shade.app.getSystemService(WifiManager.class)
+                .createWifiLock(WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "bazarish:call");
+            radioAwake.acquire();
         }
         route(manager);
     }
@@ -45,6 +51,8 @@ public final class CallAudio {
         AudioManager manager = Shade.app.getSystemService(AudioManager.class);
         manager.clearCommunicationDevice();
         manager.setMode(AudioManager.MODE_NORMAL);
+        radioAwake.release();
+        radioAwake = null;
         holdNearEar(false);
     }
 
