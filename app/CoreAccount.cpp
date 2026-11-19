@@ -316,6 +316,14 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(worker_, &SessionWorker::contactsRefreshed, &events_,
         &AccountEvents::contactsRefreshed);
     connect(worker_, &SessionWorker::avatarReady, &events_, &AccountEvents::avatarReady);
+    connect(worker_, &SessionWorker::avatarReady, this,
+        [this](const QString& fingerprint, const QByteArray& data) {
+            if (data.isEmpty()) {
+                avatars_.remove(fingerprint);
+            } else {
+                avatars_.insert(fingerprint, data);
+            }
+        });
     connect(worker_, &SessionWorker::sendProgress, this, &CoreAccount::onSendProgress);
     connect(worker_, &SessionWorker::sendResult, this, &CoreAccount::onSendResult);
     connect(worker_, &SessionWorker::sendPhase, this, &CoreAccount::onSendPhase);

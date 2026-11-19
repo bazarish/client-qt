@@ -24,6 +24,7 @@ public:
 
     bool has(const QString& fingerprint) const;
     QImage image(const QString& fingerprint);
+    static QImage decode(QByteArray data);
 
 signals:
     void revisionChanged();

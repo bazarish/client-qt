@@ -38,16 +38,8 @@ bool AvatarStore::has(const QString& fingerprint) const
     return bytes_.contains(fingerprint);
 }
 
-QImage AvatarStore::image(const QString& fingerprint)
+QImage AvatarStore::decode(QByteArray data)
 {
-    QByteArray data;
-    {
-        QReadLocker locker(&lock_);
-        if (const auto decoded = images_.constFind(fingerprint); decoded != images_.constEnd()) {
-            return *decoded;
-        }
-        data = bytes_.value(fingerprint);
-    }
     if (data.isEmpty()) {
         return {};
     }
@@ -58,7 +50,20 @@ QImage AvatarStore::image(const QString& fingerprint)
     if (!size.isValid() || size.width() > kMaxSide || size.height() > kMaxSide) {
         return {};
     }
-    const QImage decoded = reader.read();
+    return reader.read();
+}
+
+QImage AvatarStore::image(const QString& fingerprint)
+{
+    QByteArray data;
+    {
+        QReadLocker locker(&lock_);
+        if (const auto decoded = images_.constFind(fingerprint); decoded != images_.constEnd()) {
+            return *decoded;
+        }
+        data = bytes_.value(fingerprint);
+    }
+    const QImage decoded = decode(data);
     if (decoded.isNull()) {
         return {};
     }

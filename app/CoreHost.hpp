@@ -53,6 +53,7 @@ public:
     QString ringingAccount() const { return ringingAccount_; }
     QString ringingPeer() const { return ringingPeer_; }
     QString ringingPeerFingerprint() const { return ringingPeerFingerprint_; }
+    QByteArray ringingAvatar() const;
     bool callLive() const { return callLive_; }
     bool callTalking() const { return callTalking_; }
     bool speakerOn() const { return speakerOn_; }

@@ -1177,6 +1177,12 @@ void CoreHost::switchTo(const QString& id)
     openSession(id, {}, /*makeActive=*/true, /*startOnline=*/!offline_.contains(id));
 }
 
+QByteArray CoreHost::ringingAvatar() const
+{
+    const CoreAccount* const account = sessionFor(ringingAccount_);
+    return account != nullptr ? account->avatarOf(ringingPeerFingerprint_) : QByteArray();
+}
+
 void CoreHost::setOnline(const QString& id, const bool on)
 {
     CoreAccount* const account = sessionFor(id);

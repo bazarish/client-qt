@@ -268,8 +268,13 @@ public final class Shade {
             "bazarish:message").acquire(WAKE_MILLIS);
     }
 
-    public static void notifyCall(String account, String peer, String title, String body) {
-        Person caller = new Person.Builder().setName(title).setImportant(true).build();
+    public static void notifyCall(String account, String peer, String title, String body,
+            byte[] picture) {
+        Person caller = new Person.Builder()
+            .setName(title)
+            .setIcon(Icon.createWithData(picture, 0, picture.length))
+            .setImportant(true)
+            .build();
         PendingIntent answer = PendingIntent.getActivity(app, ANSWER_REQUEST,
             notice().setAction(ACTION_ANSWER)
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK),

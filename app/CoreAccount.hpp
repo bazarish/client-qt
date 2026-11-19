@@ -48,6 +48,7 @@ struct StoreUpkeep {
 class CoreAccount : public QObject {
     Q_OBJECT
 public:
+    QByteArray avatarOf(const QString& fingerprint) const { return avatars_.value(fingerprint); }
     explicit CoreAccount(const QString& accountId, QObject* parent = nullptr);
     ~CoreAccount() override;
 
@@ -282,6 +283,7 @@ private:
     };
     QHash<QString, ContactProgressRow> contactProgressRows_;
     QHash<QString, QString> aliasChats_;
+    QHash<QString, QByteArray> avatars_;
     // A bot action started from a message's keyboard, by op id: the message it came from.
     QHash<QString, QString> keyPresses_;
     QHash<QString, PendingContactRequest> refusedRequests_;

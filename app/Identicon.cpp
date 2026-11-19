@@ -102,24 +102,22 @@ QImage AvatarProvider::requestImage(
     const QString fingerprint = id.section('?', 0, 0);
     const bool round = id.section('?', 1).contains(QLatin1String("round=1"));
 
-    const QImage stored = AvatarStore::instance().image(fingerprint);
-    if (!stored.isNull()) {
-        const int side = std::min(stored.width(), stored.height());
-        const QImage square = stored.copy(
-            (stored.width() - side) / 2, (stored.height() - side) / 2, side, side);
-        const QImage scaled
-            = square.scaled(dim, dim, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-        if (size != nullptr) {
-            *size = QSize(dim, dim);
-        }
-        return round ? circled(scaled) : scaled;
-    }
-
     if (size != nullptr) {
         *size = QSize(dim, dim);
     }
-    const QImage identicon = renderIdenticon(fingerprint, dim);
-    return round ? circled(identicon) : identicon;
+    const QImage square = avatarImage(fingerprint, AvatarStore::instance().image(fingerprint), dim);
+    return round ? circled(square) : square;
+}
+
+QImage avatarImage(const QString& fingerprint, const QImage& picture, const int dim)
+{
+    if (picture.isNull()) {
+        return renderIdenticon(fingerprint, dim);
+    }
+    const int side = std::min(picture.width(), picture.height());
+    const QImage square
+        = picture.copy((picture.width() - side) / 2, (picture.height() - side) / 2, side, side);
+    return square.scaled(dim, dim, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 }
 
 QrImageProvider::QrImageProvider()

@@ -3,11 +3,15 @@
 #include "Background.hpp"
 
 #include "AndroidCallAudio.hpp"
+#include "AvatarStore.hpp"
 #include "CoreHost.hpp"
+#include "Identicon.hpp"
 #include "Notifier.hpp"
 #include "PostIfHeld.hpp"
 #include "Translations.hpp"
 
+#include <QBuffer>
+#include <QImage>
 #include <QJniEnvironment>
 #include <QJniObject>
 #include <QtCore/qcoreapplication_platform.h>
@@ -31,6 +35,21 @@
 
 namespace bazarish::app {
 namespace {
+
+constexpr int kCallerPictureSide = 192;
+
+QByteArray callerPicture(const CoreHost& core)
+{
+    const QImage picture = avatarImage(core.ringingPeerFingerprint(),
+        AvatarStore::decode(core.ringingAvatar()), kCallerPictureSide);
+    QByteArray png;
+    QBuffer buffer(&png);
+    buffer.open(QIODevice::WriteOnly);
+    if (!picture.save(&buffer, "PNG")) {
+        throw std::runtime_error("the caller's picture could not be encoded");
+    }
+    return png;
+}
 
 const char* const kShade = "org/bazarish/client/Shade";
 const char* const kLogTag = "bazarish";
@@ -256,10 +275,16 @@ void AndroidShade::followRinging()
         const QJniObject fingerprint = javaString(core_.ringingPeerFingerprint());
         const QJniObject heading = javaString(core_.ringingPeer());
         const QJniObject text = javaString(tr("Incoming audio call"));
+        const QByteArray png = callerPicture(core_);
+        QJniEnvironment env;
+        const jbyteArray picture = env->NewByteArray(static_cast<jsize>(png.size()));
+        env->SetByteArrayRegion(picture, 0, static_cast<jsize>(png.size()),
+            reinterpret_cast<const jbyte*>(png.constData()));
         QJniObject::callStaticMethod<void>(kShade, "notifyCall",
-            "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+            "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[B)V",
             account.object<jstring>(), fingerprint.object<jstring>(), heading.object<jstring>(),
-            text.object<jstring>());
+            text.object<jstring>(), picture);
+        env->DeleteLocalRef(picture);
         callShown_ = true;
     } else if (!ringing && callShown_) {
         QJniObject::callStaticMethod<void>(kShade, "cancelCall", "()V");

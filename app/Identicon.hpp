@@ -6,6 +6,7 @@
 namespace bazarish::app {
 
 QImage renderIdenticon(const QString& id, int dim);
+QImage avatarImage(const QString& fingerprint, const QImage& picture, int dim);
 
 class IdenticonProvider : public QQuickImageProvider {
 public:
