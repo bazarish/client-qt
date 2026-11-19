@@ -111,7 +111,7 @@ WindowPopup {
                     }
                     Label {
                         visible: !App.linksHandled
-                        text: qsTr("In the settings, tap Add link and check bazari.sh")
+                        text: qsTr("In the phone's settings, find the app's links section and check bazari.sh")
                         color: Theme.textDim
                         font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap

@@ -761,7 +761,6 @@ void SessionWorker::stopEventWaiter()
         session_->releaseI2pLinks();
     }
     if (eventWaiter_.joinable()) {
-        bazarish::log::info("waiting for the mail wait to end");
         eventWaiter_.join();
     }
     eventWaiter_ = std::thread();
@@ -1130,7 +1129,6 @@ void SessionWorker::setSyncEnabled(bool on)
         stopApprovalWaiter();
         stopMaintenance();
     }
-    bazarish::log::info("account is {}", on ? "receiving" : "quiet");
 }
 
 void SessionWorker::rebuildI2pLinks()

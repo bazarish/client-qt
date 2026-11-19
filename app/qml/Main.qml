@@ -324,7 +324,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
             }
             Label {
-                text: qsTr("In the settings, tap Add link and check bazari.sh")
+                text: qsTr("In the phone's settings, find the app's links section and check bazari.sh")
                 color: Theme.textDim
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
