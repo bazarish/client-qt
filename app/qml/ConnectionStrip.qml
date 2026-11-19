@@ -16,9 +16,12 @@ Rectangle {
     readonly property bool refused: root.session !== null && root.session.approvalRefused
     readonly property int failure: root.session !== null ? root.session.linkFailure : LinkStatus.None
     readonly property bool noNetwork: root.isConnecting && root.failure === LinkStatus.NoNetwork
-    readonly property string whyNotReachable: root.session !== null
-        && root.failure !== LinkStatus.NoNetwork && Tr.language.length >= 0
-        ? root.session.linkFailureText(root.failure) : ""
+    readonly property string whyNotReachable: root.session === null
+        || root.failure === LinkStatus.NoNetwork || Tr.language.length < 0 ? ""
+        : root.failure !== LinkStatus.None ? root.session.linkFailureText(root.failure)
+        : I2p.transport === "gateway" ? qsTr("Reaching the external gateway")
+        : I2p.transport === "sam" ? qsTr("Reaching the I2P router")
+        : qsTr("The I2P router is joining the network")
     readonly property int kPadding: 4
     readonly property int kSideMargin: 12
 

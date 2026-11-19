@@ -5417,6 +5417,24 @@
       "zh": "去电无人接听",
       "ar": "مكالمة صادرة بلا رد"
     },
+    "Reaching the external gateway": {
+      "ru": "Устанавливается связь с внешним шлюзом",
+      "es": "Estableciendo conexión con la pasarela externa",
+      "zh": "正在连接外部网关",
+      "ar": "جارٍ الاتصال بالبوابة الخارجية"
+    },
+    "Reaching the I2P router": {
+      "ru": "Устанавливается связь с роутером I2P",
+      "es": "Estableciendo conexión con el router I2P",
+      "zh": "正在连接 I2P 路由器",
+      "ar": "جارٍ الاتصال بموجّه I2P"
+    },
+    "The I2P router is joining the network": {
+      "ru": "Роутер I2P подключается к сети",
+      "es": "El router I2P se está conectando a la red",
+      "zh": "I2P 路由器正在接入网络",
+      "ar": "موجّه I2P يتصل بالشبكة"
+    },
     "A message could not be read": {
       "ru": "Сообщение не удалось прочитать",
       "es": "No se pudo leer un mensaje",
