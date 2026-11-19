@@ -1299,9 +1299,14 @@ Item {
             // Under Menu itself, its own delegate property would hide this bubble's id.
             sourceComponent: Item {
                 property alias menu: menu
+                Connections {
+                    target: delegate.ListView.view
+                    function onHeightChanged() { if (menu.visible) { delegate.placeMenu() } }
+                }
                 ContextMenu {
                     id: menu
                     parent: bubble
+                    onOpened: delegate.placeMenu()
                     onWidthChanged: if (visible) { delegate.placeMenu() }
                     onHeightChanged: if (visible) { delegate.placeMenu() }
                     ContextMenuItem {
