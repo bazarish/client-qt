@@ -366,6 +366,9 @@ void CoreAccount::restartDelivery(const QString& peer, const qint64 localId)
     if (!store_.updateStatus(localId, DeliveryStatus::Preparing)) {
         reportUnsaved();
     }
+    if (isSavedChat(peer)) {
+        savedSends_.insert(localId);
+    }
     emit events_.rowChanged(peer, localId);
     emit events_.messageError(localId, {});
 }
