@@ -1298,17 +1298,19 @@ Item {
             active: false
             // Under Menu itself, its own delegate property would hide this bubble's id.
             sourceComponent: Item {
+                id: menuHost
                 property alias menu: menu
+                function place() { delegate.placeMenu() }
                 Connections {
                     target: delegate.ListView.view
-                    function onHeightChanged() { if (menu.visible) { delegate.placeMenu() } }
+                    function onHeightChanged() { if (menu.visible) { menuHost.place() } }
                 }
                 ContextMenu {
                     id: menu
                     parent: bubble
-                    onOpened: delegate.placeMenu()
-                    onWidthChanged: if (visible) { delegate.placeMenu() }
-                    onHeightChanged: if (visible) { delegate.placeMenu() }
+                    onOpened: menuHost.place()
+                    onWidthChanged: if (visible) { menuHost.place() }
+                    onHeightChanged: if (visible) { menuHost.place() }
                     ContextMenuItem {
                         text: qsTr("React")
                         iconName: "smile"

@@ -44,6 +44,7 @@ WindowPopup {
         }
 
         ScrollColumn {
+            id: infoColumn
             Layout.fillWidth: true
             Layout.fillHeight: true
             inset: Theme.contentInset
@@ -161,7 +162,7 @@ WindowPopup {
                 columnSpacing: 12
                 rowSpacing: 8
                 readonly property int sideBySideWidth: 360
-                columns: width < sideBySideWidth ? 2 : 4
+                columns: infoColumn.columnWidth < sideBySideWidth ? 2 : 4
                 Label {
                     text: qsTr("Notifications")
                     color: Theme.text

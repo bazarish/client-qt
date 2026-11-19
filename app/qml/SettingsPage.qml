@@ -598,7 +598,7 @@ WindowPopup {
                         columnSpacing: 8
                         rowSpacing: 8
                         readonly property int sideBySideWidth: 400
-                        columns: width < sideBySideWidth ? 1 : 2
+                        columns: settingsScroll.availableWidth - 2 * Theme.contentInset < sideBySideWidth ? 1 : 2
                         ColumnLayout {
                             Layout.fillWidth: true
                             Label {
