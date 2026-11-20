@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 import QtQuick
+import QtQuick.Layouts
 import Bazarish
 
 Label {
@@ -31,6 +32,9 @@ Label {
         font: root.font
     }
 
+    // Measured from the whole line, not the fitted text: the text follows the width, the width must not follow it.
+    Layout.preferredWidth: Math.ceil(metrics.advanceWidth(replacement.length > 0 ? replacement : groups.join(" ")))
+        + leftPadding + rightPadding
     text: replacement.length > 0 ? replacement : (whole ? groups.join(" ") : fitted(width))
     wrapMode: whole ? Text.WordWrap : Text.NoWrap
 }
