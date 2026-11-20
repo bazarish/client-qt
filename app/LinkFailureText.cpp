@@ -98,6 +98,9 @@ QString linkFailureText(const int failure, const FarSide side)
     if (failure == kLinkRebuilding) {
         return QObject::tr("The links to the server are being rebuilt");
     }
+    if (failure == kLinkReachingServer) {
+        return QObject::tr("Reaching the server");
+    }
     switch (static_cast<client::LinkFailure>(failure)) {
     case client::LinkFailure::eNone:
         return {};

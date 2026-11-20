@@ -5417,6 +5417,12 @@
       "zh": "正在连接外部网关",
       "ar": "جارٍ الاتصال بالبوابة الخارجية"
     },
+    "Reaching the server": {
+      "ru": "Устанавливается связь с сервером",
+      "es": "Estableciendo conexión con el servidor",
+      "zh": "正在连接服务器",
+      "ar": "جارٍ الاتصال بالخادم"
+    },
     "Reaching the I2P router": {
       "ru": "Устанавливается связь с роутером I2P",
       "es": "Estableciendo conexión con el router I2P",

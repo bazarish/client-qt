@@ -17,6 +17,8 @@ namespace bazarish::app {
 inline constexpr double kProgressUnknown = -1.0;
 // Outside client::LinkFailure: the links this client is taking down and building again.
 inline constexpr int kLinkRebuilding = -1;
+// Outside client::LinkFailure: the first attempt is dialling the server and has not failed yet.
+inline constexpr int kLinkReachingServer = -2;
 
 struct ContactState {
     enum Request { eAnswered, eWaiting, eAccepting };

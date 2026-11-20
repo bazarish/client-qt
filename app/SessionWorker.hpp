@@ -229,6 +229,7 @@ signals:
     void syncReachable(
         bool ok, const QString& gatewayRefusal, bazarish::client::LinkFailure failure);
     void linksRebuilding();
+    void syncLinkStage(bazarish::client::LinkStage stage);
     // shown: the backlog is more than one pass of items.
     void syncProgress(bool syncing, bool shown, qint64 takenBytes, qint64 totalBytes);
     void approvalState(bool pending, bool refused, const QString& note);

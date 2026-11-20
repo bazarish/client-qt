@@ -554,6 +554,11 @@ void SessionWorker::startEventWaiter()
             try {
                 if (!waiter) {
                     waiter = bazarish::client::Session::makeEventClient(context);
+                    waiter->onLinkStage([this](const bazarish::client::LinkStage stage) {
+                        QMetaObject::invokeMethod(
+                            this, [this, stage]() { emit syncLinkStage(stage); },
+                            Qt::QueuedConnection);
+                    });
                     const std::lock_guard<std::mutex> lock(waiterClientMutex_);
                     if (!running->load()) {
                         return;

@@ -27,6 +27,7 @@ enum Value {
     ServerMalformed = static_cast<int>(client::LinkFailure::eServerMalformed),
     AddressNotFound = static_cast<int>(client::LinkFailure::eAddressNotFound),
     Rebuilding = kLinkRebuilding,
+    ReachingServer = kLinkReachingServer,
 };
 Q_ENUM_NS(Value)
 

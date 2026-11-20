@@ -101,6 +101,7 @@ private:
     void close();
     void onSyncReachable(bool ok, const QString& gatewayRefusal, client::LinkFailure failure);
     client::LinkFailure shownFailure() const;
+    int attemptStatus() const;
     void announcePresence();
     void recountUnread();
     void signLogin(const QString& challenge);
@@ -233,6 +234,7 @@ private:
     bool reachable_ = false;
     QString gatewayRefusal_;
     client::LinkFailure linkFailure_ = client::LinkFailure::eNone;
+    std::optional<client::LinkStage> attemptStage_;
     i2p::TransportState transport_ = i2p::transportState();
     int unread_ = 0;
     bool linksRebuilding_ = false;

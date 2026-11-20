@@ -409,6 +409,13 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
             setPresenceFocused(presenceFocused_);
         });
     connect(worker_, &SessionWorker::syncReachable, this, &CoreAccount::onSyncReachable);
+    connect(worker_, &SessionWorker::syncLinkStage, this, [this](const client::LinkStage stage) {
+        const int before = attemptStatus();
+        attemptStage_ = stage;
+        if (attemptStatus() != before) {
+            announcePresence();
+        }
+    });
     connect(worker_, &SessionWorker::facadeInfo, this,
         [this](const QString& activeAddress, const QStringList& configured) {
             activeFacade_ = activeAddress;
@@ -420,6 +427,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         reachable_ = false;
         gatewayRefusal_.clear();
         linkFailure_ = client::LinkFailure::eNone;
+        attemptStage_.reset();
         announcePresence();
     });
     connect(worker_, &SessionWorker::accountSettings, this,
@@ -627,6 +635,7 @@ void CoreAccount::goOffline()
     linksRebuilding_ = false;
     gatewayRefusal_.clear();
     linkFailure_ = client::LinkFailure::eNone;
+    attemptStage_.reset();
     announcePresence();
     emit commands_.requestSetSync(false);
     setPresenceFocused(presenceFocused_);
@@ -681,6 +690,9 @@ void CoreAccount::onSyncReachable(
     reachable_ = ok;
     gatewayRefusal_ = refusal;
     linkFailure_ = cause;
+    if (ok) {
+        attemptStage_.reset();
+    }
     announcePresence();
 }
 
@@ -695,6 +707,24 @@ void CoreAccount::transportChanged()
         linkFailure_ = client::LinkFailure::eNone;
     }
     announcePresence();
+}
+
+int CoreAccount::attemptStatus() const
+{
+    if (reachable_ || !attemptStage_.has_value()) {
+        return static_cast<int>(client::LinkFailure::eNone);
+    }
+    switch (*attemptStage_) {
+    case client::LinkStage::eRouter:
+        return static_cast<int>(client::LinkFailure::eNone);
+    case client::LinkStage::eLink:
+    case client::LinkStage::eTunnels:
+        return static_cast<int>(client::LinkFailure::eTunnelsBuilding);
+    case client::LinkStage::eDial:
+    case client::LinkStage::eExchange:
+        return kLinkReachingServer;
+    }
+    throw std::logic_error("no status for this link stage");
 }
 
 client::LinkFailure CoreAccount::shownFailure() const
@@ -722,9 +752,11 @@ void CoreAccount::recountUnread()
 
 void CoreAccount::announcePresence()
 {
+    const client::LinkFailure failure = shownFailure();
     const int status = linksRebuilding_ && transport_ == i2p::TransportState::eUp
         ? kLinkRebuilding
-        : static_cast<int>(shownFailure());
+        : failure == client::LinkFailure::eNone ? attemptStatus()
+        : static_cast<int>(failure);
     emit events_.presence(online_, reachable(), gatewayRefusal_, status);
     emit changed();
 }
