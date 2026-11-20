@@ -521,12 +521,14 @@ Rectangle {
             text: qsTr("File")
             iconName: "file"
             visible: !(root.session && root.session.activeIsGroup)
+            height: visible ? implicitHeight : 0
             onTriggered: fileDialog.open()
         }
         ContextMenuItem {
             text: qsTr("Image")
             iconName: "image"
             visible: App.canPickPictures
+            height: visible ? implicitHeight : 0
             onTriggered: App.mobile ? App.pickPictures() : imageDialog.open()
         }
         ContextMenuItem {
