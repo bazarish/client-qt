@@ -55,6 +55,21 @@ Item {
     function clearChosen() {
         root.chosen = ({})
     }
+    function chooseAcross(fromIndex, scenePoint) {
+        const inList = messages.mapFromItem(null, scenePoint.x, scenePoint.y)
+        const toIndex = messages.indexAt(inList.x + messages.contentX, inList.y + messages.contentY)
+        if (toIndex < 0) {
+            return
+        }
+        const next = {}
+        for (let i = Math.min(fromIndex, toIndex); i <= Math.max(fromIndex, toIndex); ++i) {
+            const item = messages.itemAtIndex(i)
+            if (item && item.actionable) {
+                next[item.rowMsgId] = item.rowOutgoing
+            }
+        }
+        root.chosen = next
+    }
     function chosenIds() {
         return Object.keys(root.chosen).map(Number)
     }
@@ -531,6 +546,7 @@ Item {
                     choosing: root.choosing
                     chosen: root.chosen[model.msgId] !== undefined
                     onChosenToggled: function(msgId, outgoing) { root.toggleChosen(msgId, outgoing) }
+                    onSelectionCrossed: function(scenePoint) { root.chooseAcross(index, scenePoint) }
                     onGroupActionRequested: function(command, postId, author) {
                         groupActionDialog.command = command
                         groupActionDialog.postId = postId

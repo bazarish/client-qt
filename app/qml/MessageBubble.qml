@@ -26,6 +26,10 @@ Item {
     property bool choosing: false
     property bool chosen: false
     signal chosenToggled(var msgId, bool outgoing)
+    signal selectionCrossed(point scenePoint)
+    readonly property var rowMsgId: model.msgId
+    readonly property bool rowOutgoing: model.outgoing
+    property bool crossingOut: false
     readonly property int kChoiceSize: 22
     readonly property int kChoiceMark: 14
     readonly property real kChosenTint: 0.18
@@ -1029,7 +1033,7 @@ Item {
                 color: delegate.isUnsupported ? Theme.danger : Theme.text
                 enabled: !App.mobile
                 readOnly: true
-                selectByMouse: true
+                selectByMouse: !delegate.crossingOut
                 wrapMode: TextEdit.WrapAtWordBoundaryOrAnywhere
                 textFormat: TextEdit.RichText
                 selectionColor: Theme.accent
@@ -1039,6 +1043,28 @@ Item {
                 HoverHandler {
                     cursorShape: bodyText.hoveredLink.length > 0
                         ? Qt.PointingHandCursor : Qt.IBeamCursor
+                }
+                PointHandler {
+                    acceptedButtons: Qt.LeftButton
+                    acceptedDevices: PointerDevice.Mouse
+                    onPointChanged: {
+                        if (!active) {
+                            return
+                        }
+                        const at = delegate.mapFromItem(null, point.scenePosition.x, point.scenePosition.y)
+                        if (delegate.crossingOut || at.y < 0 || at.y > delegate.height) {
+                            if (!delegate.crossingOut) {
+                                delegate.crossingOut = true
+                                bodyText.deselect()
+                            }
+                            delegate.selectionCrossed(point.scenePosition)
+                        }
+                    }
+                    onActiveChanged: {
+                        if (!active) {
+                            delegate.crossingOut = false
+                        }
+                    }
                 }
                 Binding on font.pixelSize {
                     when: delegate.sticker

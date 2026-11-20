@@ -11,6 +11,7 @@ Item {
     property bool chosen
     signal deleteRequested(var msgId, string e2eId, bool outgoing)
     signal chosenToggled(var msgId, bool outgoing)
+    signal selectionCrossed(point scenePoint)
     signal groupActionRequested(string command, string postId, string author)
     signal reactRequested(string e2eId, var anchor, bool leftFirst)
     signal forwardRequested(string e2eId)
