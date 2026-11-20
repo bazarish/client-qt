@@ -244,6 +244,15 @@ WindowPopup {
                 onClicked: { root.close(); root.shareRequested() }
             }
 
+            MenuButton {
+                visible: !root.saved && root.inGroup && root.session !== null
+                    && root.session.activeMemberListHeld
+                Layout.fillWidth: true
+                iconName: "people"
+                text: qsTr("Member list")
+                onClicked: { root.close(); root.membersRequested() }
+            }
+
             Label {
                 visible: !root.saved && root.blocked
                 Layout.fillWidth: true
@@ -306,14 +315,6 @@ WindowPopup {
                 wrapMode: Text.Wrap
             }
 
-            MenuButton {
-                visible: !root.saved && root.inGroup && root.session !== null
-                    && root.session.activeMemberListHeld
-                Layout.fillWidth: true
-                iconName: "people"
-                text: qsTr("Member list")
-                onClicked: { root.close(); root.membersRequested() }
-            }
 
             ColumnLayout {
                 visible: !root.saved && !root.inGroup && !root.bot && root.peerDevices.length > 0

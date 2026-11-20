@@ -10,6 +10,7 @@ Item {
     property var session: null
     property bool narrow: false
     signal contactInfoRequested()
+    signal membersRequested()
     signal callRequested()
     readonly property bool savedChat: root.session !== null
         && root.session.isSavedChat(root.session.activePeer)
@@ -338,9 +339,19 @@ Item {
                         color: Theme.text
                         font.weight: Font.Medium
                         elide: Text.ElideRight
-                        Layout.fillWidth: true
+                        Layout.maximumWidth: parent.width
+                        TapHandler {
+                            enabled: !root.lookingUp
+                            onTapped: root.contactInfoRequested()
+                        }
+                        HoverHandler {
+                            enabled: !root.lookingUp
+                            cursorShape: Qt.PointingHandCursor
+                        }
                     }
                     Label {
+                        readonly property bool listHeld: root.session !== null
+                            && root.session.activeMemberListHeld && !root.lookingUp
                         visible: root.session !== null && root.session.activeIsGroup
                         text: root.session && root.session.activeIsChannel
                             ? qsTr("Subscribers: %1").arg(root.session.activeGroupMembers)
@@ -348,7 +359,15 @@ Item {
                         color: Theme.textFaint
                         font.pixelSize: Theme.fontSmall
                         elide: Text.ElideRight
-                        Layout.fillWidth: true
+                        Layout.maximumWidth: parent.width
+                        TapHandler {
+                            enabled: parent.listHeld
+                            onTapped: root.membersRequested()
+                        }
+                        HoverHandler {
+                            enabled: parent.listHeld
+                            cursorShape: Qt.PointingHandCursor
+                        }
                     }
                     Label {
                         readonly property string peer: root.session ? root.session.activePeer : ""

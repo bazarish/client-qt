@@ -144,6 +144,7 @@ Item {
                             session: root.session
                             narrow: chatPane.narrow
                             onContactInfoRequested: contactInfo.open()
+                            onMembersRequested: memberList.open()
                             onCallRequested: callMicrophone.whenGranted(() => root.session.startCall(""))
                             onAddByNameRequested: function(alias) { newChat.openAlias(alias) }
                         }

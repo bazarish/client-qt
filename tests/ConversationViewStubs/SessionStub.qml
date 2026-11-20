@@ -9,6 +9,7 @@ QtObject {
     property bool activeIsGroup: false
     property bool activeIsChannel: false
     property int activeGroupMembers: 0
+    property bool activeMemberListHeld: false
     property int presenceRevision: 0
     property int contactsRevision: 0
     property var activeBotMenu: []
