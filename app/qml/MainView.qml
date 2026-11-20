@@ -246,7 +246,6 @@ Item {
         onShowInvite: inviteSheet.openFrom(settings)
         onShowSignWithKey: signWithKeySheet.openFrom(settings)
         onShowStorage: storagePage.openFrom(settings)
-        onShowRouterStatus: routerStatus.openFrom(settings)
         onShowConnectionLog: connectionLog.openFrom(settings)
     }
 

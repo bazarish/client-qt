@@ -12,7 +12,6 @@ WindowPopup {
     signal showInvite()
     signal showSignWithKey()
     signal showStorage()
-    signal showRouterStatus()
     signal showConnectionLog()
 
     readonly property bool overviewFailed: session !== null && session.overviewFailed
