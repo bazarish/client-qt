@@ -147,7 +147,7 @@ public slots:
     void presenceStoppedTyping(const QString& peer);
     void setDelegationDays(int days);
     void cancelTransfer(const QString& e2eId);
-    void publishPersonalDest();
+    void publishPersonalDest(bool renew);
     void disablePersonalDest();
     void refreshI2pStatus();
     // A failure is also reported as a failed action.

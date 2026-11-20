@@ -462,6 +462,7 @@ public:
     Q_INVOKABLE void retryRoutingTo(const QString& peer);
     Q_INVOKABLE void cancelTransfer(const QString& e2eId);
     Q_INVOKABLE void publishPersonalDest();
+    Q_INVOKABLE void renewPersonalDest();
     Q_INVOKABLE void disablePersonalDest();
     // The Account page is open: the core keeps what it shows current.
     Q_INVOKABLE void watchOverview(bool open);

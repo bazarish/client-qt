@@ -1643,7 +1643,14 @@ void SessionController::publishPersonalDest()
 {
     i2pBusy_ = true;
     emit i2pStatusChanged();
-    emit commands_.requestPublishPersonalDest();
+    emit commands_.requestPublishPersonalDest(false);
+}
+
+void SessionController::renewPersonalDest()
+{
+    i2pBusy_ = true;
+    emit i2pStatusChanged();
+    emit commands_.requestPublishPersonalDest(true);
 }
 
 void SessionController::disablePersonalDest()

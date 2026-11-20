@@ -2729,6 +2729,24 @@
       "zh": "正在移除头像",
       "ar": "جارٍ إزالة صورتك الرمزية"
     },
+    "Renewing your destination": {
+      "ru": "Обновление назначения",
+      "es": "Renovando tu destino",
+      "zh": "正在续期你的目的地",
+      "ar": "جارٍ تجديد وجهتك"
+    },
+    "Renewed": {
+      "ru": "Обновлено",
+      "es": "Renovado",
+      "zh": "已续期",
+      "ar": "جُدّدت"
+    },
+    "Destination renewed": {
+      "ru": "Назначение обновлено",
+      "es": "Destino renovado",
+      "zh": "目的地已续期",
+      "ar": "جُدّدت الوجهة"
+    },
     "Renew": {
       "ru": "Обновить",
       "es": "Renovar",

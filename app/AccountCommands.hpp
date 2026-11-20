@@ -153,7 +153,7 @@ signals:
     void presenceTyped(const QString& peer);
     void presenceStoppedTyping(const QString& peer);
     void requestSetDelegationDays(int days);
-    void requestPublishPersonalDest();
+    void requestPublishPersonalDest(bool renew);
     void requestDisablePersonalDest();
     void requestRevokeDevice(const QString& deviceId);
     void requestForgetDeviceMail(const QString& deviceId);

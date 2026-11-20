@@ -313,13 +313,6 @@ WindowPopup {
                             onClicked: { root.close(); root.showConnectionLog() }
                         }
                     }
-                    MenuButton {
-                        Layout.fillWidth: true
-                        iconName: "devices"
-                        text: qsTr("Ask my other devices for contacts")
-                        enabled: root.session !== null
-                        onClicked: root.session.askForContacts()
-                    }
                 }
                 Hairline { }
 
@@ -415,6 +408,15 @@ WindowPopup {
                                 }
                             }
                         }
+                    }
+                    MenuButton {
+                        visible: root.session !== null && root.session.ownDevices.some(
+                            (device) => !device.current && !device.revoked)
+                        Layout.fillWidth: true
+                        Layout.topMargin: 4
+                        iconName: "devices"
+                        text: qsTr("Ask my other devices for contacts")
+                        onClicked: root.session.askForContacts()
                     }
                 }
                 Hairline { }
@@ -579,7 +581,7 @@ WindowPopup {
                             ? qsTr("Publishing…") : qsTr("Renew")
                         enabled: root.session && root.session.connected
                             && !root.session.i2pBusy && root.session.primaryDevice
-                        onClicked: root.session.publishPersonalDest()
+                        onClicked: root.session.renewPersonalDest()
                     }
                     MenuButton {
                         visible: root.session && root.session.i2pHasKey

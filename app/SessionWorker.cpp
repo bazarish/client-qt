@@ -2762,7 +2762,7 @@ void SessionWorker::cancelTransfer(const QString& e2eId)
     session_->cancelTransfer(e2eId.toStdString());
 }
 
-void SessionWorker::publishPersonalDest()
+void SessionWorker::publishPersonalDest(const bool renew)
 {
     if (!session_) {
         emit destChangeSettled();
@@ -2770,11 +2770,13 @@ void SessionWorker::publishPersonalDest()
     }
     {
         WorkerOp op(*this, QStringLiteral("publish-dest"), QStringLiteral("dest"),
-            tr("Publishing your destination"), tr("Delegating it to your server…"));
+            renew ? tr("Renewing your destination") : tr("Publishing your destination"),
+            tr("Delegating it to your server…"));
         try {
             session_->publishRouting();
-            op.succeed(tr("Published"));
-            emit actionOk(tr("Routing published: your card now carries this destination"));
+            op.succeed(renew ? tr("Renewed") : tr("Published"));
+            emit actionOk(renew ? tr("Destination renewed")
+                                : tr("Routing published: your card now carries this destination"));
         } catch (const std::exception& e) {
             bazarish::log::warn("routing not published: {}", e.what());
             const QString reason = failureText(e, FarSide::eServer);
