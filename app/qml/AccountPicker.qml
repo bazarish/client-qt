@@ -117,7 +117,7 @@ Item {
                             Fingerprint {
                                 value: model.fingerprint
                                 replacement: goingAway
-                                    ? qsTr("Deleting…")
+                                    ? qsTr("Deleting...")
                                     : (model.fingerprint.length > 0 ? "" : qsTr("locked"))
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall

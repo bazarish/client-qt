@@ -18,13 +18,13 @@ Label {
         for (let keep = groups.length - 1; keep > 2; --keep) {
             const head = Math.ceil(keep / 2)
             const tail = Math.floor(keep / 2)
-            const candidate = groups.slice(0, head).join(" ") + " … "
+            const candidate = groups.slice(0, head).join(" ") + " ... "
                 + groups.slice(groups.length - tail).join(" ")
             if (metrics.advanceWidth(candidate) <= available) {
                 return candidate
             }
         }
-        return groups[0] + " … " + groups[groups.length - 1]
+        return groups[0] + " ... " + groups[groups.length - 1]
     }
 
     FontMetrics {

@@ -39,13 +39,13 @@ Rectangle {
             return ""
         }
         if (root.calling.callState === "outgoing") {
-            return qsTr("Calling…")
+            return qsTr("Calling...")
         }
         if (root.calling.callState === "incoming") {
             return qsTr("Incoming call")
         }
         if (root.calling.callConnectedAtMs <= 0) {
-            return qsTr("Connecting…")
+            return qsTr("Connecting...")
         }
         return Format.callClock(root.calling.callConnectedAtMs, Date.now())
     }

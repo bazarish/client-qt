@@ -410,7 +410,7 @@ void SessionController::connectServer(const QStringList& facades, const QString&
 {
     connecting_ = true;
     connectPercent_ = 0;
-    connectPhase_ = tr("Starting…");
+    connectPhase_ = tr("Starting...");
     connectError_.clear();
     emit connectStateChanged();
     emit commands_.requestConnect(facades, serverFp, reseedUrls);

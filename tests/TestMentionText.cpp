@@ -17,7 +17,7 @@ void testRangesAreQStringPositions()
 {
     const QStringList members{QStringLiteral("Анна Мария"), QStringLiteral("Bob"),
         QString::fromUtf8("李雷")};
-    const QString text = QString::fromUtf8("😀😀 (@Анна_Мария) @李雷… @Bob, @Bo x@Bob");
+    const QString text = QString::fromUtf8("😀😀 (@Анна_Мария) @李雷... @Bob, @Bo x@Bob");
     const QVector<MentionRange> ranges = mentionRanges(text, members);
     CHECK(ranges.size() == 3);
     CHECK(text.mid(ranges[0].from, ranges[0].length) == QString::fromUtf8("@Анна_Мария"));

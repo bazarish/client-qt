@@ -21,19 +21,19 @@ constexpr std::size_t kPictureReadBytes = 64 * 1024;
 QString humanDeliveryPhase(const QString& phase)
 {
     if (phase == QLatin1StringView(bazarish::client::kPhasePreparing)) {
-        return CoreAccount::tr("Preparing an address to send from…");
+        return CoreAccount::tr("Preparing an address to send from...");
     }
     if (phase == QLatin1StringView(bazarish::client::kPhaseDialing)) {
-        return CoreAccount::tr("Reaching the recipient's server…");
+        return CoreAccount::tr("Reaching the recipient's server...");
     }
     if (phase == QLatin1StringView(bazarish::client::kPhaseSending)) {
-        return CoreAccount::tr("Sending over I2P…");
+        return CoreAccount::tr("Sending over I2P...");
     }
     if (phase == QLatin1StringView(bazarish::client::kPhaseWaiting)) {
-        return CoreAccount::tr("Waiting for the recipient's server…");
+        return CoreAccount::tr("Waiting for the recipient's server...");
     }
     if (phase == QLatin1StringView(bazarish::client::kPhaseOffline)) {
-        return CoreAccount::tr("Waiting for the connection…");
+        return CoreAccount::tr("Waiting for the connection...");
     }
     return phase;
 }
@@ -84,7 +84,7 @@ void CoreAccount::sendText(
     emit events_.rowAdded(peer, m.id, true);
     if (!saved) {
         log_.begin(sendOpId(m.id), QStringLiteral("send"),
-            tr("To %1").arg(contacts_.peerName(peer)), tr("Sending…"), peer);
+            tr("To %1").arg(contacts_.peerName(peer)), tr("Sending..."), peer);
     }
     emit commands_.requestSendText(peer, text, m.id, e2eId, replyTo);
 }
@@ -97,7 +97,7 @@ qint64 CoreAccount::beginSend(StoredMessage m, const QString& kind, const QStrin
         return 0;
     }
     emit events_.rowAdded(m.peer, m.id, true);
-    log_.begin(sendOpId(m.id), kind, title, tr("Sending…"), m.peer);
+    log_.begin(sendOpId(m.id), kind, title, tr("Sending..."), m.peer);
     return m.id;
 }
 
@@ -272,7 +272,7 @@ void CoreAccount::forwardMessage(
     emit events_.rowAdded(toPeer, m.id, true);
     if (!saved) {
         log_.begin(sendOpId(m.id), QStringLiteral("send"),
-            tr("To %1").arg(contacts_.peerName(toPeer)), tr("Forwarding…"), toPeer);
+            tr("To %1").arg(contacts_.peerName(toPeer)), tr("Forwarding..."), toPeer);
     }
     dispatchSend(m, media);
 }
@@ -311,7 +311,7 @@ void CoreAccount::resend(const QString& peer, const qint64 localId)
         title = stored.attName.isEmpty() ? tr("image") : stored.attName;
     }
     log_.begin(sendOpId(localId), attachment ? QStringLiteral("file-up") : QStringLiteral("send"),
-        title, tr("Sending again…"), peer);
+        title, tr("Sending again..."), peer);
     dispatchSend(stored, media);
 }
 

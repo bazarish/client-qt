@@ -352,13 +352,13 @@ Item {
     })
     function statusText(s) {
         if (s === DeliveryStatus.Delivering) {
-            return delegate.toSelf ? qsTr("Sending…")
-                                   : qsTr("Sending to the recipient's server…")
+            return delegate.toSelf ? qsTr("Sending...")
+                                   : qsTr("Sending to the recipient's server...")
         }
         if (s === DeliveryStatus.AtRecipientServer) return qsTr("Handed to the recipient's server")
         if (s === DeliveryStatus.Delivered) return qsTr("Delivered")
         if (s === DeliveryStatus.Failed) return qsTr("Failed to send")
-        return qsTr("Preparing an address to send from…")
+        return qsTr("Preparing an address to send from...")
     }
 
     Rectangle {
@@ -605,7 +605,7 @@ Item {
                         && delegate.session.contactsRevision >= 0
                         && (delegate.session.acceptingContact === delegate.session.activePeer
                             || delegate.session.contactAgreeing(delegate.session.activePeer))
-                    text: inFlight ? qsTr("Agreeing\u2026") : qsTr("Agree")
+                    text: inFlight ? qsTr("Agreeing...") : qsTr("Agree")
                     enabled: !inFlight
                     hoverEnabled: true
                     leftPadding: 16
@@ -684,7 +684,7 @@ Item {
                         Label {
                             Layout.fillWidth: true
                             text: model.transferStage.length > 0 ? model.transferStage
-                                : qsTr("Sending\u2026")
+                                : qsTr("Sending...")
                             color: Theme.textDim
                             font.pixelSize: Theme.fontSmall
                             elide: Text.ElideRight
@@ -741,7 +741,7 @@ Item {
                                     + App.humanBytes(model.downloadTotal))
                                 : (model.transferStage.length > 0
                                     ? model.transferStage
-                                    : qsTr("Connecting over I2P…"))
+                                    : qsTr("Connecting over I2P..."))
                             color: Theme.textDim
                             font.pixelSize: Theme.fontSmall
                             elide: Text.ElideRight

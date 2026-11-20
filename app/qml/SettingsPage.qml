@@ -15,7 +15,7 @@ WindowPopup {
     signal showConnectionLog()
 
     readonly property bool overviewFailed: session !== null && session.overviewFailed
-    readonly property string awaitingText: overviewFailed ? qsTr("Unknown") : qsTr("Asking your server…")
+    readonly property string awaitingText: overviewFailed ? qsTr("Unknown") : qsTr("Asking your server...")
     function shownColor(fresh, color) {
         return fresh ? color : Theme.textStale
     }
@@ -556,7 +556,7 @@ WindowPopup {
                             Layout.fillWidth: true
                             visible: root.session && !root.session.i2pEnabled
                             iconName: "broadcast"
-                            text: root.session && root.session.i2pBusy ? qsTr("Publishing\u2026")
+                            text: root.session && root.session.i2pBusy ? qsTr("Publishing...")
                                 : qsTr("Publish address")
                             enabled: root.session && root.session.connected
                                 && !root.session.i2pBusy && root.session.primaryDevice
@@ -566,7 +566,7 @@ WindowPopup {
                             Layout.fillWidth: true
                             visible: root.session && root.session.i2pEnabled
                             iconName: "power"
-                            text: root.session && root.session.i2pBusy ? qsTr("Taking offline\u2026")
+                            text: root.session && root.session.i2pBusy ? qsTr("Taking offline...")
                                 : qsTr("Take offline")
                             enabled: root.session && !root.session.i2pBusy
                                 && root.session.primaryDevice
@@ -578,7 +578,7 @@ WindowPopup {
                         Layout.fillWidth: true
                         iconName: "refresh"
                         text: root.session && root.session.i2pBusy
-                            ? qsTr("Publishing…") : qsTr("Renew")
+                            ? qsTr("Publishing...") : qsTr("Renew")
                         enabled: root.session && root.session.connected
                             && !root.session.i2pBusy && root.session.primaryDevice
                         onClicked: root.session.renewPersonalDest()
@@ -816,7 +816,7 @@ WindowPopup {
                             Layout.fillWidth: true
                             enabled: App.deletingId.length === 0 && root.session !== null
                             iconName: "trash"
-                            text: App.deletingId.length > 0 ? qsTr("Deleting…") : qsTr("Delete account")
+                            text: App.deletingId.length > 0 ? qsTr("Deleting...") : qsTr("Delete account")
                             danger: true
                             onClicked: {
                                 deleteDialog.localOnly = !root.session.primaryDevice

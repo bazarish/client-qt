@@ -66,8 +66,8 @@ void CoreAccount::onCallStateChanged(const int state, const QString& peer, const
         return;
     }
     const QString opId = QStringLiteral("call:") + (callId.isEmpty() ? peer : callId);
-    const QString status = name == CallState::eOutgoing ? tr("Calling…")
-        : name == CallState::eIncoming                  ? tr("Incoming call…")
+    const QString status = name == CallState::eOutgoing ? tr("Calling...")
+        : name == CallState::eIncoming                  ? tr("Incoming call...")
                                                         : tr("Connected");
     if (callOpId_ != opId) {
         callOpId_ = opId;

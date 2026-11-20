@@ -360,7 +360,7 @@ WindowPopup {
                             hoverEnabled: true
                             Layout.fillWidth: true
                             text: root.sent ? qsTr("Sent")
-                                : root.sendPending ? qsTr("Sending…")
+                                : root.sendPending ? qsTr("Sending...")
                                 : root.holdLeft > 0 ? qsTr("Send (%1)").arg(root.holdLeft)
                                 : qsTr("Send")
                             enabled: root.session !== null && root.hasCallback && root.holdLeft === 0

@@ -394,7 +394,7 @@ Item {
                             && root.session.peerOnline(peer)
                         visible: root.session !== null && !root.session.activeIsGroup && !root.savedChat
                             && (kind === "bot" || online)
-                        text: kind === "bot" ? qsTr("bot") : (typing ? qsTr("typing…") : qsTr("online"))
+                        text: kind === "bot" ? qsTr("bot") : (typing ? qsTr("typing...") : qsTr("online"))
                         color: kind === "bot" ? Theme.textFaint : Theme.green
                         font.pixelSize: Theme.fontSmall
                         elide: Text.ElideRight

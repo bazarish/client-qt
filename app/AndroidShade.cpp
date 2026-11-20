@@ -220,7 +220,7 @@ QString AndroidShade::presenceLine() const
     if (open == 0) {
         return tr("Disconnected");
     }
-    return connected ? tr("Connected") : tr("Connecting…");
+    return connected ? tr("Connected") : tr("Connecting...");
 }
 
 void AndroidShade::show()

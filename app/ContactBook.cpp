@@ -90,7 +90,7 @@ QString ContactBook::shortFingerprint(const QString& fingerprint)
     if (groups.size() <= kShortFingerprintHeadGroups + kShortFingerprintTailGroups) {
         return groups.join(QLatin1Char(' '));
     }
-    return groups.mid(0, kShortFingerprintHeadGroups).join(QLatin1Char(' ')) + QStringLiteral(" … ")
+    return groups.mid(0, kShortFingerprintHeadGroups).join(QLatin1Char(' ')) + QStringLiteral(" ... ")
         + groups.mid(groups.size() - kShortFingerprintTailGroups).join(QLatin1Char(' '));
 }
 

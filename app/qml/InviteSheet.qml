@@ -225,7 +225,7 @@ WindowPopup {
                                 : (aliasRow.modelData.resolving
                                     ? (aliasRow.modelData.live
                                         ? aliasRow.modelData.term
-                                        : qsTr("pointing it here…"))
+                                        : qsTr("pointing it here..."))
                                     : qsTr("answers nobody"))
                             color: aliasRow.copied ? Theme.green : Theme.textDim
                             font.pixelSize: Theme.fontSmall
@@ -282,7 +282,7 @@ WindowPopup {
                         anchors.rightMargin: linkArea.rightPadding
                         anchors.topMargin: linkArea.topPadding
                         visible: linkArea.length === 0 && root.unavailable.length === 0
-                        text: qsTr("Waiting for the server…")
+                        text: qsTr("Waiting for the server...")
                         color: Theme.textDim
                         wrapMode: Text.Wrap
                     }
@@ -318,7 +318,7 @@ WindowPopup {
                     Layout.fillWidth: inviteActions.columns === 1
                     iconName: "bang"
                     text: root.session && root.session.aliasBusy
-                        ? qsTr("Asking…")
+                        ? qsTr("Asking...")
                         : qsTr("Check my aliases")
                     enabled: root.session && root.session.connected && !root.session.aliasBusy
                         && root.session.primaryDevice

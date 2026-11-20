@@ -54,7 +54,7 @@ void CoreAccount::sendContactAdd(
 {
     const QString opId = QStringLiteral("contact:") + newE2eId();
     log_.begin(opId, QStringLiteral("contact"), tr("Adding contact"),
-        tr("Preparing…"));
+        tr("Preparing..."));
     trackContactAdd(opId, uri, intro, requestId);
     emit commands_.requestAddByInvite(uri, intro, opId, requestId);
 }
@@ -63,7 +63,7 @@ void CoreAccount::onContactAddResumed(
     const QString& opId, const QString& uri, const QString& intro, const QString& requestId)
 {
     log_.begin(opId, QStringLiteral("contact"), tr("Adding a contact"),
-        tr("Resuming after a restart…"));
+        tr("Resuming after a restart..."));
     if (hasAliasSigil(uri)) {
         trackAliasAdd(opId, uri, intro, requestId, aliasChatPeer(uri));
         return;
@@ -129,7 +129,7 @@ void CoreAccount::syncAgreeingRows()
         agreeingShown_.insert(fingerprint);
         log_.begin(QStringLiteral("agreeing:") + fingerprint, QStringLiteral("contact"),
             tr("Agreeing to a contact request"),
-            tr("Waiting for their server…"), fingerprint);
+            tr("Waiting for their server..."), fingerprint);
     }
     for (auto at = agreeingShown_.begin(); at != agreeingShown_.end();) {
         if (contacts_.state(*at).request == ContactState::eAccepting) {
@@ -166,7 +166,7 @@ void CoreAccount::startAliasAdd(
 {
     const QString opId = QStringLiteral("contact:") + newE2eId();
     log_.begin(opId, QStringLiteral("contact"), tr("Adding %1").arg(alias),
-        tr("Preparing…"));
+        tr("Preparing..."));
     trackAliasAdd(opId, alias, intro, requestId, chat);
     emit commands_.requestAddByAlias(alias, intro, opId, requestId);
 }
@@ -252,7 +252,7 @@ void CoreAccount::openContactProgress(const QString& peer, const QString& opId)
 void CoreAccount::noteContactProgress(const QString& peer, const QString& opId)
 {
     const qint64 id = appendNote(peer, QStringLiteral("system"),
-        encodeSystemNote(QT_TR_NOOP("Sending a contact request…")), DeliveryStatus::Preparing);
+        encodeSystemNote(QT_TR_NOOP("Sending a contact request...")), DeliveryStatus::Preparing);
     if (id == 0) {
         return;
     }

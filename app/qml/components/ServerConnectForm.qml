@@ -269,7 +269,7 @@ ColumnLayout {
         visible: form.detailed || form.shownFingerprint.length > 0
         focusPolicy: Theme.pressFocus
         Layout.fillWidth: true
-        text: (form.session && form.session.connecting) ? qsTr("Connecting\u2026")
+        text: (form.session && form.session.connecting) ? qsTr("Connecting...")
             : form.actionText
         hoverEnabled: true
         enabled: form.session && !form.session.connecting

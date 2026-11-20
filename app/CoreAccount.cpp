@@ -109,13 +109,13 @@ QString loginStageText(const client::FetchStage stage)
 {
     switch (stage) {
     case client::FetchStage::eTakingDest:
-        return CoreAccount::tr("Taking an address to send from…");
+        return CoreAccount::tr("Taking an address to send from...");
     case client::FetchStage::eBuildingDest:
-        return CoreAccount::tr("Building an address to send from…");
+        return CoreAccount::tr("Building an address to send from...");
     case client::FetchStage::eReaching:
-        return CoreAccount::tr("Reaching the site…");
+        return CoreAccount::tr("Reaching the site...");
     case client::FetchStage::eWaiting:
-        return CoreAccount::tr("Waiting for the site's answer…");
+        return CoreAccount::tr("Waiting for the site's answer...");
     }
     throw std::logic_error("no words for this sign-in stage");
 }
@@ -559,15 +559,15 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&commands_, &AccountCommands::requestConnect, this, &CoreAccount::onConnectRequested);
     connect(&commands_, &AccountCommands::requestActivateAliasServicing, this, [this]() {
         log_.begin(kAliasOperationId, QStringLiteral("alias"), tr("Checking your aliases"),
-            tr("Asking the registry over I2P…"));
+            tr("Asking the registry over I2P..."));
     });
     connect(&commands_, &AccountCommands::requestExport, this, [this]() {
         log_.begin(QStringLiteral("export"), QStringLiteral("account"),
-            tr("Exporting your backup"), tr("Waiting for this account…"));
+            tr("Exporting your backup"), tr("Waiting for this account..."));
     });
     connect(&commands_, &AccountCommands::requestGeneratePersonalKey, this, [this]() {
         log_.begin(QStringLiteral("dest-key"), QStringLiteral("dest"),
-            tr("Creating your destination key"), tr("Queued…"));
+            tr("Creating your destination key"), tr("Queued..."));
     });
     connect(worker_, &SessionWorker::connectProgress, this, &CoreAccount::onConnectProgress);
     connect(worker_, &SessionWorker::syncProgress, this, &CoreAccount::onSyncProgress);
@@ -1168,7 +1168,7 @@ void CoreAccount::showSlowCommands()
         if (now - command.queuedAtMs < kCommandVisibleAfterMs) {
             continue;
         }
-        const QString status = at == 0 ? tr("Working on it…") : tr("Waiting its turn…");
+        const QString status = at == 0 ? tr("Working on it...") : tr("Waiting its turn...");
         if (!command.shown) {
             command.shown = true;
             log_.begin(command.id, QStringLiteral("command"), command.title, status);

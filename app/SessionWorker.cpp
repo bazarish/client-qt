@@ -84,13 +84,13 @@ QString noteForFetchStage(const bazarish::client::FetchStage stage)
 {
     switch (stage) {
     case bazarish::client::FetchStage::eTakingDest:
-        return encodeSystemNote(QT_TR_NOOP("choosing an address…"));
+        return encodeSystemNote(QT_TR_NOOP("choosing an address..."));
     case bazarish::client::FetchStage::eBuildingDest:
-        return encodeSystemNote(QT_TR_NOOP("preparing an address…"));
+        return encodeSystemNote(QT_TR_NOOP("preparing an address..."));
     case bazarish::client::FetchStage::eReaching:
-        return encodeSystemNote(QT_TR_NOOP("connecting over I2P…"));
+        return encodeSystemNote(QT_TR_NOOP("connecting over I2P..."));
     case bazarish::client::FetchStage::eWaiting:
-        return encodeSystemNote(QT_TR_NOOP("waiting for an answer…"));
+        return encodeSystemNote(QT_TR_NOOP("waiting for an answer..."));
     }
     throw std::logic_error("no note for this contact-card fetch stage");
 }
@@ -102,14 +102,14 @@ QString noteForCardStep(const bazarish::client::Session::CardStep step, const QS
     switch (step) {
     case Step::eLookingUpAlias:
         return fetchStage.isEmpty()
-            ? encodeSystemNote(QT_TR_NOOP("Looking up %1 in the alias registry…"), {alias})
+            ? encodeSystemNote(QT_TR_NOOP("Looking up %1 in the alias registry..."), {alias})
             : encodeSystemNote(QT_TR_NOOP("Looking up %1 in the alias registry: %2"),
                 {alias, fetchStage});
     case Step::eSolvingPuzzle:
-        return encodeSystemNote(QT_TR_NOOP("The alias registry is busy: completing its check…"));
+        return encodeSystemNote(QT_TR_NOOP("The alias registry is busy: completing its check..."));
     case Step::eFetchingCard:
         return fetchStage.isEmpty()
-            ? encodeSystemNote(QT_TR_NOOP("Fetching the contact card…"))
+            ? encodeSystemNote(QT_TR_NOOP("Fetching the contact card..."))
             : encodeSystemNote(QT_TR_NOOP("Fetching the contact card: %1"), {fetchStage});
     }
     throw std::logic_error("no note for this contact-add step");
@@ -142,21 +142,21 @@ QString textForTransferStage(const bazarish::client::TransferStage stage)
     case TransferStage::eNone:
         return QString();
     case TransferStage::eAsking:
-        return QObject::tr("Asking the sender…");
+        return QObject::tr("Asking the sender...");
     case TransferStage::eEncrypting:
-        return QObject::tr("Encrypting…");
+        return QObject::tr("Encrypting...");
     case TransferStage::eMakingAddress:
         return QObject::tr("Making an address");
     case TransferStage::ePublishing:
         return QObject::tr("Publishing the address");
     case TransferStage::eWaiting:
-        return QObject::tr("Waiting for the recipient…");
+        return QObject::tr("Waiting for the recipient...");
     case TransferStage::eSending:
-        return QObject::tr("Sending…");
+        return QObject::tr("Sending...");
     case TransferStage::eConnecting:
-        return QObject::tr("Connecting…");
+        return QObject::tr("Connecting...");
     case TransferStage::eReceiving:
-        return QObject::tr("Receiving…");
+        return QObject::tr("Receiving...");
     }
     throw std::logic_error("no text for this transfer stage");
 }
@@ -1528,7 +1528,7 @@ void SessionWorker::sendPicture(const QString& peer, const QByteArray& bytes,
 
 void SessionWorker::sendReceipt(const QString& peer, const QString& refId)
 {
-    const QString op = beginOp(tr("Read receipt"), tr("Sending…"));
+    const QString op = beginOp(tr("Read receipt"), tr("Sending..."));
     try {
         openSession().sendReceipt(peer.toStdString(), refId.toStdString());
         emit opDone(op, true, tr("Receipt sent"));
@@ -1574,7 +1574,7 @@ void SessionWorker::askGroupMembers(const QString& peer)
 void SessionWorker::sendReaction(const QString& peer, const QString& refId, const QString& emoji)
 {
     const QString op = beginOp(
-        emoji.isEmpty() ? tr("Removing reaction") : tr("Reaction %1").arg(emoji), tr("Sending…"));
+        emoji.isEmpty() ? tr("Removing reaction") : tr("Reaction %1").arg(emoji), tr("Sending..."));
     try {
         openSession().sendReaction(peer.toStdString(), refId.toStdString(), emoji.toStdString());
         emit opDone(op, true, tr("Accepted by your server"));
@@ -1820,7 +1820,7 @@ void SessionWorker::drainResolvedAdds()
             QString::fromStdString(resolved.requestId), !resending);
         try {
             emit contactAddStage(
-                entry.opId, encodeSystemNote(QT_TR_NOOP("Sending the contact request…")));
+                entry.opId, encodeSystemNote(QT_TR_NOOP("Sending the contact request...")));
             if (resending) {
                 session_->sendContactRequest(
                     resolved.fingerprint, resolved.requestId, resolved.introText, watch);
@@ -1908,7 +1908,7 @@ void SessionWorker::noteCommandDone()
 void SessionWorker::acceptContact(const QString& peer)
 {
     WorkerOp op(*this, QStringLiteral("accept:") + peer, QStringLiteral("contact"),
-        tr("Agreeing to a contact request"), tr("Telling your server…"));
+        tr("Agreeing to a contact request"), tr("Telling your server..."));
     try {
         openSession().acceptContactRequest(peer.toStdString());
         op.succeed(tr("Agreed"));
@@ -1947,7 +1947,7 @@ void SessionWorker::setAvatar(const QByteArray& bytes)
     if (!session_) {
         return;
     }
-    const QString op = beginOp(tr("Setting your avatar"), tr("Sending to your contacts…"));
+    const QString op = beginOp(tr("Setting your avatar"), tr("Sending to your contacts..."));
     try {
         session_->setAvatar(bazarish::Bytes(bytes.begin(), bytes.end()), "image/jpeg");
         emit avatarReady(QString::fromStdString(session_->fingerprint()), bytes);
@@ -1963,7 +1963,7 @@ void SessionWorker::clearAvatar()
     if (!session_) {
         return;
     }
-    const QString op = beginOp(tr("Removing your avatar"), tr("Working…"));
+    const QString op = beginOp(tr("Removing your avatar"), tr("Working..."));
     try {
         session_->setAvatar({}, {});
         emit avatarReady(QString::fromStdString(session_->fingerprint()), {});
@@ -2009,7 +2009,7 @@ void SessionWorker::syncChatClear(const QString& peer)
     try {
         session_->syncChatClearToSelf(peer.toStdString());
     } catch (const std::exception& error) {
-        emit opDone(beginOp(tr("Chat clearing for your other devices"), tr("Sending…")), false,
+        emit opDone(beginOp(tr("Chat clearing for your other devices"), tr("Sending...")), false,
             tr("Not sent: %1").arg(QString::fromUtf8(error.what())));
     }
 }
@@ -2022,7 +2022,7 @@ void SessionWorker::syncRead(const QString& peer, const qint64 sentAtMs)
     try {
         session_->syncReadToSelf(peer.toStdString(), sentAtMs);
     } catch (const std::exception& error) {
-        emit opDone(beginOp(tr("Read mark for your other devices"), tr("Sending…")), false,
+        emit opDone(beginOp(tr("Read mark for your other devices"), tr("Sending...")), false,
             tr("Not sent: %1").arg(QString::fromUtf8(error.what())));
     }
 }
@@ -2035,7 +2035,7 @@ void SessionWorker::syncChatPin(const QString& peer, bool pinned)
     try {
         session_->syncChatPinToSelf(peer.toStdString(), pinned);
     } catch (const std::exception& error) {
-        emit opDone(beginOp(tr("Chat pin for your other devices"), tr("Sending…")), false,
+        emit opDone(beginOp(tr("Chat pin for your other devices"), tr("Sending...")), false,
             tr("Not sent: %1").arg(QString::fromUtf8(error.what())));
     }
 }
@@ -2220,7 +2220,7 @@ void SessionWorker::publishThisDeviceAddress()
         return;
     }
     runOp(QStringLiteral("i2p-address"), QStringLiteral("status"), tr("Publishing your address"),
-        tr("Telling your server…"), [this]() {
+        tr("Telling your server..."), [this]() {
             session_->publishThisDeviceAddress();
             return tr("Your server serves this address now");
         });
@@ -2233,7 +2233,7 @@ void SessionWorker::publishFreshAddress()
         return;
     }
     runOp(QStringLiteral("i2p-address"), QStringLiteral("status"), tr("Making a new address"),
-        tr("Building it…"), [this]() {
+        tr("Building it..."), [this]() {
             session_->publishFreshAddress();
             return tr("A new address is published");
         });
@@ -2263,7 +2263,7 @@ void SessionWorker::refreshI2pStatus()
     emitI2pKeyState();
     const bool hasKey = session_->hasI2pDestination();
     WorkerOp op(*this, QStringLiteral("i2p-status"), QStringLiteral("status"),
-        tr("Checking your destination"), tr("Asking your server…"));
+        tr("Checking your destination"), tr("Asking your server..."));
     QString summary;
     try {
         const bazarish::client::I2pDestStatus s = session_->i2pDestStatus();
@@ -2517,7 +2517,7 @@ void SessionWorker::revokeDevice(const QString& deviceId)
         return;
     }
     runOp(QStringLiteral("device-revoke"), QStringLiteral("status"), tr("Revoking a device"),
-        tr("Telling your server…"), [this, &deviceId]() {
+        tr("Telling your server..."), [this, &deviceId]() {
             session_->revokeDevice(deviceId.toStdString());
             emit actionOk(tr("Device revoked"));
             return tr("Revoked");
@@ -2531,7 +2531,7 @@ void SessionWorker::forgetDeviceMail(const QString& deviceId)
         return;
     }
     runOp(QStringLiteral("device-forget"), QStringLiteral("status"),
-        tr("Clearing a device's queue"), tr("Telling your server…"), [this, &deviceId]() {
+        tr("Clearing a device's queue"), tr("Telling your server..."), [this, &deviceId]() {
             session_->forgetDeviceMail(deviceId.toStdString());
             emit actionOk(tr("The device's queue is cleared"));
             return tr("Cleared");
@@ -2545,7 +2545,7 @@ void SessionWorker::reviewDevices(const QStringList& revoke)
         return;
     }
     runOp(QStringLiteral("device-review"), QStringLiteral("status"), tr("Revoking a device"),
-        tr("Telling your server…"), [this, &revoke]() {
+        tr("Telling your server..."), [this, &revoke]() {
             std::vector<std::string> ids;
             for (const QString& id : revoke) {
                 ids.push_back(id.toStdString());
@@ -2563,7 +2563,7 @@ void SessionWorker::closeAccountOnServer()
         return;
     }
     WorkerOp op(*this, QStringLiteral("account-close"), QStringLiteral("status"),
-        tr("Deleting the account"), tr("Telling your server…"));
+        tr("Deleting the account"), tr("Telling your server..."));
     try {
         session_->closeAccountOnServer();
         op.succeed(tr("Deleted on the server"));
@@ -2596,7 +2596,7 @@ void SessionWorker::generatePersonalKey()
         return;
     }
     runOp(QStringLiteral("dest-key"), QStringLiteral("dest"), tr("Creating your destination key"),
-        tr("Generating…"), [this]() {
+        tr("Generating..."), [this]() {
             const QString address = QString::fromStdString(session_->ensureI2pDestination());
             emit i2pKeyState(true, address);
             emit actionOk(tr("Personal I2P key created"));
@@ -2625,7 +2625,7 @@ void SessionWorker::replacePersonalKey()
         return;
     }
     runOp(QStringLiteral("new-dest-key"), QStringLiteral("dest"), tr("Raising a new address"),
-        tr("Delegating it to your server…"), [this]() {
+        tr("Delegating it to your server..."), [this]() {
             session_->replaceOwnAddress();
             emit i2pKeyState(true, QString::fromStdString(session_->i2pAddress()));
             emit actionOk(tr("New address published; your contacts are being told"));
@@ -2642,7 +2642,7 @@ void SessionWorker::setAliasBinding(const QString& alias, const bool on)
     }
     runOp(QStringLiteral("alias-binding-") + alias, QStringLiteral("alias"),
         on ? tr("Pointing %1 here").arg(alias) : tr("Unpointing %1").arg(alias),
-        tr("Asking the alias registry…"), [this, &alias, on]() {
+        tr("Asking the alias registry..."), [this, &alias, on]() {
             session_->setAliasBinding(alias.toStdString(), on);
             return on ? tr("Points here") : tr("Points nowhere");
         },
@@ -2658,7 +2658,7 @@ void SessionWorker::setAliasWord(const QString& alias, const QString& word)
     runOp(QStringLiteral("alias-word-") + alias, QStringLiteral("alias"),
         word.isEmpty() ? tr("Taking the word off %1").arg(alias)
                        : tr("Setting the word of %1").arg(alias),
-        tr("Asking the alias registry…"), [this, &alias, &word]() {
+        tr("Asking the alias registry..."), [this, &alias, &word]() {
             session_->setAliasWord(alias.toStdString(), word.toStdString());
             return word.isEmpty() ? tr("No word") : tr("Word set");
         },
@@ -2771,7 +2771,7 @@ void SessionWorker::publishPersonalDest(const bool renew)
     {
         WorkerOp op(*this, QStringLiteral("publish-dest"), QStringLiteral("dest"),
             renew ? tr("Renewing your destination") : tr("Publishing your destination"),
-            tr("Delegating it to your server…"));
+            tr("Delegating it to your server..."));
         try {
             session_->publishRouting();
             op.succeed(renew ? tr("Renewed") : tr("Published"));
@@ -2888,7 +2888,7 @@ void SessionWorker::exportAccount(
     const QString& path, const QString& password, const bool primary)
 {
     WorkerOp op(*this, QStringLiteral("export"), QStringLiteral("account"),
-        tr("Exporting your backup"), tr("Sealing the account…"));
+        tr("Exporting your backup"), tr("Sealing the account..."));
     try {
         const bazarish::Bytes sealed
             = openSession().exportAccountBytes(password.toStdString(), roleOf(primary));

@@ -298,7 +298,7 @@ WindowPopup {
                                 id: gatewayField
                                 visible: root.gatewayInput
                                 Layout.fillWidth: true
-                                placeholder: "https://bazari.sh/#gateway?\u2026"
+                                placeholder: "https://bazari.sh/#gateway?..."
                                 text: I2p.gatewayAddress
                             }
                             Label {
@@ -338,7 +338,7 @@ WindowPopup {
                                 MenuButton {
                                     visible: root.gatewayInput
                                     iconName: "check"
-                                    text: I2p.gatewayChecking ? qsTr("Checking\u2026") : qsTr("Save")
+                                    text: I2p.gatewayChecking ? qsTr("Checking...") : qsTr("Save")
                                     enabled: !I2p.gatewayChecking
                                         && gatewayField.displayText.trim().length > 0
                                         && gatewayField.displayText.trim() !== I2p.gatewayAddress
@@ -424,7 +424,7 @@ WindowPopup {
                             }
                             MenuButton {
                                 iconName: "check"
-                                text: I2p.proxyChecking ? qsTr("Checking\u2026") : qsTr("Save")
+                                text: I2p.proxyChecking ? qsTr("Checking...") : qsTr("Save")
                                 Layout.alignment: Qt.AlignRight
                                 enabled: !I2p.proxyChecking
                                     && (proxyHostField.displayText.trim() !== I2p.proxyHost
@@ -487,7 +487,7 @@ WindowPopup {
                             }
                             MenuButton {
                                 iconName: "check"
-                                text: I2p.samChecking ? qsTr("Checking\u2026") : qsTr("Save")
+                                text: I2p.samChecking ? qsTr("Checking...") : qsTr("Save")
                                 Layout.alignment: Qt.AlignRight
                                 enabled: !I2p.samChecking
                                     && samHostField.displayText.trim().length > 0

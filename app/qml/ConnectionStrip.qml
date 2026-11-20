@@ -45,7 +45,7 @@ Rectangle {
                 : root.heldForApproval ? qsTr("Waiting for approval")
                 : root.isOffline ? qsTr("Disconnected")
                 : root.noNetwork ? qsTr("No network")
-                : qsTr("Connecting…")
+                : qsTr("Connecting...")
             color: root.revoked ? Theme.dangerInk : Theme.warnInk
             font.pixelSize: Theme.fontSmall
             font.weight: Font.DemiBold

@@ -442,8 +442,8 @@ Rectangle {
                             visible: input.length === 0 && input.preeditText.length === 0
                             text: root.switchedOff
                                 ? qsTr("This account is switched off — switch it on to write")
-                                : (root.editing ? qsTr("Edit message…")
-                                    : (root.replying ? qsTr("Reply…") : qsTr("Message…")))
+                                : (root.editing ? qsTr("Edit message...")
+                                    : (root.replying ? qsTr("Reply...") : qsTr("Message...")))
                             color: Theme.textDim
                             font: input.font
                             elide: Text.ElideRight

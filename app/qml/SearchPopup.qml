@@ -47,7 +47,7 @@ Popup {
             TextField {
                 id: field
                 Layout.fillWidth: true
-                placeholderText: qsTr("Search in conversation…")
+                placeholderText: qsTr("Search in conversation...")
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
                 selectByMouse: true

@@ -137,7 +137,7 @@ Popup {
             TextField {
                 id: customField
                 Layout.fillWidth: true
-                placeholderText: qsTr("Any unicode…")
+                placeholderText: qsTr("Any unicode...")
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
                 // The emoji font has no digits, so the field keeps the brand font and the engine's fallback.

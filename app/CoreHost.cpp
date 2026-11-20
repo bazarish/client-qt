@@ -57,7 +57,7 @@ QString shortened(const QString& text)
     if (text.at(cut - 1).isHighSurrogate()) {
         --cut;
     }
-    return text.left(cut) + QStringLiteral("…");
+    return text.left(cut) + QStringLiteral("...");
 }
 
 const int kAccountListMetaType
@@ -997,7 +997,7 @@ void CoreHost::importAccount(const QString& name, const QString& path, const QSt
     const QString& atRestPassphrase)
 {
     log_.begin(kRestoreOperation, QStringLiteral("account"), tr("Restoring your account"),
-        tr("Opening the backup…"));
+        tr("Opening the backup..."));
     inBackground([this, name, path, password, atRestPassphrase]() {
         std::string id;
         QString failure;
@@ -1118,7 +1118,7 @@ void CoreHost::changePassphrase(const QString& id, const QString& passphrase)
     const bool startOnline = !offline_.contains(id);
     const QString file = pathText(manager_->fileFor(id.toStdString()));
     log_.begin(kPassphraseOperation, QStringLiteral("account"),
-        tr("Changing the database password"), tr("Waiting for this account…"));
+        tr("Changing the database password"), tr("Waiting for this account..."));
     connect(account, &QObject::destroyed, this,
         [this, id, file, oldPassphrase, passphrase, makeActive, startOnline]() {
             inBackground([this, id, file, oldPassphrase, passphrase, makeActive, startOnline]() {

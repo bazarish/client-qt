@@ -131,7 +131,7 @@ Item {
                 Layout.fillWidth: true
                 enabled: !root.busy
                 label: qsTr("Address")
-                placeholder: "https://bazari.sh/#gateway?…"
+                placeholder: "https://bazari.sh/#gateway?..."
                 inputField.onAccepted:
                     if (!root.busy && addressField.text.trim().length > 0) {
                         root.saveGateway()
@@ -173,7 +173,7 @@ Item {
         }
         PageButton {
             primary: true
-            text: root.busy ? qsTr("Checking…") : qsTr("OK")
+            text: root.busy ? qsTr("Checking...") : qsTr("OK")
             enabled: !root.busy && addressField.displayText.trim().length > 0
             Layout.fillWidth: true
             Layout.horizontalStretchFactor: 1

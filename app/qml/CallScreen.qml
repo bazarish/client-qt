@@ -200,12 +200,12 @@ Popup {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
                 color: Theme.textDim
-                text: root.pending === "accepting" ? qsTr("Accepting\u2026")
-                    : root.pending === "declining" ? qsTr("Declining\u2026")
-                    : root.pending === "ending" ? qsTr("Ending the call\u2026")
+                text: root.pending === "accepting" ? qsTr("Accepting...")
+                    : root.pending === "declining" ? qsTr("Declining...")
+                    : root.pending === "ending" ? qsTr("Ending the call...")
                     : root.callState === "outgoing"
                         ? (root.session && root.session.callStage.length > 0
-                            ? root.session.callStage : qsTr("Calling…"))
+                            ? root.session.callStage : qsTr("Calling..."))
                     : root.callState === "incoming" ? qsTr("Incoming audio call")
                     : root.callState === "active"
                         ? (!root.connected

@@ -159,7 +159,7 @@ Item {
             id: chatSearch
             Layout.fillWidth: true
             Layout.margins: 8
-            placeholderText: qsTr("Search chats…")
+            placeholderText: qsTr("Search chats...")
             color: Theme.text
             placeholderTextColor: Theme.textDim
             leftPadding: 10

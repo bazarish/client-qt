@@ -251,7 +251,7 @@ WindowPopup {
         contentItem: ColumnLayout {
             spacing: 6
             Label {
-                text: (root.info.busyWhat !== undefined ? root.info.busyWhat : qsTr("Working")) + "\u2026"
+                text: (root.info.busyWhat !== undefined ? root.info.busyWhat : qsTr("Working")) + "..."
                 color: Theme.text
             }
             Label {

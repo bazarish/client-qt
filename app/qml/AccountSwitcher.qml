@@ -21,7 +21,7 @@ WindowPopup {
         if (!m.online) {
             return qsTr("Disconnected")
         }
-        return m.connected ? qsTr("Connected") : qsTr("Connecting…")
+        return m.connected ? qsTr("Connected") : qsTr("Connecting...")
     }
     function statusColor(m) {
         if (m.open && m.online && m.connected) {

@@ -257,11 +257,11 @@
       "zh": "已被你的服务器接收",
       "ar": "قبِله خادمك"
     },
-    "Accepting…": {
-      "ru": "Принимается…",
-      "es": "Aceptando…",
-      "zh": "正在接听…",
-      "ar": "جارٍ القبول…"
+    "Accepting...": {
+      "ru": "Принимается...",
+      "es": "Aceptando...",
+      "zh": "正在接听...",
+      "ar": "جارٍ القبول..."
     },
     "Account": {
       "ru": "Аккаунт",
@@ -347,11 +347,11 @@
       "zh": "正在同意联系人请求",
       "ar": "جارٍ الموافقة على طلب تواصل"
     },
-    "Agreeing…": {
-      "ru": "Подтверждение…",
-      "es": "Aceptando…",
-      "zh": "正在同意…",
-      "ar": "جارٍ الموافقة…"
+    "Agreeing...": {
+      "ru": "Подтверждение...",
+      "es": "Aceptando...",
+      "zh": "正在同意...",
+      "ar": "جارٍ الموافقة..."
     },
     "Allow calls": {
       "ru": "Разрешить звонки",
@@ -389,11 +389,11 @@
       "zh": "是你的另一台设备发布了它。两者一致之前，部分邮件无法送达。",
       "ar": "نشره جهاز آخر من أجهزتك. وإلى أن يتطابق العنوانان، لا يصل جزء من البريد."
     },
-    "Any unicode…": {
-      "ru": "Любой символ…",
-      "es": "Cualquier carácter…",
-      "zh": "任意字符…",
-      "ar": "أي رمز…"
+    "Any unicode...": {
+      "ru": "Любой символ...",
+      "es": "Cualquier carácter...",
+      "zh": "任意字符...",
+      "ar": "أي رمز..."
     },
     "Anyone with the link can reach you": {
       "ru": "Каждый, у кого есть ссылка, сможет с вами связаться",
@@ -419,17 +419,17 @@
       "zh": "已向你的其他设备索取联系人",
       "ar": "طُلبت جهات اتصالك من أجهزتك الأخرى"
     },
-    "Asking the alias registry…": {
-      "ru": "Запрос к реестру алиасов…",
-      "es": "Consultando el registro de alias…",
-      "zh": "正在询问别名登记处…",
-      "ar": "جارٍ الاستعلام من سجل الأسماء المستعارة…"
+    "Asking the alias registry...": {
+      "ru": "Запрос к реестру алиасов...",
+      "es": "Consultando el registro de alias...",
+      "zh": "正在询问别名登记处...",
+      "ar": "جارٍ الاستعلام من سجل الأسماء المستعارة..."
     },
-    "Asking the registry over I2P…": {
-      "ru": "Реестр опрашивается через I2P…",
-      "es": "Consultando el registro por I2P…",
-      "zh": "正在通过 I2P 询问登记处…",
-      "ar": "جارٍ الاستعلام من السجل عبر I2P…"
+    "Asking the registry over I2P...": {
+      "ru": "Реестр опрашивается через I2P...",
+      "es": "Consultando el registro por I2P...",
+      "zh": "正在通过 I2P 询问登记处...",
+      "ar": "جارٍ الاستعلام من السجل عبر I2P..."
     },
     "Asking your other devices": {
       "ru": "Запрос к вашим устройствам",
@@ -443,29 +443,29 @@
       "zh": "正在请求成员列表",
       "ar": "جارٍ طلب قائمة الأعضاء"
     },
-    "Asking your server…": {
-      "ru": "Запрос к серверу…",
-      "es": "Preguntando a tu servidor…",
-      "zh": "正在询问服务器…",
-      "ar": "جارٍ الاستعلام من خادمك…"
+    "Asking your server...": {
+      "ru": "Запрос к серверу...",
+      "es": "Preguntando a tu servidor...",
+      "zh": "正在询问服务器...",
+      "ar": "جارٍ الاستعلام من خادمك..."
     },
-    "Asking…": {
-      "ru": "Запрашивается…",
-      "es": "Preguntando…",
-      "zh": "正在询问…",
-      "ar": "جارٍ الاستعلام…"
+    "Asking...": {
+      "ru": "Запрашивается...",
+      "es": "Preguntando...",
+      "zh": "正在询问...",
+      "ar": "جارٍ الاستعلام..."
     },
-    "Asking the sender…": {
-      "ru": "Запрос к отправителю…",
-      "es": "Consultando al remitente…",
-      "zh": "正在询问发送方…",
-      "ar": "جارٍ الطلب من المرسل…"
+    "Asking the sender...": {
+      "ru": "Запрос к отправителю...",
+      "es": "Consultando al remitente...",
+      "zh": "正在询问发送方...",
+      "ar": "جارٍ الطلب من المرسل..."
     },
-    "Encrypting…": {
-      "ru": "Шифрование…",
-      "es": "Cifrando…",
-      "zh": "正在加密…",
-      "ar": "جارٍ التشفير…"
+    "Encrypting...": {
+      "ru": "Шифрование...",
+      "es": "Cifrando...",
+      "zh": "正在加密...",
+      "ar": "جارٍ التشفير..."
     },
     "In the phone's settings, find the app's links section and check bazari.sh": {
       "ru": "В настройках телефона найдите раздел о ссылках приложения и отметьте bazari.sh",
@@ -575,17 +575,17 @@
       "zh": "登录请求",
       "ar": "طلب تسجيل الدخول"
     },
-    "Waiting for the recipient…": {
-      "ru": "Ожидание получателя…",
-      "es": "Esperando al destinatario…",
-      "zh": "正在等待接收方…",
-      "ar": "بانتظار المستلم…"
+    "Waiting for the recipient...": {
+      "ru": "Ожидание получателя...",
+      "es": "Esperando al destinatario...",
+      "zh": "正在等待接收方...",
+      "ar": "بانتظار المستلم..."
     },
-    "Receiving…": {
-      "ru": "Приём…",
-      "es": "Recibiendo…",
-      "zh": "正在接收…",
-      "ar": "جارٍ الاستلام…"
+    "Receiving...": {
+      "ru": "Приём...",
+      "es": "Recibiendo...",
+      "zh": "正在接收...",
+      "ar": "جارٍ الاستلام..."
     },
     "Audio devices": {
       "ru": "Звуковые устройства",
@@ -689,11 +689,11 @@
       "zh": "图片已损坏",
       "ar": "صورة تالفة"
     },
-    "Building it…": {
-      "ru": "Строится…",
-      "es": "Construyéndola…",
-      "zh": "正在构建…",
-      "ar": "جارٍ البناء…"
+    "Building it...": {
+      "ru": "Строится...",
+      "es": "Construyéndola...",
+      "zh": "正在构建...",
+      "ar": "جارٍ البناء..."
     },
     "Building your I2P tunnels": {
       "ru": "Туннели I2P строятся",
@@ -713,11 +713,11 @@
       "zh": "与 %1 的通话",
       "ar": "مكالمة مع ⁦%1⁩"
     },
-    "Calling…": {
-      "ru": "Вызов…",
-      "es": "Llamando…",
-      "zh": "正在呼叫…",
-      "ar": "جارٍ الاتصال…"
+    "Calling...": {
+      "ru": "Вызов...",
+      "es": "Llamando...",
+      "zh": "正在呼叫...",
+      "ar": "جارٍ الاتصال..."
     },
     "Calls always use the shortest tunnel to keep latency down.": {
       "ru": "Звонки идут всегда по туннелю минимальной длины для снижения задержек.",
@@ -791,11 +791,11 @@
       "zh": "正在检查你的目的地",
       "ar": "جارٍ فحص وجهتك"
     },
-    "Checking…": {
-      "ru": "Проверка…",
-      "es": "Comprobando…",
-      "zh": "正在检查…",
-      "ar": "جارٍ التحقق…"
+    "Checking...": {
+      "ru": "Проверка...",
+      "es": "Comprobando...",
+      "zh": "正在检查...",
+      "ar": "جارٍ التحقق..."
     },
     "Choose an account": {
       "ru": "Выберите аккаунт",
@@ -1043,11 +1043,11 @@
       "zh": "正在通过 I2P 连接 — 首次连接需要几分钟",
       "ar": "جارٍ الاتصال عبر I2P — يستغرق الاتصال الأول دقائق"
     },
-    "Connecting over I2P…": {
-      "ru": "Подключение через I2P…",
-      "es": "Conectando por I2P…",
-      "zh": "正在通过 I2P 连接…",
-      "ar": "جارٍ الاتصال عبر I2P…"
+    "Connecting over I2P...": {
+      "ru": "Подключение через I2P...",
+      "es": "Conectando por I2P...",
+      "zh": "正在通过 I2P 连接...",
+      "ar": "جارٍ الاتصال عبر I2P..."
     },
     "Connecting this account": {
       "ru": "Подключение аккаунта",
@@ -1061,17 +1061,17 @@
       "zh": "正在连接服务器",
       "ar": "جارٍ الاتصال بالخادم"
     },
-    "Saving…": {
-      "ru": "Сохранение…",
-      "es": "Guardando…",
-      "zh": "正在保存…",
-      "ar": "جارٍ الحفظ…"
+    "Saving...": {
+      "ru": "Сохранение...",
+      "es": "Guardando...",
+      "zh": "正在保存...",
+      "ar": "جارٍ الحفظ..."
     },
-    "Connecting…": {
-      "ru": "Подключение…",
-      "es": "Conectando…",
-      "zh": "正在连接…",
-      "ar": "جارٍ الاتصال…"
+    "Connecting...": {
+      "ru": "Подключение...",
+      "es": "Conectando...",
+      "zh": "正在连接...",
+      "ar": "جارٍ الاتصال..."
     },
     "Connection log": {
       "ru": "Журнал соединения",
@@ -1157,11 +1157,11 @@
       "zh": "此链接可将另一个账号连接到你的服务器",
       "ar": "يربط هذا الرابط حسابًا آخر بخادمك"
     },
-    "Looking up %1 in the alias registry…": {
-      "ru": "Поиск %1 в реестре алиасов…",
-      "es": "Buscando %1 en el registro de alias…",
-      "zh": "正在别名登记处查找 %1…",
-      "ar": "جارٍ البحث عن ⁦%1⁩ في سجل الأسماء المستعارة…"
+    "Looking up %1 in the alias registry...": {
+      "ru": "Поиск %1 в реестре алиасов...",
+      "es": "Buscando %1 en el registro de alias...",
+      "zh": "正在别名登记处查找 %1...",
+      "ar": "جارٍ البحث عن ⁦%1⁩ في سجل الأسماء المستعارة..."
     },
     "Looking up %1 in the alias registry: %2": {
       "ru": "Поиск %1 в реестре алиасов: %2",
@@ -1169,11 +1169,11 @@
       "zh": "正在别名登记处查找 %1：%2",
       "ar": "جارٍ البحث عن ⁦%1⁩ في سجل الأسماء المستعارة: ⁦%2⁩"
     },
-    "Fetching the contact card…": {
-      "ru": "Запрос карточки контакта…",
-      "es": "Obteniendo la tarjeta del contacto…",
-      "zh": "正在获取联系人名片…",
-      "ar": "جارٍ جلب بطاقة جهة الاتصال…"
+    "Fetching the contact card...": {
+      "ru": "Запрос карточки контакта...",
+      "es": "Obteniendo la tarjeta del contacto...",
+      "zh": "正在获取联系人名片...",
+      "ar": "جارٍ جلب بطاقة جهة الاتصال..."
     },
     "Fetching the contact card: %1": {
       "ru": "Запрос карточки контакта: %1",
@@ -1181,35 +1181,35 @@
       "zh": "正在获取联系人名片：%1",
       "ar": "جارٍ جلب بطاقة جهة الاتصال: ⁦%1⁩"
     },
-    "Sending the contact request…": {
-      "ru": "Отправка запроса в контакты…",
-      "es": "Enviando la solicitud de contacto…",
-      "zh": "正在发送联系人请求…",
-      "ar": "جارٍ إرسال طلب التواصل…"
+    "Sending the contact request...": {
+      "ru": "Отправка запроса в контакты...",
+      "es": "Enviando la solicitud de contacto...",
+      "zh": "正在发送联系人请求...",
+      "ar": "جارٍ إرسال طلب التواصل..."
     },
-    "choosing an address…": {
-      "ru": "выбор адреса…",
-      "es": "eligiendo una dirección…",
-      "zh": "正在选择地址…",
-      "ar": "اختيار عنوان…"
+    "choosing an address...": {
+      "ru": "выбор адреса...",
+      "es": "eligiendo una dirección...",
+      "zh": "正在选择地址...",
+      "ar": "اختيار عنوان..."
     },
-    "preparing an address…": {
-      "ru": "подготовка адреса…",
-      "es": "preparando una dirección…",
-      "zh": "正在准备地址…",
-      "ar": "تجهيز عنوان…"
+    "preparing an address...": {
+      "ru": "подготовка адреса...",
+      "es": "preparando una dirección...",
+      "zh": "正在准备地址...",
+      "ar": "تجهيز عنوان..."
     },
-    "connecting over I2P…": {
-      "ru": "подключение через I2P…",
-      "es": "conectando por I2P…",
-      "zh": "正在通过 I2P 连接…",
-      "ar": "الاتصال عبر I2P…"
+    "connecting over I2P...": {
+      "ru": "подключение через I2P...",
+      "es": "conectando por I2P...",
+      "zh": "正在通过 I2P 连接...",
+      "ar": "الاتصال عبر I2P..."
     },
-    "waiting for an answer…": {
-      "ru": "ожидание ответа…",
-      "es": "esperando respuesta…",
-      "zh": "正在等待回应…",
-      "ar": "انتظار الرد…"
+    "waiting for an answer...": {
+      "ru": "ожидание ответа...",
+      "es": "esperando respuesta...",
+      "zh": "正在等待回应...",
+      "ar": "انتظار الرد..."
     },
     "Share gateway": {
       "ru": "Поделиться шлюзом",
@@ -1325,11 +1325,11 @@
       "zh": "拒接",
       "ar": "رفض"
     },
-    "Declining…": {
-      "ru": "Отклоняется…",
-      "es": "Rechazando…",
-      "zh": "正在拒接…",
-      "ar": "جارٍ الرفض…"
+    "Declining...": {
+      "ru": "Отклоняется...",
+      "es": "Rechazando...",
+      "zh": "正在拒接...",
+      "ar": "جارٍ الرفض..."
     },
     "Delegated until %1": {
       "ru": "Делегировано до %1",
@@ -1337,11 +1337,11 @@
       "zh": "委派至 %1",
       "ar": "مفوَّض حتى ⁦%1⁩"
     },
-    "Delegating it to your server…": {
-      "ru": "Делегирование серверу…",
-      "es": "Delegándolo a tu servidor…",
-      "zh": "正在委派给服务器…",
-      "ar": "جارٍ تفويضها إلى خادمك…"
+    "Delegating it to your server...": {
+      "ru": "Делегирование серверу...",
+      "es": "Delegándolo a tu servidor...",
+      "zh": "正在委派给服务器...",
+      "ar": "جارٍ تفويضها إلى خادمك..."
     },
     "Delegating your destination to the server": {
       "ru": "Делегирование назначения серверу",
@@ -1439,11 +1439,11 @@
       "zh": "正在删除账号",
       "ar": "جارٍ حذف الحساب"
     },
-    "Deleting…": {
-      "ru": "Удаление…",
-      "es": "Eliminando…",
-      "zh": "正在删除…",
-      "ar": "جارٍ الحذف…"
+    "Deleting...": {
+      "ru": "Удаление...",
+      "es": "Eliminando...",
+      "zh": "正在删除...",
+      "ar": "جارٍ الحذف..."
     },
     "Delivered": {
       "ru": "Доставлено",
@@ -1493,11 +1493,11 @@
       "zh": "编辑",
       "ar": "تعديل"
     },
-    "Edit message…": {
-      "ru": "Правка сообщения…",
-      "es": "Editar el mensaje…",
-      "zh": "编辑消息…",
-      "ar": "تعديل الرسالة…"
+    "Edit message...": {
+      "ru": "Правка сообщения...",
+      "es": "Editar el mensaje...",
+      "zh": "编辑消息...",
+      "ar": "تعديل الرسالة..."
     },
     "Editing message": {
       "ru": "Правка сообщения",
@@ -1529,11 +1529,11 @@
       "zh": "挂断",
       "ar": "إنهاء"
     },
-    "Ending the call…": {
-      "ru": "Звонок завершается…",
-      "es": "Terminando la llamada…",
-      "zh": "正在结束通话…",
-      "ar": "جارٍ إنهاء المكالمة…"
+    "Ending the call...": {
+      "ru": "Звонок завершается...",
+      "es": "Terminando la llamada...",
+      "zh": "正在结束通话...",
+      "ar": "جارٍ إنهاء المكالمة..."
     },
     "Enter at least one facade address": {
       "ru": "Укажите хотя бы один адрес фасада",
@@ -1631,17 +1631,17 @@
       "zh": "已转发",
       "ar": "مُعاد توجيهها"
     },
-    "Forwarding…": {
-      "ru": "Пересылка…",
-      "es": "Reenviando…",
-      "zh": "正在转发…",
-      "ar": "جارٍ إعادة التوجيه…"
+    "Forwarding...": {
+      "ru": "Пересылка...",
+      "es": "Reenviando...",
+      "zh": "正在转发...",
+      "ar": "جارٍ إعادة التوجيه..."
     },
-    "Generating…": {
-      "ru": "Создаётся…",
-      "es": "Generando…",
-      "zh": "正在生成…",
-      "ar": "جارٍ التوليد…"
+    "Generating...": {
+      "ru": "Создаётся...",
+      "es": "Generando...",
+      "zh": "正在生成...",
+      "ar": "جارٍ التوليد..."
     },
     "Give the router's address first": {
       "ru": "Сначала укажите адрес роутера",
@@ -1763,11 +1763,11 @@
       "zh": "语音来电",
       "ar": "مكالمة صوتية واردة"
     },
-    "Incoming call…": {
-      "ru": "Входящий звонок…",
-      "es": "Llamada entrante…",
-      "zh": "来电…",
-      "ar": "مكالمة واردة…"
+    "Incoming call...": {
+      "ru": "Входящий звонок...",
+      "es": "Llamada entrante...",
+      "zh": "来电...",
+      "ar": "مكالمة واردة..."
     },
     "Input device": {
       "ru": "Устройство ввода",
@@ -1901,11 +1901,11 @@
       "zh": "来自该联系人的消息和来电将不再到达，其通行凭据会在你的服务器上被撤销。聊天记录保留。你发出一条消息即解除屏蔽。",
       "ar": "تتوقف رسائل جهة الاتصال ومكالماتها، ويُسحب تصريحها لدى خادمك. وتبقى المحادثة. ورسالة صادرة واحدة ترفع الحظر."
     },
-    "Message…": {
-      "ru": "Сообщение…",
-      "es": "Mensaje…",
-      "zh": "消息…",
-      "ar": "رسالة…"
+    "Message...": {
+      "ru": "Сообщение...",
+      "es": "Mensaje...",
+      "zh": "消息...",
+      "ar": "رسالة..."
     },
     "Move": {
       "ru": "Перенести",
@@ -2237,11 +2237,11 @@
       "zh": "正在打开音频通道",
       "ar": "جارٍ فتح مسار الصوت"
     },
-    "Opening the backup…": {
-      "ru": "Резервная копия открывается…",
-      "es": "Abriendo la copia de seguridad…",
-      "zh": "正在打开备份…",
-      "ar": "جارٍ فتح النسخة الاحتياطية…"
+    "Opening the backup...": {
+      "ru": "Резервная копия открывается...",
+      "es": "Abriendo la copia de seguridad...",
+      "zh": "正在打开备份...",
+      "ar": "جارٍ فتح النسخة الاحتياطية..."
     },
     "Outbound tunnels": {
       "ru": "Исходящие туннели",
@@ -2441,11 +2441,11 @@
       "zh": "正在准备",
       "ar": "جارٍ التحضير"
     },
-    "Preparing an address to send from…": {
-      "ru": "Адрес отправки подготавливается…",
-      "es": "Preparando una dirección desde la que enviar…",
-      "zh": "正在准备发送地址…",
-      "ar": "جارٍ تحضير عنوان الإرسال…"
+    "Preparing an address to send from...": {
+      "ru": "Адрес отправки подготавливается...",
+      "es": "Preparando una dirección desde la que enviar...",
+      "zh": "正在准备发送地址...",
+      "ar": "جارٍ تحضير عنوان الإرسال..."
     },
     "Preparing your call address": {
       "ru": "Адрес для звонка готовится",
@@ -2453,11 +2453,11 @@
       "zh": "正在准备通话地址",
       "ar": "جارٍ تجهيز عنوان المكالمة"
     },
-    "Preparing…": {
-      "ru": "Подготовка…",
-      "es": "Preparando…",
-      "zh": "正在准备…",
-      "ar": "جارٍ التحضير…"
+    "Preparing...": {
+      "ru": "Подготовка...",
+      "es": "Preparando...",
+      "zh": "正在准备...",
+      "ar": "جارٍ التحضير..."
     },
     "Privacy": {
       "ru": "Приватность",
@@ -2549,17 +2549,17 @@
       "zh": "正在发布。需要几分钟",
       "ar": "جارٍ النشر. يستغرق ذلك دقائق"
     },
-    "Publishing…": {
-      "ru": "Публикация…",
-      "es": "Publicando…",
-      "zh": "正在发布…",
-      "ar": "جارٍ النشر…"
+    "Publishing...": {
+      "ru": "Публикация...",
+      "es": "Publicando...",
+      "zh": "正在发布...",
+      "ar": "جارٍ النشر..."
     },
-    "Queued…": {
-      "ru": "В очереди…",
-      "es": "En cola…",
-      "zh": "排队中…",
-      "ar": "في قائمة الانتظار…"
+    "Queued...": {
+      "ru": "В очереди...",
+      "es": "En cola...",
+      "zh": "排队中...",
+      "ar": "في قائمة الانتظار..."
     },
     "Quit": {
       "ru": "Выйти",
@@ -2585,11 +2585,11 @@
       "zh": "正在连接另一台设备",
       "ar": "جارٍ الوصول إلى الجهاز الآخر"
     },
-    "Reaching the recipient's server…": {
-      "ru": "Соединение с сервером получателя…",
-      "es": "Contactando con el servidor del destinatario…",
-      "zh": "正在联系接收方的服务器…",
-      "ar": "جارٍ الوصول إلى خادم المستلم…"
+    "Reaching the recipient's server...": {
+      "ru": "Соединение с сервером получателя...",
+      "es": "Contactando con el servidor del destinatario...",
+      "zh": "正在联系接收方的服务器...",
+      "ar": "جارٍ الوصول إلى خادم المستلم..."
     },
     "React": {
       "ru": "Реакция",
@@ -2771,11 +2771,11 @@
       "zh": "回复 %1",
       "ar": "ردًّا على ⁦%1⁩"
     },
-    "Reply…": {
-      "ru": "Ответ…",
-      "es": "Respuesta…",
-      "zh": "回复…",
-      "ar": "رد…"
+    "Reply...": {
+      "ru": "Ответ...",
+      "es": "Respuesta...",
+      "zh": "回复...",
+      "ar": "رد..."
     },
     "Request sent": {
       "ru": "Запрос отправлен",
@@ -2831,11 +2831,11 @@
       "zh": "正在恢复账号",
       "ar": "جارٍ استعادة الحساب"
     },
-    "Resuming after a restart…": {
-      "ru": "Продолжение после перезапуска…",
-      "es": "Retomando tras el reinicio…",
-      "zh": "重启后正在恢复…",
-      "ar": "جارٍ المتابعة بعد إعادة التشغيل…"
+    "Resuming after a restart...": {
+      "ru": "Продолжение после перезапуска...",
+      "es": "Retomando tras el reinicio...",
+      "zh": "重启后正在恢复...",
+      "ar": "جارٍ المتابعة بعد إعادة التشغيل..."
     },
     "Routers known": {
       "ru": "Известно роутеров",
@@ -2909,11 +2909,11 @@
       "zh": "在新设备上扫描此二维码，或在那里粘贴链接",
       "ar": "امسح رمز QR هذا على الجهاز الجديد أو الصِق الرابط هناك"
     },
-    "Sealing the account…": {
-      "ru": "Аккаунт запечатывается…",
-      "es": "Sellando la cuenta…",
-      "zh": "正在封装账号…",
-      "ar": "جارٍ ختم الحساب…"
+    "Sealing the account...": {
+      "ru": "Аккаунт запечатывается...",
+      "es": "Sellando la cuenta...",
+      "zh": "正在封装账号...",
+      "ar": "جارٍ ختم الحساب..."
     },
     "Search chats": {
       "ru": "Поиск переписки",
@@ -2921,17 +2921,17 @@
       "zh": "搜索聊天",
       "ar": "البحث في المحادثات"
     },
-    "Search chats…": {
-      "ru": "Поиск по чатам…",
-      "es": "Buscar chats…",
-      "zh": "搜索聊天…",
-      "ar": "ابحث في المحادثات…"
+    "Search chats...": {
+      "ru": "Поиск по чатам...",
+      "es": "Buscar chats...",
+      "zh": "搜索聊天...",
+      "ar": "ابحث في المحادثات..."
     },
-    "Search in conversation…": {
-      "ru": "Поиск в переписке…",
-      "es": "Buscar en el chat…",
-      "zh": "在聊天中搜索…",
-      "ar": "ابحث داخل المحادثة…"
+    "Search in conversation...": {
+      "ru": "Поиск в переписке...",
+      "es": "Buscar en el chat...",
+      "zh": "在聊天中搜索...",
+      "ar": "ابحث داخل المحادثة..."
     },
     "Select": {
       "ru": "Выбрать",
@@ -2987,11 +2987,11 @@
       "zh": "再次发送请求",
       "ar": "أرسل الطلب مجددًا"
     },
-    "Sending a contact request…": {
-      "ru": "Запрос на добавление отправляется…",
-      "es": "Enviando la solicitud de contacto…",
-      "zh": "正在发送联系人请求…",
-      "ar": "جارٍ إرسال طلب التواصل…"
+    "Sending a contact request...": {
+      "ru": "Запрос на добавление отправляется...",
+      "es": "Enviando la solicitud de contacto...",
+      "zh": "正在发送联系人请求...",
+      "ar": "جارٍ إرسال طلب التواصل..."
     },
     "Sending a reaction": {
       "ru": "Отправка реакции",
@@ -2999,11 +2999,11 @@
       "zh": "正在发送表情回应",
       "ar": "جارٍ إرسال تفاعل"
     },
-    "Sending again…": {
-      "ru": "Повторная отправка…",
-      "es": "Enviando de nuevo…",
-      "zh": "正在重新发送…",
-      "ar": "جارٍ الإرسال مجددًا…"
+    "Sending again...": {
+      "ru": "Повторная отправка...",
+      "es": "Enviando de nuevo...",
+      "zh": "正在重新发送...",
+      "ar": "جارٍ الإرسال مجددًا..."
     },
     "Sending an edit": {
       "ru": "Отправка правки",
@@ -3011,11 +3011,11 @@
       "zh": "正在发送编辑",
       "ar": "جارٍ إرسال تعديل"
     },
-    "Sending over I2P…": {
-      "ru": "Отправка через I2P…",
-      "es": "Enviando por I2P…",
-      "zh": "正在通过 I2P 发送…",
-      "ar": "جارٍ الإرسال عبر I2P…"
+    "Sending over I2P...": {
+      "ru": "Отправка через I2P...",
+      "es": "Enviando por I2P...",
+      "zh": "正在通过 I2P 发送...",
+      "ar": "جارٍ الإرسال عبر I2P..."
     },
     "Sending the account": {
       "ru": "Передача аккаунта",
@@ -3023,23 +3023,23 @@
       "zh": "正在发送账号",
       "ar": "جارٍ إرسال الحساب"
     },
-    "Sending to the recipient's server…": {
-      "ru": "Отправка на сервер получателя…",
-      "es": "Enviando al servidor del destinatario…",
-      "zh": "正在发送到接收方的服务器…",
-      "ar": "جارٍ الإرسال إلى خادم المستلم…"
+    "Sending to the recipient's server...": {
+      "ru": "Отправка на сервер получателя...",
+      "es": "Enviando al servidor del destinatario...",
+      "zh": "正在发送到接收方的服务器...",
+      "ar": "جارٍ الإرسال إلى خادم المستلم..."
     },
-    "Sending to your contacts…": {
-      "ru": "Рассылка вашим контактам…",
-      "es": "Enviando a tus contactos…",
-      "zh": "正在发送给你的联系人…",
-      "ar": "جارٍ الإرسال إلى جهات اتصالك…"
+    "Sending to your contacts...": {
+      "ru": "Рассылка вашим контактам...",
+      "es": "Enviando a tus contactos...",
+      "zh": "正在发送给你的联系人...",
+      "ar": "جارٍ الإرسال إلى جهات اتصالك..."
     },
-    "Sending…": {
-      "ru": "Отправка…",
-      "es": "Enviando…",
-      "zh": "正在发送…",
-      "ar": "جارٍ الإرسال…"
+    "Sending...": {
+      "ru": "Отправка...",
+      "es": "Enviando...",
+      "zh": "正在发送...",
+      "ar": "جارٍ الإرسال..."
     },
     "Sent": {
       "ru": "Отправлено",
@@ -3155,11 +3155,11 @@
       "zh": "启动中",
       "ar": "قيد البدء"
     },
-    "Starting…": {
-      "ru": "Запуск…",
-      "es": "Iniciando…",
-      "zh": "正在启动…",
-      "ar": "جارٍ البدء…"
+    "Starting...": {
+      "ru": "Запуск...",
+      "es": "Iniciando...",
+      "zh": "正在启动...",
+      "ar": "جارٍ البدء..."
     },
     "Status": {
       "ru": "Состояние",
@@ -3221,11 +3221,11 @@
       "zh": "拍照",
       "ar": "التقاط صورة"
     },
-    "Taking offline…": {
-      "ru": "Снятие с публикации…",
-      "es": "Retirando de la red…",
-      "zh": "正在下线…",
-      "ar": "جارٍ إلغاء النشر…"
+    "Taking offline...": {
+      "ru": "Снятие с публикации...",
+      "es": "Retirando de la red...",
+      "zh": "正在下线...",
+      "ar": "جارٍ إلغاء النشر..."
     },
     "Telling your other devices": {
       "ru": "Оповещение ваших устройств",
@@ -3233,11 +3233,11 @@
       "zh": "正在通知你的其他设备",
       "ar": "جارٍ إبلاغ أجهزتك الأخرى"
     },
-    "Telling your server…": {
-      "ru": "Сервер уведомляется…",
-      "es": "Avisando a tu servidor…",
-      "zh": "正在通知服务器…",
-      "ar": "جارٍ إبلاغ خادمك…"
+    "Telling your server...": {
+      "ru": "Сервер уведомляется...",
+      "es": "Avisando a tu servidor...",
+      "zh": "正在通知服务器...",
+      "ar": "جارٍ إبلاغ خادمك..."
     },
     "This is not a gateway link": {
       "ru": "Это не ссылка на шлюз",
@@ -3791,35 +3791,35 @@
       "zh": "等待新设备",
       "ar": "في انتظار الجهاز الجديد"
     },
-    "Waiting for the server…": {
-      "ru": "Ожидание ответа сервера…",
-      "es": "Esperando al servidor…",
-      "zh": "正在等待服务器…",
-      "ar": "في انتظار الخادم…"
+    "Waiting for the server...": {
+      "ru": "Ожидание ответа сервера...",
+      "es": "Esperando al servidor...",
+      "zh": "正在等待服务器...",
+      "ar": "في انتظار الخادم..."
     },
-    "Waiting for their server…": {
-      "ru": "Ожидание сервера контакта…",
-      "es": "Esperando a su servidor…",
-      "zh": "正在等待对方的服务器…",
-      "ar": "في انتظار خادم جهة الاتصال…"
+    "Waiting for their server...": {
+      "ru": "Ожидание сервера контакта...",
+      "es": "Esperando a su servidor...",
+      "zh": "正在等待对方的服务器...",
+      "ar": "في انتظار خادم جهة الاتصال..."
     },
-    "Waiting for the recipient's server…": {
-      "ru": "Ожидание сервера получателя…",
-      "es": "Esperando al servidor del destinatario…",
-      "zh": "正在等待接收方的服务器…",
-      "ar": "في انتظار خادم المستلم…"
+    "Waiting for the recipient's server...": {
+      "ru": "Ожидание сервера получателя...",
+      "es": "Esperando al servidor del destinatario...",
+      "zh": "正在等待接收方的服务器...",
+      "ar": "في انتظار خادم المستلم..."
     },
-    "Waiting for this account…": {
-      "ru": "Ожидание этого аккаунта…",
-      "es": "Esperando a esta cuenta…",
-      "zh": "正在等待此账号…",
-      "ar": "في انتظار هذا الحساب…"
+    "Waiting for this account...": {
+      "ru": "Ожидание этого аккаунта...",
+      "es": "Esperando a esta cuenta...",
+      "zh": "正在等待此账号...",
+      "ar": "في انتظار هذا الحساب..."
     },
-    "Waiting its turn…": {
-      "ru": "Ожидание очереди…",
-      "es": "Esperando su turno…",
-      "zh": "正在排队…",
-      "ar": "في انتظار دوره…"
+    "Waiting its turn...": {
+      "ru": "Ожидание очереди...",
+      "es": "Esperando su turno...",
+      "zh": "正在排队...",
+      "ar": "في انتظار دوره..."
     },
     "What you keep here reaches your other devices": {
       "ru": "Содержимое доходит до ваших устройств",
@@ -3845,17 +3845,17 @@
       "zh": "处理中",
       "ar": "جارٍ العمل"
     },
-    "Working on it…": {
-      "ru": "Выполняется…",
-      "es": "En curso…",
-      "zh": "正在执行…",
-      "ar": "جارٍ التنفيذ…"
+    "Working on it...": {
+      "ru": "Выполняется...",
+      "es": "En curso...",
+      "zh": "正在执行...",
+      "ar": "جارٍ التنفيذ..."
     },
-    "Working…": {
-      "ru": "Обработка…",
-      "es": "Procesando…",
-      "zh": "正在处理…",
-      "ar": "جارٍ المعالجة…"
+    "Working...": {
+      "ru": "Обработка...",
+      "es": "Procesando...",
+      "zh": "正在处理...",
+      "ar": "جارٍ المعالجة..."
     },
     "Wrong code %1 times. The address is closed.": {
       "ru": "Неверный код %1 раз. Адрес закрыт.",
@@ -4175,11 +4175,11 @@
       "zh": "保存该备份时所用的密码",
       "ar": "كلمة المرور التي حُفظت بها النسخة الاحتياطية"
     },
-    "pointing it here…": {
-      "ru": "привязывается…",
-      "es": "apuntándolo aquí…",
-      "zh": "正在指向这里…",
-      "ar": "جارٍ ربطه بهذا الحساب…"
+    "pointing it here...": {
+      "ru": "привязывается...",
+      "es": "apuntándolo aquí...",
+      "zh": "正在指向这里...",
+      "ar": "جارٍ ربطه بهذا الحساب..."
     },
     "ready": {
       "ru": "готов",
@@ -4655,11 +4655,11 @@
       "zh": "正在发送签名",
       "ar": "جارٍ إرسال توقيعك"
     },
-    "Reaching the site…": {
-      "ru": "Подключение к сайту…",
-      "es": "Contactando con el sitio…",
-      "zh": "正在连接网站…",
-      "ar": "جارٍ الوصول إلى الموقع…"
+    "Reaching the site...": {
+      "ru": "Подключение к сайту...",
+      "es": "Contactando con el sitio...",
+      "zh": "正在连接网站...",
+      "ar": "جارٍ الوصول إلى الموقع..."
     },
     "This account is still opening": {
       "ru": "Аккаунт ещё открывается",
@@ -4667,23 +4667,23 @@
       "zh": "账号仍在打开",
       "ar": "لا يزال الحساب يُفتح"
     },
-    "Taking an address to send from…": {
-      "ru": "Беру адрес для отправки…",
-      "es": "Tomando una dirección para el envío…",
-      "zh": "正在取用发送地址…",
-      "ar": "جارٍ أخذ عنوان للإرسال…"
+    "Taking an address to send from...": {
+      "ru": "Беру адрес для отправки...",
+      "es": "Tomando una dirección para el envío...",
+      "zh": "正在取用发送地址...",
+      "ar": "جارٍ أخذ عنوان للإرسال..."
     },
-    "Building an address to send from…": {
-      "ru": "Строю адрес для отправки…",
-      "es": "Creando una dirección para el envío…",
-      "zh": "正在建立发送地址…",
-      "ar": "جارٍ بناء عنوان للإرسال…"
+    "Building an address to send from...": {
+      "ru": "Строю адрес для отправки...",
+      "es": "Creando una dirección para el envío...",
+      "zh": "正在建立发送地址...",
+      "ar": "جارٍ بناء عنوان للإرسال..."
     },
-    "Waiting for the site's answer…": {
-      "ru": "Жду ответ сайта…",
-      "es": "Esperando la respuesta del sitio…",
-      "zh": "正在等待网站回应…",
-      "ar": "في انتظار رد الموقع…"
+    "Waiting for the site's answer...": {
+      "ru": "Жду ответ сайта...",
+      "es": "Esperando la respuesta del sitio...",
+      "zh": "正在等待网站回应...",
+      "ar": "في انتظار رد الموقع..."
     },
     "The site accepted the signature": {
       "ru": "Сайт принял подпись",
@@ -5087,11 +5087,11 @@
       "zh": "在线",
       "ar": "متصل"
     },
-    "typing…": {
-      "ru": "печатает…",
-      "es": "escribiendo…",
-      "zh": "正在输入…",
-      "ar": "يكتب…"
+    "typing...": {
+      "ru": "печатает...",
+      "es": "escribiendo...",
+      "zh": "正在输入...",
+      "ar": "يكتب..."
     },
     "Camera": {
       "ru": "Камера",
@@ -5153,11 +5153,11 @@
       "zh": "此后只有在别名后加连字符和口令才能找到它。留空则移除口令。",
       "ar": "عندها لا يُعثر على الاسم المستعار إلا مع الكلمة بعد شرطة. الحقل الفارغ يزيلها."
     },
-    "The alias registry is busy: completing its check…": {
-      "ru": "Реестр алиасов занят: идёт проверка…",
-      "es": "El registro de alias está ocupado: completando su comprobación…",
-      "zh": "别名登记处繁忙：正在完成验证…",
-      "ar": "سجل الأسماء مشغول: جارٍ إكمال التحقق…"
+    "The alias registry is busy: completing its check...": {
+      "ru": "Реестр алиасов занят: идёт проверка...",
+      "es": "El registro de alias está ocupado: completando su comprobación...",
+      "zh": "别名登记处繁忙：正在完成验证...",
+      "ar": "سجل الأسماء مشغول: جارٍ إكمال التحقق..."
     },
     "The word after the dash is 1 to %1 Latin letters and digits": {
       "ru": "Слово после тире — от 1 до %1 латинских букв и цифр",
@@ -5633,11 +5633,11 @@
       "zh": "来电和新消息使用系统提示音",
       "ar": "تستخدم المكالمات والرسائل الواردة صوت النظام"
     },
-    "Waiting for the connection…": {
-      "ru": "Ожидание соединения…",
-      "es": "Esperando la conexión…",
-      "zh": "正在等待连接…",
-      "ar": "بانتظار الاتصال…"
+    "Waiting for the connection...": {
+      "ru": "Ожидание соединения...",
+      "es": "Esperando la conexión...",
+      "zh": "正在等待连接...",
+      "ar": "بانتظار الاتصال..."
     },
     "Mark as read": {
       "ru": "Прочитано",

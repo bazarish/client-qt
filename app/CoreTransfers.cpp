@@ -67,7 +67,7 @@ void CoreAccount::onConnectRequested()
     connecting_ = true;
     connectPercent_ = 0;
     log_.begin(kConnectOperationId, QStringLiteral("connect"), tr("Connecting this account"),
-        tr("Starting…"));
+        tr("Starting..."));
 }
 
 void CoreAccount::onConnectProgress(const int percent, const QString& phase)
@@ -95,7 +95,7 @@ void CoreAccount::sendCallback(
     keyPresses_.insert(opId, ref);
     log_.begin(opId, QStringLiteral("bot"),
         (label.isEmpty() ? data : label) + QStringLiteral(" → ") + contacts_.peerName(peer),
-        tr("Sending…"), peer);
+        tr("Sending..."), peer);
     emit commands_.requestSendCallback(opId, peer, data, ref);
 }
 
@@ -109,7 +109,7 @@ void CoreAccount::sendCommand(const QString& peer, const QString& command, const
     log_.begin(opId, QStringLiteral("bot"),
         (label.isEmpty() ? QStringLiteral("/") + command : label) + QStringLiteral(" → ")
             + contacts_.peerName(peer),
-        tr("Sending…"), peer);
+        tr("Sending..."), peer);
     emit commands_.requestSendCommand(opId, peer, command, args);
 }
 
@@ -120,7 +120,7 @@ void CoreAccount::saveAttachment(
     const StoredMessage message = store_.messageById(token);
     const QString name = isDocumentUri(dest) ? message.attName : QFileInfo(dest).fileName();
     if (const QByteArray carried = mediaOf(message); !carried.isEmpty()) {
-        log_.begin(downloadOpId(token), QStringLiteral("file-down"), name, tr("Saving…"), peer,
+        log_.begin(downloadOpId(token), QStringLiteral("file-down"), name, tr("Saving..."), peer,
             e2eId);
         try {
             const std::unique_ptr<client::FileOutput> out = openOutput(dest);
@@ -135,7 +135,7 @@ void CoreAccount::saveAttachment(
         return;
     }
     log_.begin(downloadOpId(token), QStringLiteral("file-down"), name,
-        tr("Connecting…"), peer, e2eId);
+        tr("Connecting..."), peer, e2eId);
     emit commands_.requestSaveAttachment(peer, e2eId, message.attRef, dest, token);
 }
 
