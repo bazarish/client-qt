@@ -46,6 +46,8 @@ QtObject {
     readonly property color dangerFill: light ? "#f6d4d1" : "#4d1e1c"
     readonly property color dangerInk: light ? "#8a1a14" : "#ffd7d4"
 
+    // Dark: bubbles stand as far above it in lightness (CIELAB L*) as they do in the light theme.
+    readonly property color chatBg:    light ? bg : "#121518"
     readonly property color bubbleOut: light ? "#dbeed4" : "#13261a"
     readonly property color bubbleIn:  light ? "#ffffff" : "#1b2026"
     readonly property color bubbleOutHeld: light ? "#b3d9a6" : "#22442c"

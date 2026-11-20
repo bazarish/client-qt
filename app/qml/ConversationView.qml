@@ -521,6 +521,11 @@ Item {
             // Qt hands a touch to the handlers beneath a popup too: the bubbles took it from the viewer.
             enabled: !imageViewer.visible && !composer.pickingEmoji
 
+            Rectangle {
+                anchors.fill: parent
+                color: Theme.chatBg
+            }
+
             ListView {
                 id: messages
                 property TextEdit selectingText: null

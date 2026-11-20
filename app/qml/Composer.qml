@@ -17,7 +17,10 @@ Rectangle {
     readonly property int maxInputH:
         Math.max(minInputH, Math.round((Window.height > 0 ? Window.height : 600) * 0.30))
     readonly property int kAttachMenuGap: 8
-    readonly property int kPairedButtonWidth: 32
+    readonly property int kPairedButtonWidth: 40
+    readonly property int kBarIconSize: 27
+    readonly property real kSendPressGrowth: 1.1
+    readonly property int kSendPressMs: 90
     readonly property int kMentionListWidth: 260
     readonly property int kMentionRowPadding: 12
     readonly property int kMentionRowSpacing: 7
@@ -271,6 +274,7 @@ Rectangle {
                 IconButton {
                     id: attachButton
                     iconName: "attach"
+                    iconSize: root.kBarIconSize
                     focusPolicy: Qt.NoFocus
                     visible: !root.editing
                     enabled: !root.switchedOff
@@ -280,6 +284,7 @@ Rectangle {
                 }
                 IconButton {
                     iconName: "smile"
+                    iconSize: root.kBarIconSize
                     focusPolicy: Qt.NoFocus
                     enabled: !root.switchedOff
                     Layout.preferredWidth: root.kPairedButtonWidth
@@ -302,8 +307,7 @@ Rectangle {
                 id: inputFrame
                 Layout.fillWidth: true
                 Layout.preferredHeight: root.inputH
-                radius: 18
-                color: Theme.bg
+                color: "transparent"
 
                 // Never takes the focus: a phone keyboard stays open while a name is chosen.
                 Popup {
@@ -351,7 +355,6 @@ Rectangle {
                         }
                     }
                 }
-                border.color: (input.activeFocus || root.editing) ? Theme.accent : Theme.controlEdge
 
                 ScrollView {
                     id: inputScroll
@@ -482,14 +485,35 @@ Rectangle {
             }
 
             IconButton {
+                id: sendButton
                 readonly property bool records: !root.editing
                     && input.length === 0 && input.preeditText.length === 0
                 iconName: root.editing ? "check" : (records ? "mic" : "send")
+                iconSize: root.kBarIconSize
                 focusPolicy: Qt.NoFocus
-                tint: Theme.accent
+                tint: Theme.green
                 enabled: !root.switchedOff
                 Layout.alignment: Qt.AlignBottom
+                // The pressed fill would sink the green below 3:1 in the light theme; the growth is the feedback.
+                background: Rectangle {
+                    radius: 8
+                    color: sendButton.hovered && !sendButton.down ? Theme.surfaceAlt : "transparent"
+                }
+                onPressed: pressGrowth.restart()
                 onClicked: records ? voiceSheet.open() : root.send()
+                SequentialAnimation {
+                    id: pressGrowth
+                    NumberAnimation {
+                        target: sendButton; property: "scale"
+                        to: root.kSendPressGrowth; duration: root.kSendPressMs
+                        easing.type: Easing.OutQuad
+                    }
+                    NumberAnimation {
+                        target: sendButton; property: "scale"
+                        to: 1; duration: root.kSendPressMs
+                        easing.type: Easing.InQuad
+                    }
+                }
             }
         }
     }
