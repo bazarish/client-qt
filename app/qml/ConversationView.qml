@@ -354,14 +354,19 @@ Item {
                         color: Theme.text
                         font.weight: Font.Medium
                         elide: Text.ElideRight
-                        Layout.maximumWidth: parent.width
-                        TapHandler {
-                            enabled: !root.lookingUp
-                            onTapped: root.contactInfoRequested()
-                        }
-                        HoverHandler {
-                            enabled: !root.lookingUp
-                            cursorShape: Qt.PointingHandCursor
+                        Layout.fillWidth: true
+                        Item {
+                            x: parent.effectiveHorizontalAlignment === Text.AlignRight ? parent.width - width : 0
+                            width: Math.min(parent.contentWidth, parent.width)
+                            height: parent.height
+                            TapHandler {
+                                enabled: !root.lookingUp
+                                onTapped: root.contactInfoRequested()
+                            }
+                            HoverHandler {
+                                enabled: !root.lookingUp
+                                cursorShape: Qt.PointingHandCursor
+                            }
                         }
                     }
                     Label {
@@ -374,14 +379,19 @@ Item {
                         color: Theme.textFaint
                         font.pixelSize: Theme.fontSmall
                         elide: Text.ElideRight
-                        Layout.maximumWidth: parent.width
-                        TapHandler {
-                            enabled: parent.listHeld
-                            onTapped: root.membersRequested()
-                        }
-                        HoverHandler {
-                            enabled: parent.listHeld
-                            cursorShape: Qt.PointingHandCursor
+                        Layout.fillWidth: true
+                        Item {
+                            x: parent.effectiveHorizontalAlignment === Text.AlignRight ? parent.width - width : 0
+                            width: Math.min(parent.contentWidth, parent.width)
+                            height: parent.height
+                            TapHandler {
+                                enabled: parent.parent.listHeld
+                                onTapped: root.membersRequested()
+                            }
+                            HoverHandler {
+                                enabled: parent.parent.listHeld
+                                cursorShape: Qt.PointingHandCursor
+                            }
                         }
                     }
                     Label {
