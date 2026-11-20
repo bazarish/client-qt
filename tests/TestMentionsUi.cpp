@@ -115,10 +115,12 @@ try {
     const QString module = dir.filePath(QStringLiteral("Bazarish"));
     CHECK(QDir().mkpath(module));
     QString qmldir = QStringLiteral("module Bazarish\n");
-    for (const QString& real : {QStringLiteral("Composer"), QStringLiteral("MemberListSheet")}) {
+    for (const QString& real : {QStringLiteral("Composer"), QStringLiteral("MemberListSheet"),
+             QStringLiteral("components/WindowPopup")}) {
+        const QString type = real.section('/', -1);
         CHECK(QFile::copy(qmlDir + '/' + real + QStringLiteral(".qml"),
-            module + '/' + real + QStringLiteral(".qml")));
-        qmldir += real + QStringLiteral(" 1.0 ") + real + QStringLiteral(".qml\n");
+            module + '/' + type + QStringLiteral(".qml")));
+        qmldir += type + QStringLiteral(" 1.0 ") + type + QStringLiteral(".qml\n");
     }
     for (const QString& name : QDir(stubDir).entryList({QStringLiteral("*.qml")})) {
         if (name == QStringLiteral("Scene.qml")) {

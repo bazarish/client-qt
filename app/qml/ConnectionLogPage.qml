@@ -7,7 +7,6 @@ import Bazarish
 WindowPopup {
     id: root
     property var session: null
-    signal back()
 
     ListModel { id: lines }
 
@@ -84,8 +83,8 @@ WindowPopup {
 
         WindowHeader {
             title: qsTr("Connection log")
-            showBack: true
-            onBackClicked: root.back()
+            showBack: root.returnTo !== null
+            onBackClicked: root.goBack()
             onCloseClicked: root.close()
         }
 

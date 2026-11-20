@@ -165,8 +165,8 @@ Item {
     }
 
     NewChatSheet { id: newChat; session: root.session }
-    InviteSheet { id: inviteSheet; session: root.session; onBack: { inviteSheet.close(); settings.open() } }
-    SignWithKeySheet { id: signWithKeySheet; session: root.session; onBack: { signWithKeySheet.close(); settings.open() } }
+    InviteSheet { id: inviteSheet; session: root.session }
+    SignWithKeySheet { id: signWithKeySheet; session: root.session }
     Connections {
         target: root.session
         ignoreUnknownSignals: true
@@ -184,8 +184,8 @@ Item {
     ContactInfo {
         id: contactInfo
         session: root.session
-        onShareRequested: contactShare.open()
-        onMembersRequested: memberList.open()
+        onShareRequested: contactShare.openFrom(contactInfo)
+        onMembersRequested: memberList.openFrom(contactInfo)
     }
     MemberListSheet {
         id: memberList
@@ -194,7 +194,6 @@ Item {
     ContactShareSheet {
         id: contactShare
         session: root.session
-        onBack: { contactShare.close(); contactInfo.open() }
     }
     property bool callMinimized: false
     MicrophoneGate {
@@ -230,26 +229,25 @@ Item {
         id: accountSwitcher
         onCreateRequested: root.StackView.view.push(createWizardComponent)
     }
-    RouterStatusPage { id: routerStatus; onBack: { routerStatus.close(); appSettings.open() } }
-    StoragePage { id: storagePage; onBack: { storagePage.close(); settings.open() } }
+    RouterStatusPage { id: routerStatus }
+    StoragePage { id: storagePage }
     function offerGateway(link) { appSettings.offerGateway(link) }
     AppSettingsPage {
         id: appSettings
-        onShowRouterStatus: routerStatus.open()
+        onShowRouterStatus: routerStatus.openFrom(appSettings)
     }
     ConnectionLogPage {
         id: connectionLog
         session: root.session
-        onBack: { connectionLog.close(); settings.open() }
     }
     SettingsPage {
         id: settings
         session: root.session
-        onShowInvite: inviteSheet.open()
-        onShowSignWithKey: signWithKeySheet.open()
-        onShowStorage: storagePage.open()
-        onShowRouterStatus: routerStatus.open()
-        onShowConnectionLog: connectionLog.open()
+        onShowInvite: inviteSheet.openFrom(settings)
+        onShowSignWithKey: signWithKeySheet.openFrom(settings)
+        onShowStorage: storagePage.openFrom(settings)
+        onShowRouterStatus: routerStatus.openFrom(settings)
+        onShowConnectionLog: connectionLog.openFrom(settings)
     }
 
     Connections {

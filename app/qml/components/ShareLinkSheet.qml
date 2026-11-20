@@ -9,10 +9,8 @@ WindowPopup {
     property string title: ""
     property string note: ""
     property string link: ""
-    property bool hasBack: false
     property bool copied: false
     readonly property int kCopiedMs: 1500
-    signal back()
 
     onOpened: root.copied = false
 
@@ -21,8 +19,8 @@ WindowPopup {
 
         WindowHeader {
             title: root.title
-            showBack: root.hasBack
-            onBackClicked: root.back()
+            showBack: root.returnTo !== null
+            onBackClicked: root.goBack()
             onCloseClicked: root.close()
         }
 

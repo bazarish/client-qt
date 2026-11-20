@@ -543,6 +543,17 @@ if(Qt6_FOUND)
         add_test(NAME TestMentionsUi COMMAND TestMentionsUi)
         set_tests_properties(TestMentionsUi PROPERTIES
             ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=Basic")
+
+        add_executable(TestWindowBack tests/TestWindowBack.cpp)
+        target_compile_definitions(TestWindowBack PRIVATE
+            BAZARISH_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/app/qml"
+            BAZARISH_WINDOW_BACK_STUBS="${CMAKE_CURRENT_SOURCE_DIR}/tests/WindowBackStubs")
+        target_link_libraries(TestWindowBack PRIVATE bazarish_test_util
+            Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Test)
+        target_compile_options(TestWindowBack PRIVATE -Wall -Wextra -Werror)
+        add_test(NAME TestWindowBack COMMAND TestWindowBack)
+        set_tests_properties(TestWindowBack PROPERTIES
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=Basic")
     endif()
 
     add_executable(TestLetterAvatar tests/TestLetterAvatar.cpp app/LetterAvatar.cpp)

@@ -8,4 +8,5 @@ QtObject {
     property int barHeight: 48; property int fontSmall: 11; property int fontTitle: 16
     property int radius: 10; property int radiusSmall: 6; property int rowInset: 6
     property int contentInset: 14
+    property int windowWidth: 460; property int windowSideRoom: 24; property int windowTopRoom: 40
 }

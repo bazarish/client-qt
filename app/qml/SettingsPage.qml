@@ -1177,7 +1177,7 @@ WindowPopup {
         header: WindowHeader {
             title: qsTr("Server connection")
             showBack: true
-            onBackClicked: connectionDialog.close()
+            onBackClicked: { connectionDialog.close(); serverChoice.open() }
             onCloseClicked: connectionDialog.close()
         }
         contentItem: ScrollColumn {
@@ -1205,7 +1205,7 @@ WindowPopup {
         background: DialogFrame { }
         header: WindowHeader {
             title: qsTr("Server connection")
-            showClose: false
+            onCloseClicked: serverChoice.close()
         }
         contentItem: ButtonRow {
             MenuButton {
@@ -1219,7 +1219,7 @@ WindowPopup {
                 iconName: "qr"
                 text: qsTr("Share")
                 enabled: root.session && root.session.serverLink.length > 0
-                onClicked: { serverChoice.close(); serverShare.open() }
+                onClicked: { serverChoice.close(); serverShare.openFrom(serverChoice) }
             }
         }
     }
@@ -1228,8 +1228,6 @@ WindowPopup {
         title: qsTr("Share server")
         note: qsTr("This link connects another account to your server")
         link: root.session ? root.session.serverLink : ""
-        hasBack: true
-        onBack: { serverShare.close(); serverChoice.open() }
     }
 
     AccountDeleteConfirmDialog {

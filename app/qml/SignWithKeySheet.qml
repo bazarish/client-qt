@@ -8,7 +8,6 @@ WindowPopup {
     id: root
     bottomMargin: activeFocus ? App.keyboardInset : 0
     property var session: null
-    signal back()
     property var consumer: ({ "ok": false, "problem": "" })
     property bool copyPending: false
     readonly property int kSendHoldSeconds: 5
@@ -124,8 +123,8 @@ WindowPopup {
 
         WindowHeader {
             title: qsTr("Sign with the account key")
-            showBack: true
-            onBackClicked: root.back()
+            showBack: root.returnTo !== null
+            onBackClicked: root.goBack()
             onCloseClicked: root.close()
             Label {
                 visible: root.consumer.ok === true

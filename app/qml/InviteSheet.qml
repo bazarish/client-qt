@@ -21,7 +21,6 @@ WindowPopup {
     readonly property string kI2pHost: ".i2p"
     readonly property int tagWidth: Math.ceil(Math.max(botTag.advanceWidth, wwwTag.advanceWidth,
         i2pTag.advanceWidth)) + 2 * kTagPadding
-    signal back()
 
     component RegistryItem: Rectangle {
         Layout.fillWidth: true
@@ -113,8 +112,8 @@ WindowPopup {
 
         WindowHeader {
             title: qsTr("My invite")
-            showBack: true
-            onBackClicked: root.back()
+            showBack: root.returnTo !== null
+            onBackClicked: root.goBack()
             onCloseClicked: root.close()
             IconButton {
                 iconName: "qr"

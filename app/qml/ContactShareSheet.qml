@@ -9,7 +9,6 @@ WindowPopup {
     property var session: null
     property string link: ""
     property bool copied: false
-    signal back()
 
     onOpened: {
         copied = false
@@ -22,8 +21,8 @@ WindowPopup {
 
         WindowHeader {
             title: qsTr("Share contact")
-            showBack: true
-            onBackClicked: root.back()
+            showBack: root.returnTo !== null
+            onBackClicked: root.goBack()
             onCloseClicked: root.close()
         }
 

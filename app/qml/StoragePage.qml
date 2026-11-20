@@ -6,7 +6,6 @@ import Bazarish
 
 WindowPopup {
     id: root
-    signal back()
     readonly property int kWindowWidth: 600
 
     readonly property var session: App.session
@@ -23,8 +22,8 @@ WindowPopup {
 
         WindowHeader {
             title: qsTr("Storage")
-            showBack: true
-            onBackClicked: root.back()
+            showBack: root.returnTo !== null
+            onBackClicked: root.goBack()
             onCloseClicked: root.close()
         }
         Label {

@@ -6,6 +6,23 @@ import Bazarish
 Popup {
     id: root
     property int preferredWidth: Theme.windowWidth
+    // The window this one replaced; back reopens it.
+    property var returnTo: null
+
+    function openFrom(parentWindow) {
+        root.returnTo = parentWindow
+        root.open()
+    }
+    function goBack() {
+        const back = root.returnTo
+        root.close()
+        if (back) {
+            back.open()
+        }
+    }
+
+    closePolicy: root.returnTo ? Popup.CloseOnPressOutside : Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    onClosed: root.returnTo = null
 
     parent: Overlay.overlay
     anchors.centerIn: Overlay.overlay
@@ -15,4 +32,10 @@ Popup {
     height: Math.min(parent ? parent.height - Theme.windowTopRoom : implicitHeight, implicitHeight)
     padding: 0
     background: DialogFrame { }
+
+    Shortcut {
+        sequences: [StandardKey.Cancel, "Back"]
+        enabled: root.opened && root.returnTo !== null
+        onActivated: root.goBack()
+    }
 }

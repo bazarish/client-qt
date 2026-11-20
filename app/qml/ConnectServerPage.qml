@@ -20,7 +20,7 @@ Item {
         onClicked: App.requestAddAccount()
     }
 
-    SignWithKeySheet { id: signSheet; session: root.session; onBack: signSheet.close() }
+    SignWithKeySheet { id: signSheet; session: root.session }
     ConnectProgressDialog { id: connectDialog; session: root.session }
 
     IconButton {
@@ -30,13 +30,13 @@ Item {
         anchors.margins: 12
         onClicked: appSettings.open()
     }
-    RouterStatusPage { id: routerStatus; onBack: { routerStatus.close(); appSettings.open() } }
+    RouterStatusPage { id: routerStatus }
     function offerGateway(link) { appSettings.offerGateway(link) }
     AppSettingsPage {
         id: appSettings
         parent: Overlay.overlay
         anchors.centerIn: parent
-        onShowRouterStatus: routerStatus.open()
+        onShowRouterStatus: routerStatus.openFrom(appSettings)
     }
 
     ScrollColumn {

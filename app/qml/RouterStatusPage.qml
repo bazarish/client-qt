@@ -6,7 +6,6 @@ import Bazarish
 
 WindowPopup {
     id: root
-    signal back()
 
     readonly property int kSliderHandle: 14
     readonly property int kSliderTrackHeight: 4
@@ -46,8 +45,8 @@ WindowPopup {
 
         WindowHeader {
             title: qsTr("I2P router")
-            showBack: true
-            onBackClicked: root.back()
+            showBack: root.returnTo !== null
+            onBackClicked: root.goBack()
             onCloseClicked: root.close()
         }
 

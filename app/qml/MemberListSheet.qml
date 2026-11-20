@@ -31,6 +31,8 @@ WindowPopup {
 
         WindowHeader {
             title: qsTr("Member list")
+            showBack: root.returnTo !== null
+            onBackClicked: root.goBack()
             onCloseClicked: root.close()
             Label {
                 text: root.members.length
