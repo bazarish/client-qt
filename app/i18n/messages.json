@@ -2676,7 +2676,7 @@
       "ar": "إزالة"
     },
     "Remove every message in this chat. The chat itself stays.": {
-      "ru": "Удалить все сообщения этой переписки. Сама переписка останется.",
+      "ru": "Удалить все сообщения этой переписки. Сам чат останется.",
       "es": "Borrar todos los mensajes de este chat. El chat se conserva.",
       "zh": "删除此聊天中的所有消息。聊天本身保留。",
       "ar": "حذف كل رسائل هذه المحادثة. تبقى المحادثة نفسها."
