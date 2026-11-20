@@ -23,7 +23,8 @@ Dialog {
         acceptText: root.localOnly ? qsTr("Remove from this device only") : qsTr("Delete everywhere")
         danger: true
         showCancel: !root.localOnly
-        cancelOnOwnLine: true
+        cancelOnOwnLine: !root.localOnly
+        rejectBelow: root.localOnly
         cancelText: qsTr("Remove from this device only")
         onCancelled: { root.close(); root.localOnlyRequested(root.accountId) }
         onAccepted: root.accept()
