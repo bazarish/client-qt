@@ -448,6 +448,7 @@ WindowPopup {
                 }
             }
             MenuButton {
+                visible: !root.inGroup
                 Layout.fillWidth: true
                 iconName: "people"
                 text: qsTr("Clear for everyone")
@@ -459,6 +460,7 @@ WindowPopup {
                 }
             }
             Label {
+                visible: !root.inGroup
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
                 color: Theme.textDim
