@@ -205,22 +205,25 @@ void AndroidShade::stop()
 QString AndroidShade::presenceLine() const
 {
     int unread = 0;
-    int open = 0;
-    bool connected = true;
-    for (const AccountRow& account : core_.accountStatuses()) {
+    int connected = 0;
+    bool connecting = false;
+    const QVector<AccountRow> accounts = core_.accountStatuses();
+    for (const AccountRow& account : accounts) {
         unread += account.unread;
-        if (account.open) {
-            ++open;
-            connected = connected && account.connected;
-        }
+        const bool on = account.open && account.online;
+        connected += on && account.connected ? 1 : 0;
+        connecting = connecting || (on && !account.connected);
     }
     if (unread > 0) {
         return tr("Unread: %1").arg(unread);
     }
-    if (open == 0) {
-        return tr("Disconnected");
+    if (connected > 0 && connected == accounts.size()) {
+        return tr("Connected");
     }
-    return connected ? tr("Connected") : tr("Connecting...");
+    if (connected > 0) {
+        return tr("Connected (%1 of %2)").arg(connected).arg(accounts.size());
+    }
+    return connecting ? tr("Connecting...") : tr("Disconnected");
 }
 
 void AndroidShade::show()
