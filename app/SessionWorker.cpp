@@ -989,10 +989,9 @@ void SessionWorker::readContactDevices(const QString& peer)
         QVariantList devices;
         for (const bazarish::client::ContactDevice& device :
             session_->contactDevices(peer.toStdString())) {
-            devices.append(QVariantMap{
-                {QStringLiteral("deviceId"), QString::fromStdString(device.id)},
-                {QStringLiteral("revoked"), device.revoked},
-            });
+            if (!device.revoked) {
+                devices.append(QVariantMap{{QStringLiteral("deviceId"), QString::fromStdString(device.id)}});
+            }
         }
         emit contactDevices(peer, devices);
     });

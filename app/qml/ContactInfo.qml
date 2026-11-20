@@ -330,25 +330,12 @@ WindowPopup {
                 }
                 Repeater {
                     model: root.peerDevices
-                    delegate: RowLayout {
-                        id: peerDeviceRow
+                    delegate: Fingerprint {
                         required property var modelData
-                        readonly property color ink: modelData.revoked ? Theme.danger : Theme.text
-                        Layout.fillWidth: true
-                        spacing: 8
-                        Fingerprint {
-                            value: peerDeviceRow.modelData.deviceId
-                            whole: true
-                            color: peerDeviceRow.ink
-                            font.pixelSize: Theme.fontSmall
-                        }
-                        Label {
-                            visible: peerDeviceRow.modelData.revoked
-                            text: qsTr("Revoked")
-                            color: peerDeviceRow.ink
-                            font.pixelSize: Theme.fontSmall
-                            Layout.fillWidth: true
-                        }
+                        value: modelData.deviceId
+                        whole: true
+                        color: Theme.text
+                        font.pixelSize: Theme.fontSmall
                     }
                 }
             }
