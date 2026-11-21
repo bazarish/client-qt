@@ -42,7 +42,7 @@ Dialog {
             : (root.accountName.length > 0
                 ? qsTr("Permanently delete \u201c%1\u201d? ").arg(root.accountName)
                 : qsTr("Permanently delete this account? "))
-                + qsTr("The account ends on the server and goes from this device. This cannot be undone.\n\nRemoving from this device only forgets this device: the account and its mail stay.")
+                + qsTr("The account ends on the server and goes from this device. This cannot be undone.\n\nRemoving from this device only, the server forgets just this device. The server keeps receiving mail.")
         color: Theme.text
         wrapMode: Text.Wrap
     }

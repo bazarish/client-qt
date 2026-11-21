@@ -25,7 +25,8 @@ WindowPopup {
 
     property string pendingExportFile: ""
     property bool pendingExportPrimary: true
-    readonly property int kDeviceActionSize: 28
+    readonly property int kDeviceActionSize: 22
+    readonly property int kDevicesActionGap: 10
     readonly property int kDeviceActionIcon: 14
 
     contentItem: ColumnLayout {
@@ -327,6 +328,9 @@ WindowPopup {
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
                     }
+                    ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 0
                     Repeater {
                         model: root.session ? root.session.ownDevices : []
                         delegate: RowLayout {
@@ -341,6 +345,7 @@ WindowPopup {
                             readonly property color queueInk: showsQueue
                                 ? root.shownColor(root.session.overviewFresh, ink) : ink
                             Layout.fillWidth: true
+                            Layout.preferredHeight: root.kDeviceActionSize
                             spacing: 8
                             Fingerprint {
                                 value: deviceRow.modelData.deviceId
@@ -409,11 +414,12 @@ WindowPopup {
                             }
                         }
                     }
+                    }
                     MenuButton {
                         visible: root.session !== null && root.session.ownDevices.some(
                             (device) => !device.current && !device.revoked)
                         Layout.fillWidth: true
-                        Layout.topMargin: 4
+                        Layout.topMargin: root.kDevicesActionGap
                         iconName: "devices"
                         text: qsTr("Ask my other devices for contacts")
                         onClicked: root.session.askForContacts()
@@ -948,7 +954,7 @@ WindowPopup {
                 wrapMode: Text.Wrap
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
-                text: qsTr("The device loses access to the account and its new mail. This cannot be undone.")
+                text: qsTr("The device will lose access to the account and its new mail. This cannot be undone.")
             }
         }
     }

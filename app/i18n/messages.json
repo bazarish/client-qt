@@ -3287,11 +3287,11 @@
       "zh": "正在建立 I2P 隧道",
       "ar": "يجري بناء أنفاق I2P"
     },
-    "The account ends on the server and goes from this device. This cannot be undone.\n\nRemoving from this device only forgets this device: the account and its mail stay.": {
-      "ru": "Аккаунт будет закрыт на сервере и удалён с этого устройства. Отменить нельзя.\n\nПри удалении с устройства сервер забудет только его. Аккаунт и его почта останутся.",
-      "es": "La cuenta se cierra en el servidor y desaparece de este dispositivo. No se puede deshacer.\n\nQuitarla de este dispositivo solo olvida este dispositivo: la cuenta y su correo se conservan.",
-      "zh": "账号将在服务器上终止，并从本设备消失。此操作无法撤销。\n\n仅从本设备移除只会忘记本设备：账号及其邮件保留。",
-      "ar": "يُنهى الحساب على الخادم ويُزال من هذا الجهاز. ولا يمكن التراجع.\n\nأما الإزالة من هذا الجهاز وحده فتجعل الخادم ينسى هذا الجهاز فقط: يبقى الحساب وبريده."
+    "The account ends on the server and goes from this device. This cannot be undone.\n\nRemoving from this device only, the server forgets just this device. The server keeps receiving mail.": {
+      "ru": "Аккаунт будет закрыт на сервере и удалён с этого устройства. Отменить нельзя.\n\nПри удалении с устройства сервер забудет только это устройство. Приём почты на сервере продолжит работать.",
+      "es": "La cuenta se cierra en el servidor y desaparece de este dispositivo. No se puede deshacer.\n\nAl quitarla solo de este dispositivo, el servidor olvida únicamente este dispositivo. El servidor sigue recibiendo el correo.",
+      "zh": "账号将在服务器上终止，并从本设备消失。此操作无法撤销。\n\n仅从本设备移除时，服务器只会忘记本设备。服务器会继续接收邮件。",
+      "ar": "يُنهى الحساب على الخادم ويُزال من هذا الجهاز. ولا يمكن التراجع.\n\nعند الإزالة من هذا الجهاز وحده ينسى الخادم هذا الجهاز فقط. ويستمر الخادم في استقبال البريد."
     },
     "The account is on this device": {
       "ru": "Аккаунт на этом устройстве",
@@ -5339,11 +5339,11 @@
       "zh": "撤销此设备？",
       "ar": "أتريد إبطال هذا الجهاز؟"
     },
-    "The device loses access to the account and its new mail. This cannot be undone.": {
-      "ru": "Устройство теряет доступ к аккаунту и новой почте. Отменить нельзя.",
-      "es": "El dispositivo pierde el acceso a la cuenta y a su correo nuevo. No se puede deshacer.",
+    "The device will lose access to the account and its new mail. This cannot be undone.": {
+      "ru": "Устройство потеряет доступ к аккаунту и новой почте. Отменить нельзя.",
+      "es": "El dispositivo perderá el acceso a la cuenta y a su correo nuevo. No se puede deshacer.",
       "zh": "该设备将失去对账号及其新邮件的访问。此操作无法撤销。",
-      "ar": "يفقد الجهاز الوصول إلى الحساب وبريده الجديد. لا يمكن التراجع عن ذلك."
+      "ar": "سيفقد الجهاز الوصول إلى الحساب وبريده الجديد. لا يمكن التراجع عن ذلك."
     },
     "Contact's devices": {
       "ru": "Устройства пользователя",
