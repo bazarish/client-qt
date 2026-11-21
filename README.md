@@ -57,5 +57,4 @@ aqtinstall, cmake, ninja, zip and zstd, and nasm for an x86_64 target.
 toolchain from the environment: `ANDROID_SDK_ROOT`, `ANDROID_NDK_ROOT` (NDK r27c),
 `ANDROID_BUILD_TOOLS`, `QT_ANDROID_ROOT` and `QT_HOST_ROOT` (Qt 6.8.3 for Android and
 for the desktop), `JAVA_HOME` (a JDK 17), and `BAZARISH_ANDROID_KEYSTORE`,
-`BAZARISH_ANDROID_KEY_ALIAS`, `BAZARISH_ANDROID_KEY_PASS`. The release workflow
-runs the same script.
+`BAZARISH_ANDROID_KEY_ALIAS`, `BAZARISH_ANDROID_KEY_PASS`.
