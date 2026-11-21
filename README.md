@@ -53,8 +53,8 @@ all fetched into the work dir and kept there for the next build. It needs python
 aqtinstall, cmake, ninja, zip and zstd, and nasm for an x86_64 target.
 
 `packaging/android/build.sh <output dir>` builds the Android package for arm64-v8a
-(Android 12 and newer) and signs it with the keystore it is given. It takes the
-toolchain from the environment: `ANDROID_SDK_ROOT`, `ANDROID_NDK_ROOT` (NDK r27c),
-`ANDROID_BUILD_TOOLS`, `QT_ANDROID_ROOT` and `QT_HOST_ROOT` (Qt 6.8.3 for Android and
-for the desktop), `JAVA_HOME` (a JDK 17), and `BAZARISH_ANDROID_KEYSTORE`,
-`BAZARISH_ANDROID_KEY_ALIAS`, `BAZARISH_ANDROID_KEY_PASS`.
+(Android 12 and newer) as `Bazarish-android-arm64.apk`, zipaligned and unsigned: the
+release signs it with its own key. It takes the toolchain from the environment:
+`ANDROID_SDK_ROOT`, `ANDROID_NDK_ROOT` (NDK r27c), `ANDROID_BUILD_TOOLS`,
+`QT_ANDROID_ROOT` and `QT_HOST_ROOT` (Qt 6.8.3 for Android and for the desktop) and
+`JAVA_HOME` (a JDK 17).

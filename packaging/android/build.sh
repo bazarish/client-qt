@@ -1,6 +1,7 @@
 #!/bin/bash
 # Bazarish project (c) 2026
-# The toolchain comes from the environment, so CI and a workstation run this alike.
+# The toolchain comes from the environment.
+# The package comes out aligned and unsigned: the release signs it with its own key.
 set -eu -o pipefail
 
 readonly kJobs=${BAZARISH_JOBS:-4}
@@ -9,14 +10,12 @@ readonly kNdk=${ANDROID_NDK_ROOT:?the NDK, as ANDROID_NDK_ROOT}
 readonly kQt=${QT_ANDROID_ROOT:?Qt for Android arm64-v8a, as QT_ANDROID_ROOT}
 readonly kQtHost=${QT_HOST_ROOT:?the desktop Qt of the same version, as QT_HOST_ROOT}
 readonly kBuildTools=${ANDROID_BUILD_TOOLS:?the build-tools version, as ANDROID_BUILD_TOOLS}
-readonly kKeystore=${BAZARISH_ANDROID_KEYSTORE:?the keystore to sign with}
-readonly kKeyAlias=${BAZARISH_ANDROID_KEY_ALIAS:?its key alias}
-readonly kKeyPass=${BAZARISH_ANDROID_KEY_PASS:?its password}
 readonly kOut=${1:?usage: build.sh <output dir>}
 readonly kSource=$(cd "$(dirname "$0")/../.." && pwd)
 readonly kPrefix=$kOut/prefix
 readonly kBuild=$kOut/build
 readonly kApk=$kOut/Bazarish-android-arm64.apk
+readonly kAlignment=4
 
 "$kSource/packaging/android/deps.sh" "$kPrefix" "$kOut/work"
 
@@ -28,11 +27,7 @@ readonly kApk=$kOut/Bazarish-android-arm64.apk
 cmake --build "$kBuild" --target apk -j "$kJobs"
 
 readonly kTools=$kSdk/build-tools/$kBuildTools
-"$kTools/zipalign" -p -f 4 \
-    "$kBuild/android-build/build/outputs/apk/release/android-build-release-unsigned.apk" \
-    "$kOut/aligned.apk"
-"$kTools/apksigner" sign --ks "$kKeystore" --ks-key-alias "$kKeyAlias" \
-    --ks-pass "pass:$kKeyPass" --out "$kApk" "$kOut/aligned.apk"
-rm -f "$kOut/aligned.apk"
-"$kTools/apksigner" verify "$kApk"
+"$kTools/zipalign" -p -f "$kAlignment" \
+    "$kBuild/android-build/build/outputs/apk/release/android-build-release-unsigned.apk" "$kApk"
+"$kTools/zipalign" -c -p "$kAlignment" "$kApk"
 echo "== $kApk"
