@@ -39,9 +39,9 @@ cmake -S . -B build && cmake --build build -j4
 ctest --test-dir build
 ```
 
-The version the application shows is stamped on every build from git: the tag on
-a tagged commit, `dev (<short hash>)` on any other. A tree without git does not
-build.
+The version the application shows is stamped on every build from git: the nearest
+release tag `vX.Y.Z` as `X.Y.Z (<short hash>)`, or `dev (<short hash>)` before the first
+one. A tree without git does not build.
 
 `packaging/appimage-build.sh` builds the portable Linux AppImage, x86_64 on a Debian 12
 base and aarch64 on an Ubuntu 24.04 one, carrying its own Qt, OpenSSL and SQLCipher.
