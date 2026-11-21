@@ -239,11 +239,11 @@
       "zh": "Reseed 地址必须是 https 链接：%1",
       "ar": "يجب أن يكون عنوان reseed رابط https: ⁦%1⁩"
     },
-    "About %1 of it is free space compacting returns to the disk": {
-      "ru": "Из них около %1 — свободное место. Сжатие вернёт его диску.",
-      "es": "De eso, unos %1 son espacio libre que la compactación devuelve al disco",
-      "zh": "其中约 %1 是压缩后可归还给磁盘的空闲空间",
-      "ar": "منها نحو ⁦%1⁩ مساحة فارغة يعيدها الضغط إلى القرص"
+    "~%1 free, compacting returns it": {
+      "ru": "~%1 свободно, сжатие вернёт это место",
+      "es": "~%1 libre, la compactación lo recupera",
+      "zh": "约 %1 空闲，压缩可收回",
+      "ar": "~⁦%1⁩ فارغة، يستعيدها الضغط"
     },
     "Accept": {
       "ru": "Принять",

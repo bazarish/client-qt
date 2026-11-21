@@ -62,7 +62,7 @@ WindowPopup {
                     }
                     Label {
                         visible: root.info.freeBytes > 0
-                        text: qsTr("About %1 of it is free space compacting returns to the disk")
+                        text: qsTr("~%1 free, compacting returns it")
                             .arg(App.humanBytes(root.info.freeBytes))
                         color: Theme.textDim
                         font.pixelSize: Theme.fontSmall
