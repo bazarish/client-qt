@@ -36,14 +36,24 @@ Dialog {
         title: root.title
         showClose: false
     }
-    contentItem: Label {
-        text: root.localOnly
-            ? qsTr("This device forgets the account. The account and its mail stay on the server.")
-            : (root.accountName.length > 0
-                ? qsTr("Permanently delete \u201c%1\u201d? ").arg(root.accountName)
-                : qsTr("Permanently delete this account? "))
-                + qsTr("The account ends on the server and goes from this device. This cannot be undone.\n\nRemoving from this device only, the server forgets just this device. The server keeps receiving mail.")
-        color: Theme.text
-        wrapMode: Text.Wrap
+    contentItem: Column {
+        spacing: Theme.spacing
+        Label {
+            width: parent.width
+            visible: root.accountName.length > 0
+            text: root.accountName
+            color: Theme.text
+            font.bold: true
+            wrapMode: Text.Wrap
+        }
+        Label {
+            width: parent.width
+            text: root.localOnly
+                ? qsTr("This device forgets the account. The account and its mail stay on the server.")
+                : qsTr("Permanently delete this account? ")
+                    + qsTr("The account ends on the server and goes from this device. This cannot be undone.\n\nRemoving from this device only, the server forgets just this device. The server keeps receiving mail.")
+            color: Theme.text
+            wrapMode: Text.Wrap
+        }
     }
 }

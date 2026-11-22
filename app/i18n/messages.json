@@ -2333,12 +2333,6 @@
       "zh": "要永久删除这个账号吗？",
       "ar": "أتريد حذف هذا الحساب نهائيًا؟ "
     },
-    "Permanently delete “%1”? ": {
-      "ru": "Удалить «%1» навсегда? ",
-      "es": "¿Eliminar «%1» para siempre? ",
-      "zh": "要永久删除“%1”吗？",
-      "ar": "أتريد حذف ⁦«%1»⁩ نهائيًا؟ "
-    },
     "Personal I2P key created": {
       "ru": "Личный ключ I2P создан",
       "es": "Clave I2P personal creada",

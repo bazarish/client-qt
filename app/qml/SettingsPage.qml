@@ -826,7 +826,7 @@ WindowPopup {
                             danger: true
                             onClicked: {
                                 deleteDialog.localOnly = !root.session.primaryDevice
-                                deleteDialog.show(root.session.accountId, "")
+                                deleteDialog.show(root.session.accountId, root.session.displayName)
                             }
                         }
                     }
