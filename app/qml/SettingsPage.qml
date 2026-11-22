@@ -1239,7 +1239,10 @@ WindowPopup {
 
     AccountDeleteConfirmDialog {
         id: deleteDialog
-        onLocalOnlyRequested: (id) => App.forgetAccountLocally(id)
+        onLocalOnlyRequested: (id) => {
+            root.close()
+            App.forgetAccountLocally(id)
+        }
         onConfirmed: (id) => {
             root.close()
             if (id.length > 0) {
