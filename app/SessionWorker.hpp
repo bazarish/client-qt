@@ -331,6 +331,7 @@ private:
     void registerThisDevice();
     void stopEventWaiter();
     std::unique_ptr<bazarish::client::OverviewWatch> overview_;
+    std::shared_ptr<bazarish::client::Client> overviewClient_;
     bool overviewOpen_ = false;
     void stopOverview();
     Q_INVOKABLE void releaseOverviewHold();

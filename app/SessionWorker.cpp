@@ -2314,6 +2314,7 @@ void SessionWorker::watchOverview(const bool open)
         }
         const std::shared_ptr<bazarish::client::Client> asker
             = bazarish::client::Session::makeEventClient(context);
+        overviewClient_ = asker;
         overview_ = std::make_unique<bazarish::client::OverviewWatch>(
             bazarish::client::OverviewWatch::Hooks{
                 [asker](const std::string& since) { return asker->overview(since); },
@@ -2344,7 +2345,11 @@ void SessionWorker::watchOverview(const bool open)
 
 void SessionWorker::stopOverview()
 {
+    if (overviewClient_) {
+        overviewClient_->close();
+    }
     overview_.reset();
+    overviewClient_.reset();
 }
 
 void SessionWorker::releaseOverviewHold()
