@@ -628,6 +628,12 @@ void SessionWorker::startEventWaiter()
                             this, [this]() { registerThisDevice(); }, Qt::QueuedConnection);
                     }
                 }
+                if (const auto* apiError = dynamic_cast<const bazarish::client::ApiError*>(&error);
+                    apiError != nullptr && apiError->code == bazarish::ErrorCode::eAccountUnknown
+                    && !askedAfterRegistering) {
+                    QMetaObject::invokeMethod(
+                        this, [this]() { finishRegistration(); }, Qt::QueuedConnection);
+                }
                 const QString refusal
                     = waiter ? QString::fromStdString(waiter->gatewayRefusal()) : QString();
                 const bool serverDown = waiter && waiter->serverBehindFacadeDown();
@@ -737,6 +743,11 @@ void SessionWorker::registerThisDevice()
         return;
     }
     bazarish::log::info("this device is not registered with the server: registering it");
+    registerAgain();
+}
+
+void SessionWorker::registerAgain()
+{
     try {
         session_->registerAccount();
     } catch (const std::exception& error) {
@@ -746,6 +757,15 @@ void SessionWorker::registerThisDevice()
     emitI2pKeyState();
     mailGate_.registered();
     serviceAliasesIfDue();
+}
+
+void SessionWorker::finishRegistration()
+{
+    if (!session_ || !session_->isConnected() || !session_->registrationUnfinished()) {
+        return;
+    }
+    bazarish::log::info("this account's registration did not finish: registering it");
+    registerAgain();
 }
 
 void SessionWorker::stopEventWaiter()

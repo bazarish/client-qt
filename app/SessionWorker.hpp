@@ -331,6 +331,8 @@ private:
         const std::atomic<bool>& running);
     void beginStream(bool catchUp, std::uint64_t totalBytes, std::size_t items);
     void registerThisDevice();
+    void finishRegistration();
+    void registerAgain();
     void stopEventWaiter();
     std::unique_ptr<bazarish::client::OverviewWatch> overview_;
     std::shared_ptr<bazarish::client::Client> overviewClient_;
