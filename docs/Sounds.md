@@ -21,9 +21,11 @@ The reaction sound is the shorter and quieter of the first two on purpose. A
 reaction is a smaller event than a message - it says somebody read what you wrote
 and had a feeling about it, not that there is something to answer - and a sound
 as long and as loud as an arrival's would make the two impossible to tell apart
-from the next room. Its popup carries the emoji itself, and clicking it opens the
-conversation the reaction landed in, where the reaction is flashed once so it can
-be found without hunting.
+from the next room. Its popup carries the emoji and the message the reaction
+landed on while the text of notifications is on, and clicking it opens the
+conversation the reaction landed in. In a one-to-one chat the reaction is flashed
+there once so it can be found without hunting; a group host sends counts, which
+carry no member's reaction to flash.
 
 Each of the two announcements is rationed on its own clock, so a flurry of
 reactions cannot swallow the one sound that says somebody wrote something.

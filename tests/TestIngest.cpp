@@ -87,6 +87,12 @@ try {
     QObject::connect(&ingest, &MessageIngest::chatsChanged, [&] { note("chats"); });
     QObject::connect(&ingest, &MessageIngest::deliveredThrough, [&] { note("delivered"); });
     QObject::connect(&ingest, &MessageIngest::reactionArrived, [&] { note("reaction"); });
+    QString countedEmoji;
+    QObject::connect(&ingest, &MessageIngest::groupReactionArrived,
+        [&](const QString&, const QString&, const QString& emoji) {
+            note("group-reaction");
+            countedEmoji = emoji;
+        });
     QObject::connect(&ingest, &MessageIngest::groupChanged, [&] { note("group"); });
     QObject::connect(&ingest, &MessageIngest::readElsewhere, [&] { note("read"); });
     QObject::connect(&ingest, &MessageIngest::editArrived, [&] { note("edit"); });
@@ -197,6 +203,13 @@ try {
     named.text = "hi Me Too";
     CHECK(took(named));
     CHECK(!store.messageById(arrivedId).mentionsMe);
+
+    client::IncomingMessage counted = incoming(kClub, "group.reactions", "gr1");
+    counted.group = post.group;
+    counted.groupReactionsJson = R"([{"ref":"g1","counts":{"👍":1}}])";
+    CHECK(took(counted));
+    CHECK(saw({"group", "group-reaction"}));
+    CHECK(countedEmoji == QStringLiteral("👍"));
 
     client::IncomingMessage future = incoming(kBob, "unsupported", "u1");
     future.rawType = "poll.vote";

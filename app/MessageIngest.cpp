@@ -114,6 +114,11 @@ public:
     {
         emit owner_.reactionsChanged(qt(peer), {});
     }
+    void groupReactionAdded(const std::string& peer, const std::string& target,
+        const std::string& emoji) override
+    {
+        emit owner_.groupReactionArrived(qt(peer), qt(target), qt(emoji));
+    }
     void groupChanged(const std::string& peer) override { emit owner_.groupChanged(qt(peer)); }
     void memberListWanted(const std::string& peer) override
     {

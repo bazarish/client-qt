@@ -45,6 +45,7 @@ signals:
     void editArrived(const QString& peer, qint64 localId, const QString& ref);
     void messageArrived(const QString& peer, qint64 id);
     void reactionArrived(const QString& peer, const QString& target, const QString& emoji);
+    void groupReactionArrived(const QString& peer, const QString& target, const QString& emoji);
 
 private:
     class Relay;

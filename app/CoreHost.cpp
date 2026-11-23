@@ -46,13 +46,14 @@ const QString kAppScope = QStringLiteral("app");
 const QString kRestoreOperation = QStringLiteral("restore");
 const QString kPassphraseOperation = QStringLiteral("passphrase");
 constexpr qsizetype kNotificationTextChars = 200;
+constexpr qsizetype kReactionTargetChars = 100;
 
-QString shortened(const QString& text)
+QString shortened(const QString& text, const qsizetype limit)
 {
-    if (text.size() <= kNotificationTextChars) {
+    if (text.size() <= limit) {
         return text;
     }
-    qsizetype cut = kNotificationTextChars;
+    qsizetype cut = limit;
     // A cut between the halves of a surrogate pair would leave half a character.
     if (text.at(cut - 1).isHighSurrogate()) {
         --cut;
@@ -622,7 +623,7 @@ void CoreHost::openSession(const QString& id, const QString& passphrase, const b
         [this, account](const QString& peer, const QString& fromName, const QString& preview) {
             QString body;
             if (notificationText_ && !preview.isEmpty()) {
-                body = shortened(preview);
+                body = shortened(preview, kNotificationTextChars);
             } else {
                 body = sessions_.size() > 1 ? tr("New message for %1").arg(accountName(account))
                                             : tr("New message");
@@ -630,10 +631,18 @@ void CoreHost::openSession(const QString& id, const QString& passphrase, const b
             emit notificationRequested(account->accountId(), peer, fromName, body);
         });
     connect(account, &CoreAccount::reactionNotification, this,
-        [this, account](const QString& peer, const QString& fromName, const QString& emoji) {
-            const QString body = sessions_.size() > 1
-                ? tr("Reaction %1 for %2").arg(emoji, accountName(account))
-                : tr("Reaction %1").arg(emoji);
+        [this, account](const QString& peer, const QString& fromName, const QString& emoji,
+            const QString& targetPreview) {
+            QString body;
+            if (!notificationText_) {
+                body = sessions_.size() > 1 ? tr("New reaction for %1").arg(accountName(account))
+                                            : tr("New reaction");
+            } else if (targetPreview.isEmpty()) {
+                body = tr("Reaction %1").arg(emoji);
+            } else {
+                body = tr("Reaction %1: %2")
+                           .arg(emoji, shortened(targetPreview, kReactionTargetChars));
+            }
             emit reactionNotificationRequested(account->accountId(), peer, fromName, body);
         });
     connect(account, &CoreAccount::chatAllRead, this, [this, account](const QString& peer) {

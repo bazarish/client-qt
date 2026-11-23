@@ -88,7 +88,8 @@ signals:
     void changed();
     void callChanged();
     void messageNotification(const QString& peer, const QString& fromName, const QString& preview);
-    void reactionNotification(const QString& peer, const QString& fromName, const QString& emoji);
+    void reactionNotification(const QString& peer, const QString& fromName, const QString& emoji,
+        const QString& targetPreview);
     void chatAllRead(const QString& peer);
 
 private slots:
@@ -120,6 +121,7 @@ private:
     void viewConversation(const QString& peer);
     void markRead(const QString& peer, qint64 id, const QString& e2eId, qint64 sentAtMs);
     void flushReadSync();
+    void tellOfReaction(const QString& peer, const QString& target, const QString& emoji);
     void noteReactionToFlash(const QString& peer, const QString& target);
     void forgetReactionFlash(const QString& peer);
     void persistReactionsToFlash();

@@ -516,10 +516,9 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&ingest_, &MessageIngest::reactionArrived, this,
         [this](const QString& peer, const QString& target, const QString& emoji) {
             noteReactionToFlash(peer, target);
-            if (contacts_.state(peer).notifications) {
-                emit reactionNotification(peer, contacts_.peerName(peer), emoji);
-            }
+            tellOfReaction(peer, target, emoji);
         });
+    connect(&ingest_, &MessageIngest::groupReactionArrived, this, &CoreAccount::tellOfReaction);
 
     for (const auto rowEvent : {&AccountEvents::peerReset, &AccountEvents::peerForgotten,
              &AccountEvents::chatChanged}) {
@@ -950,6 +949,16 @@ void CoreAccount::flushReadSync()
         emit commands_.requestSyncRead(it.key(), it.value());
     }
     pendingReadSync_.clear();
+}
+
+void CoreAccount::tellOfReaction(const QString& peer, const QString& target, const QString& emoji)
+{
+    const StoredMessage message = store_.messageByE2e(target, peer);
+    if (!message.outgoing || !contacts_.state(peer).notifications) {
+        return;
+    }
+    emit reactionNotification(peer, contacts_.peerName(peer), emoji,
+        chatPreviewOf({message.text, message.type, message.attName, message.author}));
 }
 
 void CoreAccount::noteReactionToFlash(const QString& peer, const QString& target)
