@@ -5674,6 +5674,36 @@
       "es": "Reacción...",
       "zh": "表情回应...",
       "ar": "تفاعل..."
+    },
+    "Clear this device's queue?": {
+      "ru": "Очистить очередь устройства?",
+      "es": "¿Vaciar la cola de este dispositivo?",
+      "zh": "要清空这台设备的队列吗？",
+      "ar": "أتريد مسح طابور هذا الجهاز؟"
+    },
+    "Cleared": {
+      "ru": "Очищено",
+      "es": "Vaciada",
+      "zh": "已清空",
+      "ar": "تم المسح"
+    },
+    "Clearing a device's queue": {
+      "ru": "Очистка очереди устройства",
+      "es": "Vaciando la cola de un dispositivo",
+      "zh": "正在清空设备的队列",
+      "ar": "جارٍ مسح طابور جهاز"
+    },
+    "The device's queue is cleared": {
+      "ru": "Очередь устройства очищена",
+      "es": "La cola del dispositivo está vacía",
+      "zh": "设备的队列已清空",
+      "ar": "تم مسح طابور الجهاز"
+    },
+    "The server deletes the mail for %1. The device registers again the next time it connects.": {
+      "ru": "Сервер удалит почту для %1. Устройство зарегистрируется снова при следующем подключении.",
+      "es": "El servidor borra el correo de %1. El dispositivo se registra de nuevo la próxima vez que se conecte.",
+      "zh": "服务器将删除 %1 的邮件。该设备下次连接时会重新注册。",
+      "ar": "يحذف الخادم بريد ⁦%1⁩. يسجّل الجهاز نفسه من جديد في اتصاله التالي."
     }
   }
 }

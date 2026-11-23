@@ -473,6 +473,7 @@ public:
     Q_INVOKABLE void trimEveryChat(int keep);
     Q_INVOKABLE void compactDatabase();
     Q_INVOKABLE void revokeDevice(const QString& deviceId);
+    Q_INVOKABLE void clearDeviceQueue(const QString& deviceId);
     Q_INVOKABLE void reviewDevices(const QStringList& revoke);
     Q_INVOKABLE void refreshContactDevices(const QString& peer);
     Q_INVOKABLE QVariantList contactDevices(const QString& peer) const;

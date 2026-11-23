@@ -1737,6 +1737,11 @@ void SessionController::revokeDevice(const QString& deviceId)
     emit commands_.requestRevokeDevice(deviceId);
 }
 
+void SessionController::clearDeviceQueue(const QString& deviceId)
+{
+    emit commands_.requestClearDeviceQueue(deviceId);
+}
+
 void SessionController::refreshContactDevices(const QString& peer)
 {
     emit commands_.readContactDevices(peer);

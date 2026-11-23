@@ -276,6 +276,8 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         &SessionWorker::forgetPendingAdd);
     connect(&commands_, &AccountCommands::requestRevokeDevice, worker_,
         &SessionWorker::revokeDevice);
+    connect(&commands_, &AccountCommands::requestClearDeviceQueue, worker_,
+        &SessionWorker::clearDeviceQueue);
     connect(&commands_, &AccountCommands::requestLeaveAccount, worker_,
         &SessionWorker::leaveAccount);
     connect(&commands_, &AccountCommands::requestReviewDevices, worker_,
