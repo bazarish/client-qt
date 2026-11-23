@@ -54,7 +54,7 @@ bazarish::i2p::I2pLogLevel i2pLogLevelFor(const bool loggingEnabled)
 
 bool manyAccounts()
 {
-    return client::AccountManager(accountsRoot()).list().size() > 1;
+    return client::AccountManager(accountsRoot()).count() > 1;
 }
 
 QString destinationLabel(const bazarish::i2p::LocalDestination& dest, const bool manyAccounts)

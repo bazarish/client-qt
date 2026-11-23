@@ -545,6 +545,16 @@ if(Qt6_FOUND)
         set_tests_properties(TestMentionsUi PROPERTIES
             ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=Basic")
 
+        add_executable(TestFingerprintLine tests/TestFingerprintLine.cpp)
+        target_compile_definitions(TestFingerprintLine PRIVATE
+            BAZARISH_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/app/qml")
+        target_link_libraries(TestFingerprintLine PRIVATE bazarish_test_util
+            Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Test)
+        target_compile_options(TestFingerprintLine PRIVATE -Wall -Wextra -Werror)
+        add_test(NAME TestFingerprintLine COMMAND TestFingerprintLine)
+        set_tests_properties(TestFingerprintLine PROPERTIES
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=Basic")
+
         add_executable(TestWindowBack tests/TestWindowBack.cpp)
         target_compile_definitions(TestWindowBack PRIVATE
             BAZARISH_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/app/qml"
