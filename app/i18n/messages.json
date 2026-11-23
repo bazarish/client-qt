@@ -389,12 +389,6 @@
       "zh": "是你的另一台设备发布了它。两者一致之前，部分邮件无法送达。",
       "ar": "نشره جهاز آخر من أجهزتك. وإلى أن يتطابق العنوانان، لا يصل جزء من البريد."
     },
-    "Any unicode...": {
-      "ru": "Любой символ...",
-      "es": "Cualquier carácter...",
-      "zh": "任意字符...",
-      "ar": "أي رمز..."
-    },
     "Anyone with the link can reach you": {
       "ru": "Каждый, у кого есть ссылка, сможет с вами связаться",
       "es": "Cualquiera que tenga el enlace podrá contactarte",
@@ -5674,6 +5668,12 @@
       "es": "Este es el único dispositivo principal, y la clave de la cuenta se va con él. Sin la clave no se puede añadir ningún dispositivo, y en 30 días la cuenta deja de recibir mensajes. Haga una copia de seguridad de la cuenta para conservar la clave.",
       "zh": "这是唯一的主设备，账号密钥会随之删除。没有密钥就无法添加设备，并且账号将在 30 天内停止接收消息。请备份账号以保留密钥。",
       "ar": "هذا هو الجهاز الرئيسي الوحيد، ويُحذف مفتاح الحساب معه. ولا يمكن من دون المفتاح إضافة أي جهاز، وفي غضون 30 يومًا يتوقف الحساب عن استقبال الرسائل. احفظ نسخة احتياطية من الحساب للاحتفاظ بالمفتاح."
+    },
+    "Reaction...": {
+      "ru": "Реакция...",
+      "es": "Reacción...",
+      "zh": "表情回应...",
+      "ar": "تفاعل..."
     }
   }
 }
