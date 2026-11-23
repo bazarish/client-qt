@@ -797,6 +797,17 @@ WindowPopup {
                         spacing: 8
                         MenuButton {
                             Layout.fillWidth: true
+                            visible: App.activeLockable
+                            iconName: "lock"
+                            text: qsTr("Lock account")
+                            onClicked: {
+                                const id = root.session.accountId
+                                root.close()
+                                App.lockAccount(id)
+                            }
+                        }
+                        MenuButton {
+                            Layout.fillWidth: true
                             enabled: App.deletingId.length === 0 && root.session !== null
                             iconName: "trash"
                             text: App.deletingId.length > 0 ? qsTr("Deleting...") : qsTr("Delete account")

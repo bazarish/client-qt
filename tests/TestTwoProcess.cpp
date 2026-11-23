@@ -136,14 +136,18 @@ try {
     {
         QString id;
         bool open = false;
+        QString name;
         QStringList ended;
         QStringList asked;
         QObject::connect(&second.events, &AppEvents::accountList,
             [&](const QVector<AccountListRow>& rows) {
                 for (const AccountListRow& row : rows) {
-                    if (row.name == QLatin1String(kLockedName)) {
+                    if (id.isEmpty() && row.name == QLatin1String(kLockedName)) {
                         id = row.id;
+                    }
+                    if (!id.isEmpty() && row.id == id) {
                         open = row.open;
+                        name = row.name;
                     }
                 }
             });
@@ -158,6 +162,7 @@ try {
 
         emit second.commands.lockAccount(id);
         CHECK(settleUntil([&]() { return !open && ended.contains(id); }));
+        CHECK(name.isEmpty());
 
         emit second.commands.openAccount(id, QString());
         CHECK(settleUntil([&]() { return asked.contains(id); }));

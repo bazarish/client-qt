@@ -38,6 +38,7 @@
 #include <QScreen>
 #include <QImage>
 
+#include <algorithm>
 #include <exception>
 #include <utility>
 
@@ -479,6 +480,12 @@ int AppController::unreadElsewhere() const
         }
     }
     return total;
+}
+
+bool AppController::activeLockable() const
+{
+    return std::any_of(accountStatuses_.cbegin(), accountStatuses_.cend(),
+        [this](const AccountRow& row) { return row.id == activeId_ && row.open && row.encrypted; });
 }
 
 void AppController::createAccount(const QString& name, const QString& passphrase)

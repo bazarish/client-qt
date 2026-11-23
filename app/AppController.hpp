@@ -47,6 +47,7 @@ class AppController : public QObject {
     Q_PROPERTY(bool hasAccounts READ hasAccounts NOTIFY accountListChanged)
     Q_PROPERTY(bool hasOpenAccounts READ hasOpenAccounts NOTIFY accountsChanged)
     Q_PROPERTY(int unreadElsewhere READ unreadElsewhere NOTIFY accountsChanged)
+    Q_PROPERTY(bool activeLockable READ activeLockable NOTIFY accountsChanged)
     Q_PROPERTY(int maxGreetingBytes READ maxGreetingBytes CONSTANT)
     Q_PROPERTY(int maxAccountNameBytes READ maxAccountNameBytes CONSTANT)
     Q_PROPERTY(QString reservedPassphrase READ reservedPassphrase CONSTANT)
@@ -85,6 +86,7 @@ public:
     QObject* accountList() { return &accountList_; }
     QObject* accounts() { return &accounts_; }
     int unreadElsewhere() const;
+    bool activeLockable() const;
     static int maxGreetingBytes() { return static_cast<int>(bazarish::kMaxContactGreetingBytes); }
     static int maxAccountNameBytes() { return static_cast<int>(bazarish::kMaxAccountNameBytes); }
     static QString reservedPassphrase()

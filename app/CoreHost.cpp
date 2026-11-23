@@ -1126,9 +1126,18 @@ void CoreHost::forgetAccountLocally(const QString& id)
 
 void CoreHost::lockAccount(const QString& id)
 {
-    if (CoreAccount* const account = sessionFor(id)) {
-        removeSession(account);
+    CoreAccount* const account = sessionFor(id);
+    if (account == nullptr) {
+        return;
     }
+    for (AccountListRow& row : accountRows_) {
+        if (row.id == id && row.encrypted) {
+            row.name.clear();
+            row.fingerprint.clear();
+        }
+    }
+    emit events_.accountList(accountRows_);
+    removeSession(account);
 }
 
 void CoreHost::changePassphrase(const QString& id, const QString& passphrase)

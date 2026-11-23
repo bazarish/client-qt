@@ -131,7 +131,7 @@ WindowPopup {
                         clip: true
                         Label {
                             width: parent.width
-                            text: model.name
+                            text: model.name.length > 0 ? model.name : qsTr("Locked account")
                             color: model.active ? Theme.green : Theme.text
                             font.weight: Font.Medium
                             elide: Text.ElideRight
