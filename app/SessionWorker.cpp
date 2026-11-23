@@ -937,6 +937,10 @@ void SessionWorker::openAccount(
         startMaintenance();
     }
     if (connected && online) {
+        if (!session_->listedByServer()) {
+            bazarish::log::info("this device is not listed by its server yet: registering it");
+            registerAgain();
+        }
         startReceiving();
         sync();
     }
