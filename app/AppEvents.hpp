@@ -16,6 +16,8 @@ struct AccountListRow {
     QString fingerprint;
     bool encrypted = false;
     bool open = false;
+    bool primary = false;
+    bool otherPrimaries = false;
 };
 
 struct AccountRow {
@@ -33,12 +35,14 @@ struct AccountRow {
 
 inline QDataStream& operator<<(QDataStream& out, const AccountListRow& row)
 {
-    return out << row.id << row.name << row.fingerprint << row.encrypted << row.open;
+    return out << row.id << row.name << row.fingerprint << row.encrypted << row.open << row.primary
+               << row.otherPrimaries;
 }
 
 inline QDataStream& operator>>(QDataStream& in, AccountListRow& row)
 {
-    return in >> row.id >> row.name >> row.fingerprint >> row.encrypted >> row.open;
+    return in >> row.id >> row.name >> row.fingerprint >> row.encrypted >> row.open >> row.primary
+        >> row.otherPrimaries;
 }
 
 inline QDataStream& operator<<(QDataStream& out, const AccountRow& row)

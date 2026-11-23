@@ -141,8 +141,7 @@ CoreHost::CoreHost(QObject* const parent)
     connect(&commands_, &AppCommands::deleteAccount, this, &CoreHost::deleteAccount);
     connect(&commands_, &AppCommands::deleteAccountAfterUnlock, this,
         &CoreHost::deleteAccountAfterUnlock);
-    connect(&commands_, &AppCommands::forgetAccountLocally, this,
-        &CoreHost::forgetAccountLocally);
+    connect(&commands_, &AppCommands::forgetAccountLocally, this, &CoreHost::leaveAccount);
     connect(&commands_, &AppCommands::lockAccount, this, &CoreHost::lockAccount);
     connect(&commands_, &AppCommands::changePassphrase, this, &CoreHost::changePassphrase);
     connect(&commands_, &AppCommands::cancelUnlock, this, &CoreHost::cancelUnlock);
@@ -486,7 +485,7 @@ void CoreHost::refreshAccountList()
             const QString id = QString::fromStdString(info.id);
             rows.push_back(AccountListRow{id, QString::fromStdString(info.name),
                 QString::fromStdString(info.fingerprint), info.encrypted,
-                sessionFor(id) != nullptr});
+                sessionFor(id) != nullptr, info.primary, info.otherPrimaries});
         }
     } catch (const std::exception& error) {
         bazarish::log::warn("account list incomplete: {}", error.what());
@@ -1087,6 +1086,31 @@ void CoreHost::deleteAccountAfterUnlock(const QString& id)
     if (sessionFor(id) != nullptr) {
         deleteAccount(id);
     }
+}
+
+void CoreHost::leaveAccount(const QString& id)
+{
+    if (!deletingId_.isEmpty()) {
+        return;
+    }
+    CoreAccount* const account = sessionFor(id);
+    if (account == nullptr || !account->hasServer()) {
+        forgetAccountLocally(id);
+        return;
+    }
+    setDeleting(id);
+    const auto connection = std::make_shared<QMetaObject::Connection>();
+    *connection = connect(&account->events(), &AccountEvents::accountLeft, this,
+        [this, id, connection](const bool ok, const QString& error) {
+            disconnect(*connection);
+            if (!ok) {
+                setDeleting({});
+                emit events_.accountDeleteFailed(id, error, /*profileNotOpened=*/false);
+                return;
+            }
+            forgetAccountLocally(id);
+        });
+    emit account->commands().requestLeaveAccount();
 }
 
 void CoreHost::forgetAccountLocally(const QString& id)

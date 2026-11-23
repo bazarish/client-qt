@@ -15,7 +15,10 @@ namespace bazarish::app {
 class AccountListModel : public QAbstractListModel {
     Q_OBJECT
 public:
-    enum Roles { IdRole = Qt::UserRole + 1, NameRole, FingerprintRole, EncryptedRole, OpenRole };
+    enum Roles {
+        IdRole = Qt::UserRole + 1, NameRole, FingerprintRole, EncryptedRole, OpenRole, PrimaryRole,
+        OtherPrimariesRole
+    };
     using QAbstractListModel::QAbstractListModel;
 
     int rowCount(const QModelIndex& parent = {}) const override;

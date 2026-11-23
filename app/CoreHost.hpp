@@ -122,6 +122,8 @@ private:
     void announcePairing();
     void deleteAccount(const QString& id);
     void deleteAccountAfterUnlock(const QString& id);
+    // Leaves the account on the server first when it is open there, then removes the files.
+    void leaveAccount(const QString& id);
     void forgetAccountLocally(const QString& id);
     void lockAccount(const QString& id);
     void changePassphrase(const QString& id, const QString& passphrase);

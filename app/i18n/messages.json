@@ -3282,7 +3282,7 @@
       "ar": "يجري بناء أنفاق I2P"
     },
     "The account ends on the server and goes from this device. This cannot be undone.\n\nRemoving from this device only, the server forgets just this device. The server keeps receiving mail.": {
-      "ru": "Аккаунт будет закрыт на сервере и удалён с этого устройства. Отменить нельзя.\n\nПри удалении с устройства сервер забудет только это устройство. Приём почты на сервере продолжит работать.",
+      "ru": "Аккаунт будет удалён на сервере и с этого устройства. Отменить нельзя.\n\nПри удалении с устройства сервер забудет только это устройство. Приём почты на сервере продолжит работать.",
       "es": "La cuenta se cierra en el servidor y desaparece de este dispositivo. No se puede deshacer.\n\nAl quitarla solo de este dispositivo, el servidor olvida únicamente este dispositivo. El servidor sigue recibiendo el correo.",
       "zh": "账号将在服务器上终止，并从本设备消失。此操作无法撤销。\n\n仅从本设备移除时，服务器只会忘记本设备。服务器会继续接收邮件。",
       "ar": "يُنهى الحساب على الخادم ويُزال من هذا الجهاز. ولا يمكن التراجع.\n\nعند الإزالة من هذا الجهاز وحده ينسى الخادم هذا الجهاز فقط. ويستمر الخادم في استقبال البريد."
@@ -5489,41 +5489,11 @@
       "zh": "尚未在 I2P 中找到另一台设备",
       "ar": "لم يُعثر بعد على الجهاز الآخر في I2P"
     },
-    "The server deletes the mail for %1. The device registers again the next time it connects.": {
-      "ru": "Сервер удалит почту для %1. Устройство зарегистрируется снова при следующем подключении.",
-      "es": "El servidor borra el correo de %1. El dispositivo se registra de nuevo la próxima vez que se conecte.",
-      "zh": "服务器将删除 %1 的邮件。该设备下次连接时会重新注册。",
-      "ar": "يحذف الخادم بريد ⁦%1⁩. يسجّل الجهاز نفسه من جديد في اتصاله التالي."
-    },
     "message queue: %1": {
       "ru": "очередь сообщений: %1",
       "es": "cola de mensajes: %1",
       "zh": "消息队列：%1",
       "ar": "طابور الرسائل: ⁦%1⁩"
-    },
-    "Clear this device's queue?": {
-      "ru": "Очистить очередь устройства?",
-      "es": "¿Vaciar la cola de este dispositivo?",
-      "zh": "要清空这台设备的队列吗？",
-      "ar": "أتريد مسح طابور هذا الجهاز؟"
-    },
-    "Clearing a device's queue": {
-      "ru": "Очистка очереди устройства",
-      "es": "Vaciando la cola de un dispositivo",
-      "zh": "正在清空设备的队列",
-      "ar": "جارٍ مسح طابور جهاز"
-    },
-    "The device's queue is cleared": {
-      "ru": "Очередь устройства очищена",
-      "es": "La cola del dispositivo está vacía",
-      "zh": "设备的队列已清空",
-      "ar": "تم مسح طابور الجهاز"
-    },
-    "Cleared": {
-      "ru": "Очищено",
-      "es": "Vaciada",
-      "zh": "已清空",
-      "ar": "تم المسح"
     },
     "Device key revoked": {
       "ru": "Ключ устройства отозван",
@@ -5644,6 +5614,66 @@
       "es": "Marcar como leído",
       "zh": "标为已读",
       "ar": "تعليم كمقروء"
+    },
+    "(inactive)": {
+      "ru": "(неактивно)",
+      "es": "(inactivo)",
+      "zh": "（未活动）",
+      "ar": "(غير نشط)"
+    },
+    "(removed from that device)": {
+      "ru": "(удалено с того устройства)",
+      "es": "(quitada de ese dispositivo)",
+      "zh": "（已从该设备移除）",
+      "ar": "(أُزيل من ذلك الجهاز)"
+    },
+    "Are you sure?": {
+      "ru": "Вы уверены?",
+      "es": "¿Está seguro?",
+      "zh": "确定吗？",
+      "ar": "هل أنت متأكد؟"
+    },
+    "Yes": {
+      "ru": "Да",
+      "es": "Sí",
+      "zh": "是",
+      "ar": "نعم"
+    },
+    "No": {
+      "ru": "Нет",
+      "es": "No",
+      "zh": "否",
+      "ar": "لا"
+    },
+    "Removing from this device": {
+      "ru": "Удаление с этого устройства",
+      "es": "Quitando de este dispositivo",
+      "zh": "正在从本设备移除",
+      "ar": "جارٍ الإزالة من هذا الجهاز"
+    },
+    "Removed from the server": {
+      "ru": "Сервер забыл это устройство",
+      "es": "El servidor olvidó este dispositivo",
+      "zh": "服务器已忘记本设备",
+      "ar": "نسي الخادم هذا الجهاز"
+    },
+    "The account key stays only on the other primary devices": {
+      "ru": "Ключ аккаунта останется только на других основных устройствах",
+      "es": "La clave de la cuenta queda solo en los otros dispositivos principales",
+      "zh": "账号密钥只保留在其他主设备上",
+      "ar": "يبقى مفتاح الحساب على الأجهزة الرئيسية الأخرى فقط"
+    },
+    "The account stops working on all its devices. This cannot be undone.": {
+      "ru": "Аккаунт перестанет работать на всех своих устройствах. Отменить нельзя.",
+      "es": "La cuenta deja de funcionar en todos sus dispositivos. No se puede deshacer.",
+      "zh": "账号将在其所有设备上停止工作。此操作无法撤销。",
+      "ar": "يتوقف الحساب عن العمل على جميع أجهزته. ولا يمكن التراجع."
+    },
+    "This is the only primary device, and the account key goes with it. Without the key no device can be added, and within 30 days the account stops receiving messages. Back up the account to keep the key.": {
+      "ru": "Это единственное основное устройство, и ключ аккаунта удалится вместе с ним. Без ключа нельзя будет добавлять устройства, а в течение 30 дней аккаунт перестанет получать сообщения. Сделайте резервную копию аккаунта, чтобы сохранить ключ.",
+      "es": "Este es el único dispositivo principal, y la clave de la cuenta se va con él. Sin la clave no se puede añadir ningún dispositivo, y en 30 días la cuenta deja de recibir mensajes. Haga una copia de seguridad de la cuenta para conservar la clave.",
+      "zh": "这是唯一的主设备，账号密钥会随之删除。没有密钥就无法添加设备，并且账号将在 30 天内停止接收消息。请备份账号以保留密钥。",
+      "ar": "هذا هو الجهاز الرئيسي الوحيد، ويُحذف مفتاح الحساب معه. ولا يمكن من دون المفتاح إضافة أي جهاز، وفي غضون 30 يومًا يتوقف الحساب عن استقبال الرسائل. احفظ نسخة احتياطية من الحساب للاحتفاظ بالمفتاح."
     }
   }
 }

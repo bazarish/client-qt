@@ -16,6 +16,10 @@ Item {
 
     property string rowId: ""
     property string rowName: ""
+    property bool rowPrimary: false
+    property bool rowOtherPrimaries: false
+    // The role is read from the profile, which a locked one keeps to itself.
+    property bool rowRoleKnown: false
     property string rowFingerprint: ""
     property bool rowLockable: false
 
@@ -136,6 +140,9 @@ Item {
                                 root.rowFingerprint = model.fingerprint
                                 root.rowId = model.accountId
                                 root.rowName = model.name
+                                root.rowPrimary = model.primary
+                                root.rowOtherPrimaries = model.otherPrimaries
+                                root.rowRoleKnown = !model.encrypted || model.open
                                 root.rowLockable = model.encrypted && model.open
                                 rowMenu.popup()
                             }
@@ -198,7 +205,10 @@ Item {
         ContextMenuItem {
             text: qsTr("Delete account")
             danger: true
-            onTriggered: deleteDialog.show(root.rowId, root.rowName)
+            onTriggered: {
+                deleteDialog.localOnly = root.rowRoleKnown && !root.rowPrimary
+                deleteDialog.show(root.rowId, root.rowName, root.rowPrimary, root.rowOtherPrimaries)
+            }
         }
     }
 }

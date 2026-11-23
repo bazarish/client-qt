@@ -580,7 +580,7 @@ void SessionWorker::startEventWaiter()
                     = bazarish::client::Session::waitForMail(*waiter,
                         answered ? bazarish::client::Client::MailWait::eHeld
                                  : bazarish::client::Client::MailWait::eAtOnce,
-                        *context.keptMail);
+                        *context.keptMail, *context.devices);
                 if (!running->load()) {
                     return;
                 }
@@ -949,6 +949,8 @@ void SessionWorker::emitDeviceState()
             {QStringLiteral("primary"), device.role == bazarish::DeviceRole::ePrimary},
             {QStringLiteral("current"), device.current},
             {QStringLiteral("revoked"), device.revoked},
+            {QStringLiteral("registered"), device.registered},
+            {QStringLiteral("departed"), device.departed},
             {QStringLiteral("issuedAt"), static_cast<qint64>(device.issuedAt)},
             {QStringLiteral("review"), asked.contains(id)},
         });
@@ -2530,20 +2532,6 @@ void SessionWorker::revokeDevice(const QString& deviceId)
     emitDeviceState();
 }
 
-void SessionWorker::forgetDeviceMail(const QString& deviceId)
-{
-    if (!session_) {
-        return;
-    }
-    runOp(QStringLiteral("device-forget"), QStringLiteral("status"),
-        tr("Clearing a device's queue"), tr("Telling your server..."), [this, &deviceId]() {
-            session_->forgetDeviceMail(deviceId.toStdString());
-            emit actionOk(tr("The device's queue is cleared"));
-            return tr("Cleared");
-        });
-    emitDeviceState();
-}
-
 void SessionWorker::reviewDevices(const QStringList& revoke)
 {
     if (!session_) {
@@ -2559,6 +2547,40 @@ void SessionWorker::reviewDevices(const QStringList& revoke)
             return revoke.isEmpty() ? tr("Done") : tr("Revoked");
         });
     emitDeviceState();
+}
+
+void SessionWorker::leaveAccount()
+{
+    if (!session_) {
+        emit accountLeft(false, tr("This account is not open"));
+        return;
+    }
+    WorkerOp op(*this, QStringLiteral("account-leave"), QStringLiteral("status"),
+        tr("Removing from this device"), tr("Telling your server..."));
+    try {
+        session_->leaveAccount();
+        op.succeed(tr("Removed from the server"));
+        emit accountLeft(true, {});
+    } catch (const bazarish::client::ApiError& error) {
+        constexpr int kFirstServerErrorStatus = 500;
+        if (error.httpStatus > 0 && error.httpStatus < kFirstServerErrorStatus) {
+            bazarish::log::info("the server holds nothing for this device ({}); only this "
+                                "device's copy goes",
+                error.what());
+            op.succeed(tr("Already gone from the server"));
+            emit accountLeft(true, {});
+            return;
+        }
+        bazarish::log::warn("this device did not leave the account on the server: {}", error.what());
+        const QString reason = failureText(error, FarSide::eServer);
+        op.fail(reason);
+        emit accountLeft(false, reason);
+    } catch (const std::exception& error) {
+        bazarish::log::warn("this device did not leave the account on the server: {}", error.what());
+        const QString reason = failureText(error, FarSide::eServer);
+        op.fail(reason);
+        emit accountLeft(false, reason);
+    }
 }
 
 void SessionWorker::closeAccountOnServer()

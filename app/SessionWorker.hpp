@@ -161,7 +161,7 @@ public slots:
     // While the Account page is open one held request keeps its overview current.
     void watchOverview(bool open);
     void revokeDevice(const QString& deviceId);
-    void forgetDeviceMail(const QString& deviceId);
+    void leaveAccount();
     void reviewDevices(const QStringList& revoke);
     void readContactDevices(const QString& peer);
     void closeAccountOnServer();
@@ -183,6 +183,7 @@ signals:
     void pairStage(const QString& status, double progress);
     void pairFinished(bool ok, const QString& status);
     void accountClosed(bool ok, const QString& error);
+    void accountLeft(bool ok, const QString& error);
     void accountSettings(bool acceptCalls, bool sendReceipts, bool showPresence);
     void peerPresence(const QString& peer, bool online, bool typing);
     void aliasHoldings(const QVariantList& rows, const QString& note);

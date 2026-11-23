@@ -276,8 +276,8 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         &SessionWorker::forgetPendingAdd);
     connect(&commands_, &AccountCommands::requestRevokeDevice, worker_,
         &SessionWorker::revokeDevice);
-    connect(&commands_, &AccountCommands::requestForgetDeviceMail, worker_,
-        &SessionWorker::forgetDeviceMail);
+    connect(&commands_, &AccountCommands::requestLeaveAccount, worker_,
+        &SessionWorker::leaveAccount);
     connect(&commands_, &AccountCommands::requestReviewDevices, worker_,
         &SessionWorker::reviewDevices);
     connect(&commands_, &AccountCommands::readContactDevices, worker_,
@@ -353,6 +353,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(worker_, &SessionWorker::deviceState, &events_, &AccountEvents::deviceState);
     connect(worker_, &SessionWorker::contactDevices, &events_, &AccountEvents::contactDevices);
     connect(worker_, &SessionWorker::accountClosed, &events_, &AccountEvents::accountClosed);
+    connect(worker_, &SessionWorker::accountLeft, &events_, &AccountEvents::accountLeft);
     connect(worker_, &SessionWorker::facadeInfo, &events_, &AccountEvents::facadeInfo);
     connect(worker_, &SessionWorker::actionOk, &events_, &AccountEvents::actionOk);
     connect(worker_, &SessionWorker::botActionDone, &log_,
