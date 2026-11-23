@@ -18,6 +18,7 @@
 
 #pragma push_macro("emit")
 #undef emit
+#include <bazarish/I2p.hpp>
 #include <bazarish/Log.hpp>
 #pragma pop_macro("emit")
 
@@ -223,7 +224,11 @@ QString AndroidShade::presenceLine() const
     if (connected > 0) {
         return tr("Connected (%1 of %2)").arg(connected).arg(accounts.size());
     }
-    return connecting ? tr("Connecting...") : tr("Disconnected");
+    if (!connecting) {
+        return tr("Disconnected");
+    }
+    return i2p::transportState() == i2p::TransportState::eNoNetwork ? tr("No network")
+                                                                    : tr("Connecting...");
 }
 
 void AndroidShade::show()
