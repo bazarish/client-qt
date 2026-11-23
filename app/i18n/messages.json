@@ -2789,11 +2789,11 @@
       "zh": "Reseed 源",
       "ar": "عناوين reseed"
     },
-    "Reseeds — fetched over clearnet, before I2P is up:": {
-      "ru": "Ресиды — загружаются по обычному интернету до запуска I2P:",
-      "es": "Reseeds: se descargan por la internet ordinaria, antes de que arranque I2P:",
-      "zh": "Reseed 源——在 I2P 启动前经由普通互联网获取：",
-      "ar": "عناوين reseed — يُتصل بها عبر الإنترنت العادي قبل تشغيل I2P:"
+    "Reseeds — fetched over the regular network to start the built-in I2P router:": {
+      "ru": "Ресиды — загружаются по обычной сети для запуска встроенного I2P-роутера:",
+      "es": "Reseeds: se descargan por la red ordinaria para arrancar el router I2P integrado:",
+      "zh": "Reseed 源——经由普通网络获取，用于启动内置的 I2P 路由器：",
+      "ar": "عناوين reseed — تُحمَّل عبر الشبكة العادية لتشغيل موجّه I2P المدمج:"
     },
     "Resend": {
       "ru": "Отправить снова",

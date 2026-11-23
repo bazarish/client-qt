@@ -227,7 +227,7 @@ ColumnLayout {
         }
 
         Label {
-            text: qsTr("Reseeds — fetched over clearnet, before I2P is up:")
+            text: qsTr("Reseeds — fetched over the regular network to start the built-in I2P router:")
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap
