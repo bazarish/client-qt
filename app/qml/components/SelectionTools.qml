@@ -103,6 +103,9 @@ Item {
             && part.contains(part.mapFromItem(null, scenePoint.x, scenePoint.y)))
     }
     function inView(r) {
+        if (root.view === null) {
+            return true
+        }
         const top = root.viewTop()
         return r.y >= top - 1 && r.y + r.height <= top + root.view.height + 1
     }
