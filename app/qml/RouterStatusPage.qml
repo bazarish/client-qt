@@ -161,7 +161,7 @@ WindowPopup {
                             TapHandler {
                                 id: destTap
                                 enabled: destRow.opens
-                                onTapped: destinationSheet.show(destRow.modelData.host, destRow.modelData.label)
+                                onTapped: destinationSheet.show(destRow.modelData.host, destRow.modelData.label, root)
                             }
                             ColumnLayout {
                                 id: destCol

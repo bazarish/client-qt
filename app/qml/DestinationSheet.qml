@@ -23,7 +23,10 @@ WindowPopup {
     readonly property int kFullTurn: 360
     readonly property string kSeparator: " · "
 
-    function show(destinationHost, destinationLabel) {
+    property var over: null
+
+    function show(destinationHost, destinationLabel, overWindow) {
+        root.over = overWindow
         root.host = destinationHost
         root.label = destinationLabel
         I2p.inspectDestination(destinationHost)
@@ -157,7 +160,14 @@ WindowPopup {
 
         WindowHeader {
             title: root.loaded ? root.detail.label : root.label
-            onCloseClicked: root.close()
+            showBack: root.over !== null
+            onBackClicked: root.close()
+            onCloseClicked: {
+                root.close()
+                if (root.over) {
+                    root.over.close()
+                }
+            }
         }
 
         ScrollView {
