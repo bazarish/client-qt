@@ -6,7 +6,7 @@ import Bazarish
 
 WindowPopup {
     id: root
-    bottomMargin: activeFocus ? App.keyboardInset : 0
+    bottomMargin: typing ? App.keyboardInset : 0
     signal showRouterStatus()
 
     contentItem: ColumnLayout {

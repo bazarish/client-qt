@@ -7,7 +7,7 @@ import Bazarish
 
 WindowPopup {
     id: root
-    bottomMargin: activeFocus ? App.keyboardInset : 0
+    bottomMargin: typing ? App.keyboardInset : 0
     property var session: null
     signal showInvite()
     signal showSignWithKey()
@@ -1160,6 +1160,11 @@ WindowPopup {
                 wrapMode: TextEdit.Wrap
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
+                background: Rectangle {
+                    radius: 8
+                    color: Theme.control
+                    border.color: statusField.activeFocus ? Theme.accent : Theme.controlEdge
+                }
             }
             Label {
                 Layout.alignment: Qt.AlignRight

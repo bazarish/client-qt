@@ -9,7 +9,7 @@ WindowPopup {
     property var session: null
 
     margins: Theme.spacing
-    bottomMargin: Theme.spacing + (activeFocus ? App.keyboardInset : 0)
+    bottomMargin: Theme.spacing + (typing ? App.keyboardInset : 0)
     property string errorText: ""
     property string prefillTarget: ""
     readonly property string kGreeting: qsTr("Hi, add me?")

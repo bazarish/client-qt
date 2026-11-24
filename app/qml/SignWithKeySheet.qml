@@ -6,7 +6,7 @@ import Bazarish
 
 WindowPopup {
     id: root
-    bottomMargin: activeFocus ? App.keyboardInset : 0
+    bottomMargin: typing ? App.keyboardInset : 0
     property var session: null
     property var consumer: ({ "ok": false, "problem": "" })
     property bool copyPending: false

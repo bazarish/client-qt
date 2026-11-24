@@ -514,7 +514,6 @@ Rectangle {
     ContextMenu {
         id: attachMenu
         ContextMenuItem {
-            textPixels: Theme.fontEmoji
             iconSize: Theme.fontEmoji
             text: qsTr("File")
             iconName: "file"
@@ -523,7 +522,6 @@ Rectangle {
             onTriggered: fileDialog.open()
         }
         ContextMenuItem {
-            textPixels: Theme.fontEmoji
             iconSize: Theme.fontEmoji
             text: qsTr("Image")
             iconName: "image"
@@ -532,7 +530,6 @@ Rectangle {
             onTriggered: App.mobile ? App.pickPictures() : imageDialog.open()
         }
         ContextMenuItem {
-            textPixels: Theme.fontEmoji
             iconSize: Theme.fontEmoji
             text: qsTr("Photo")
             iconName: "camera"

@@ -8,6 +8,19 @@ Popup {
     property int preferredWidth: Theme.windowWidth
     // The window this one replaced; back reopens it.
     property var returnTo: null
+    // Not activeFocus: a closing dialog hands the focus back while its keyboard is still up.
+    readonly property bool typing: {
+        const field = root.contentItem ? root.contentItem.Window.activeFocusItem : null
+        if (!field || field.readOnly || !(field instanceof TextInput || field instanceof TextEdit)) {
+            return false
+        }
+        for (let at = field; at; at = at.parent) {
+            if (at === root.contentItem) {
+                return true
+            }
+        }
+        return false
+    }
 
     function openFrom(parentWindow) {
         root.returnTo = parentWindow

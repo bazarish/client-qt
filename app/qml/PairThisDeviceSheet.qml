@@ -15,7 +15,7 @@ WindowPopup {
     readonly property bool live: App.pairing
 
     margins: Theme.spacing
-    bottomMargin: Theme.spacing + (activeFocus ? App.keyboardInset : 0)
+    bottomMargin: Theme.spacing + (typing ? App.keyboardInset : 0)
     closePolicy: Popup.CloseOnEscape
 
     onOpened: {

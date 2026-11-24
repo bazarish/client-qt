@@ -10,7 +10,6 @@ MenuItem {
     property bool danger: false
     property string iconName: ""
     property int iconSize: Theme.iconInline
-    property int textPixels: Theme.fontBody
     readonly property int kIconGap: 8
 
     implicitWidth: label.implicitWidth + 28
@@ -32,7 +31,6 @@ MenuItem {
         Label {
             id: label
             text: root.text
-            font.pixelSize: root.textPixels
             color: !root.enabled ? Theme.textDim : (root.danger ? Theme.danger : Theme.text)
             verticalAlignment: Text.AlignVCenter
             anchors.left: root.iconName.length > 0 ? glyph.right : parent.left
