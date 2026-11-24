@@ -420,7 +420,7 @@ Rectangle {
                             elide: Text.ElideRight
                         }
                         Keys.onReturnPressed: function(event) {
-                            if (event.modifiers & Qt.ShiftModifier) {
+                            if (App.mobile || (event.modifiers & Qt.ShiftModifier)) {
                                 event.accepted = false
                             } else {
                                 root.send()
@@ -428,7 +428,7 @@ Rectangle {
                             }
                         }
                         Keys.onEnterPressed: function(event) {
-                            if (event.modifiers & Qt.ShiftModifier) {
+                            if (App.mobile || (event.modifiers & Qt.ShiftModifier)) {
                                 event.accepted = false
                             } else {
                                 root.send()
