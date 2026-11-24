@@ -5394,39 +5394,39 @@
       "ar": "تجري إعادة بناء الاتصال بالخادم"
     },
     "Incoming call answered": {
-      "ru": "Входящий звонок принят",
-      "es": "Llamada entrante atendida",
-      "zh": "来电已接听",
-      "ar": "مكالمة واردة تمّ الرد عليها"
+      "ru": "Входящий вызов",
+      "es": "Llamada entrante",
+      "zh": "来电",
+      "ar": "مكالمة واردة"
     },
     "Incoming call declined": {
-      "ru": "Входящий звонок отклонён",
+      "ru": "Отклонённый входящий звонок",
       "es": "Llamada entrante rechazada",
-      "zh": "来电已拒绝",
+      "zh": "已拒绝的来电",
       "ar": "مكالمة واردة مرفوضة"
     },
     "Incoming call missed": {
-      "ru": "Входящий звонок пропущен",
+      "ru": "Пропущенный входящий звонок",
       "es": "Llamada entrante perdida",
       "zh": "未接来电",
       "ar": "مكالمة واردة فائتة"
     },
     "Outgoing call answered": {
-      "ru": "Исходящий звонок принят",
-      "es": "Llamada saliente atendida",
-      "zh": "去电已接听",
-      "ar": "مكالمة صادرة تمّ الرد عليها"
+      "ru": "Исходящий звонок",
+      "es": "Llamada saliente",
+      "zh": "去电",
+      "ar": "مكالمة صادرة"
     },
     "Outgoing call declined": {
-      "ru": "Исходящий звонок отклонён",
+      "ru": "Отклонённый исходящий звонок",
       "es": "Llamada saliente rechazada",
-      "zh": "去电被拒绝",
+      "zh": "被拒绝的去电",
       "ar": "مكالمة صادرة مرفوضة"
     },
     "Outgoing call not answered": {
-      "ru": "Исходящий звонок без ответа",
+      "ru": "Неотвеченный исходящий звонок",
       "es": "Llamada saliente sin respuesta",
-      "zh": "去电无人接听",
+      "zh": "未接通的去电",
       "ar": "مكالمة صادرة بلا رد"
     },
     "Reaching the external gateway": {
