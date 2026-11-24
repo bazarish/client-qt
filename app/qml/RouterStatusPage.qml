@@ -143,7 +143,7 @@ WindowPopup {
                         delegate: Rectangle {
                             id: destRow
                             required property var modelData
-                            readonly property bool opens: modelData.detailKnown
+                            readonly property bool opens: modelData.detailKnown && modelData.state !== "unlinked"
                                 && !modelData.localRoute && !I2p.samEnabled
                             Layout.fillWidth: true
                             radius: Theme.radiusSmall
@@ -175,7 +175,8 @@ WindowPopup {
                                         Layout.alignment: Qt.AlignVCenter
                                         implicitWidth: 8; implicitHeight: 8; radius: 4
                                         color: modelData.state === "building" ? Theme.warn
-                                            : modelData.state === "closing" ? Theme.textDim
+                                            : modelData.state === "closing" || modelData.state === "unlinked"
+                                            ? Theme.textDim
                                             : Theme.greenFill
                                     }
                                     Label {
@@ -190,6 +191,7 @@ WindowPopup {
                                         modelData.state === "published" ? qsTr("published")
                                         : modelData.state === "ready" ? qsTr("ready")
                                         : modelData.state === "closing" ? qsTr("closing")
+                                        : modelData.state === "unlinked" ? qsTr("no connection")
                                         : qsTr("building")
                                     // LeaseSets, not peers: one encrypted address costs two of them.
                                     readonly property string full:
@@ -203,7 +205,7 @@ WindowPopup {
                                             .arg(modelData.tunnelsOut).arg(modelData.leaseSets)
                                     TextMetrics { id: fullWidth; font: destStatus.font; text: destStatus.full }
                                     text: modelData.localRoute ? qsTr("gateway routing")
-                                        : I2p.samEnabled ? stateText
+                                        : I2p.samEnabled || modelData.state === "unlinked" ? stateText
                                         : fullWidth.advanceWidth <= width ? full : compact
                                     color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                     wrapMode: Text.Wrap; Layout.fillWidth: true

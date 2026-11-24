@@ -479,15 +479,16 @@ void I2pService::refresh()
     if (running) {
         const bool many = manyAccounts();
         const bool detailKnown = canDetail(router);
+        const bool linked = bazarish::i2p::transportState() == bazarish::i2p::TransportState::eUp;
         for (const bazarish::i2p::LocalDestination& dest : router->get().localDestinations()) {
             QVariantMap row;
             row[QStringLiteral("label")] = destinationLabel(dest, many);
             row[QStringLiteral("host")] = QString::fromStdString(dest.host);
-            row[QStringLiteral("state")] = destinationState(dest);
+            row[QStringLiteral("state")] = linked ? destinationState(dest) : QStringLiteral("unlinked");
             row[QStringLiteral("tunnelsIn")] = dest.inboundTunnels;
             row[QStringLiteral("tunnelsOut")] = dest.outboundTunnels;
             row[QStringLiteral("leaseSets")] = dest.remoteLeaseSets;
-            row[QStringLiteral("localRoute")] = dest.localRoute;
+            row[QStringLiteral("localRoute")] = linked && dest.localRoute;
             row[QStringLiteral("countsKnown")] = router->get().capabilities().destinationCounters;
             row[QStringLiteral("detailKnown")] = detailKnown;
             destinations << row;
