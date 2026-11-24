@@ -186,6 +186,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&commands_, &AccountCommands::requestClearAvatar, worker_, &SessionWorker::clearAvatar);
     connect(&commands_, &AccountCommands::requestSetDisplayName, worker_,
         &SessionWorker::setDisplayName);
+    connect(&commands_, &AccountCommands::requestSetStatus, worker_, &SessionWorker::setStatus);
     connect(&commands_, &AccountCommands::requestRenameContact, worker_,
         &SessionWorker::renameContact);
     connect(&commands_, &AccountCommands::requestRemoveContact, worker_,
@@ -313,6 +314,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(worker_, &SessionWorker::opened, &events_, &AccountEvents::opened);
     connect(worker_, &SessionWorker::accountSettings, &events_, &AccountEvents::accountSettings);
     connect(worker_, &SessionWorker::renamed, &events_, &AccountEvents::renamed);
+    connect(worker_, &SessionWorker::ownStatus, &events_, &AccountEvents::ownStatus);
     connect(worker_, &SessionWorker::openFailed, &events_, &AccountEvents::openFailed);
     connect(worker_, &SessionWorker::connectionChanged, &events_,
         &AccountEvents::connectionChanged);

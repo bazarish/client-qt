@@ -50,6 +50,7 @@ class AppController : public QObject {
     Q_PROPERTY(bool activeLockable READ activeLockable NOTIFY accountsChanged)
     Q_PROPERTY(int maxGreetingBytes READ maxGreetingBytes CONSTANT)
     Q_PROPERTY(int maxAccountNameBytes READ maxAccountNameBytes CONSTANT)
+    Q_PROPERTY(int maxStatusChars READ maxStatusChars CONSTANT)
     Q_PROPERTY(QString reservedPassphrase READ reservedPassphrase CONSTANT)
     Q_PROPERTY(QString aliasSigil READ aliasSigil CONSTANT)
     Q_PROPERTY(int aliasWordMaxLength READ aliasWordMaxLength CONSTANT)
@@ -89,6 +90,7 @@ public:
     bool activeLockable() const;
     static int maxGreetingBytes() { return static_cast<int>(bazarish::kMaxContactGreetingBytes); }
     static int maxAccountNameBytes() { return static_cast<int>(bazarish::kMaxAccountNameBytes); }
+    static int maxStatusChars() { return static_cast<int>(bazarish::kStatusMaxChars); }
     static QString reservedPassphrase()
     {
         return QString::fromUtf8(bazarish::client::accountkey::kOpenSecret);

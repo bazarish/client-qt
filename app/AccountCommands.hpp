@@ -21,7 +21,7 @@ inline const QSet<QByteArray> kSelfDescribingCommands = {
     "requestCloseAccountOnServer", "requestGeneratePersonalKey", "requestLoadPersonalKey",
     "requestReplacePersonalKey", "requestPublishPersonalDest", "requestSetAliasBinding",
     "requestSetAliasWord",
-    "requestSetAvatar", "requestClearAvatar",
+    "requestSetAvatar", "requestClearAvatar", "requestSetStatus",
 };
 
 inline bool listedWhileQueued(const QMetaMethod& command)
@@ -109,6 +109,7 @@ signals:
     void requestSetAvatar(const QByteArray& jpeg);
     void requestClearAvatar();
     void requestSetDisplayName(const QString& name);
+    void requestSetStatus(const QString& status);
     void requestRenameContact(const QString& peer, const QString& name);
     void requestRemoveContact(const QString& peer);
     void requestClearSaved();

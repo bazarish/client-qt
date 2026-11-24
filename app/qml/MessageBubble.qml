@@ -151,6 +151,7 @@ Item {
                 iconName: "trash"
                 danger: true
                 text: qsTr("Delete chat")
+                enabled: delegate.session !== null && delegate.session.online
                 onClicked: if (delegate.session) { delegate.session.deleteContact() }
             }
         }
@@ -407,7 +408,7 @@ Item {
     // Placed again as it opens: the items' width is known only once the menu lays them out.
     function placeMenu() {
         const menu = contextMenu.item.menu
-        const at = Placement.besideBubble(Placement.sceneRect(bubble),
+        const at = Placement.besideOrOverBubble(Placement.sceneRect(bubble),
             Qt.size(menu.width, menu.height),
             Placement.sceneRect(delegate.ListView.view), Theme.popupGap, model.outgoing)
         const local = bubble.mapFromItem(null, at.x, at.y)

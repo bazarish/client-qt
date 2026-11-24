@@ -107,6 +107,13 @@ WindowPopup {
             spacing: 2
             model: lines
             ScrollBar.vertical: ScrollBar {}
+            // Read from the list, not the rows: a new line moves the rows under a resting cursor.
+            readonly property int hoveredRow: listHover.hovered
+                ? rowAt(listHover.point.position, contentY, lines.count) : -1
+            function rowAt(position, scrolled, count) {
+                return count > 0 ? indexAt(position.x + contentX, position.y + scrolled) : -1
+            }
+            HoverHandler { id: listHover; cursorShape: Qt.PointingHandCursor }
 
             delegate: Rectangle {
                 id: logRow
@@ -116,10 +123,8 @@ WindowPopup {
                 readonly property bool copied: root.copiedKey === root.lineKey(model)
                 color: logRow.copied ? Theme.bubbleOut
                     : (rowTap.pressed ? Theme.pressed
-                        : (rowHover.hovered ? Theme.surfaceAlt : "transparent"))
-                Behavior on color { ColorAnimation { duration: 120 } }
+                        : (index === list.hoveredRow ? Theme.rowHover : "transparent"))
 
-                HoverHandler { id: rowHover; cursorShape: Qt.PointingHandCursor }
                 TapHandler { id: rowTap; onTapped: root.copyLine(model) }
 
                 GridLayout {

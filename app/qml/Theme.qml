@@ -36,6 +36,7 @@ QtObject {
     readonly property color selected:  light ? "#d3e9cb" : "#1a3a22"
     readonly property color selectedInk: light ? "#1a6b11" : authorName
     readonly property color selectedMark: light ? greenFill : green
+    readonly property color rowHover:  light ? border : controlHover
     readonly property color hoverTint: light ? Qt.rgba(0, 0, 0, 0.04) : Qt.rgba(1, 1, 1, 0.04)
 
     readonly property color success:   green
@@ -87,6 +88,7 @@ QtObject {
     readonly property int fontBody: 14
     readonly property int fontLarge: 16
     readonly property int fontTitle: 17
+    readonly property int fontEmoji: 24
 
     readonly property string fontFamily: "Roboto Mono"
 }

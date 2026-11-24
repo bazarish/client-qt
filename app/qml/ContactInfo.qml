@@ -16,6 +16,7 @@ WindowPopup {
         && session.contactKind(session.activePeer) === "bot"
     readonly property bool blocked: session !== null && session.contactsRevision >= 0
         && session.isBlocked(session.activePeer)
+    readonly property bool switchedOn: session !== null && session.online
     signal shareRequested()
     signal membersRequested()
 
@@ -23,6 +24,7 @@ WindowPopup {
         ? session.contactDevices(session.activePeer) : []
 
     onOpened: {
+        statusBlock.expanded = false
         nameField.text = (session ? session.contactName(session.activePeer) : "")
         if (session && !root.bot && !root.inGroup) {
             session.refreshContactDevices(session.activePeer)
@@ -96,6 +98,34 @@ WindowPopup {
                 color: Theme.text
                 font.weight: Font.Medium
                 font.pixelSize: Theme.fontTitle
+            }
+            ColumnLayout {
+                id: statusBlock
+                readonly property string status: root.session && root.session.contactsRevision >= 0
+                    ? root.session.contactStatus(root.session.activePeer) : ""
+                property bool expanded: false
+                visible: !root.saved && status.length > 0
+                Layout.fillWidth: true
+                spacing: 2
+                Label {
+                    id: statusText
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                    text: statusBlock.status
+                    color: Theme.textDim
+                    wrapMode: Text.Wrap
+                    maximumLineCount: statusBlock.expanded ? undefined : 1
+                    elide: Text.ElideRight
+                }
+                Label {
+                    visible: statusText.truncated || statusBlock.expanded
+                    Layout.alignment: Qt.AlignHCenter
+                    text: statusBlock.expanded ? qsTr("Show less") : qsTr("Show more")
+                    color: Theme.green
+                    font.pixelSize: Theme.fontSmall
+                    TapHandler { onTapped: statusBlock.expanded = !statusBlock.expanded }
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                }
             }
             Label {
                 visible: !root.saved
@@ -259,7 +289,7 @@ WindowPopup {
                 wrapMode: Text.Wrap
                 color: Theme.warn
                 font.pixelSize: Theme.fontSmall
-                text: qsTr("Blocked: messages and calls from this contact are dropped, and its pass is revoked. An outgoing message lifts the block.")
+                text: qsTr("Blocked: messages, calls and contact requests from this contact are dropped, and its pass is revoked. An outgoing message lifts the block.")
             }
 
             Rectangle { visible: !root.saved; Layout.fillWidth: true; height: 1; color: Theme.border; Layout.topMargin: 4 }
@@ -281,6 +311,7 @@ WindowPopup {
                         iconName: root.blocked ? "check" : "block"
                         text: root.blocked ? qsTr("Unblock") : qsTr("Block")
                         danger: !root.blocked
+                        enabled: root.switchedOn
                         onClicked: {
                             if (root.blocked) {
                                 root.session.setBlocked(root.session.activePeer, false)
@@ -294,6 +325,7 @@ WindowPopup {
                         iconName: "trash"
                         text: qsTr("Delete contact")
                         danger: true
+                        enabled: root.switchedOn
                         onClicked: deleteContactDialog.open()
                     }
                 }
@@ -397,7 +429,7 @@ WindowPopup {
             padding: 14
             wrapMode: Text.Wrap
             color: Theme.text
-            text: qsTr("Messages and calls from this contact stop arriving, and the pass it held is revoked at your server. The conversation stays. An outgoing message lifts the block.")
+            text: qsTr("Messages, calls and contact requests from this contact stop arriving, and the pass it held is revoked at your server. The conversation stays. An outgoing message lifts the block.")
         }
     }
 
@@ -482,7 +514,7 @@ WindowPopup {
         contentItem: Label {
             wrapMode: Text.Wrap
             color: Theme.text
-            text: qsTr("Removes this contact and your whole history with them from this device. This cannot be undone.")
+            text: qsTr("The contact and the conversation are removed on all devices of this account, and its pass is revoked. The contact can send a new contact request. This cannot be undone.")
         }
     }
 }

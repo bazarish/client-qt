@@ -6,18 +6,19 @@ import Bazarish
 
 Popup {
     id: popup
-    bottomMargin: activeFocus ? App.keyboardInset : 0
     property var session: null
     signal jumpRequested(var localId)
 
     property var results: []
 
     parent: Overlay.overlay
-    anchors.centerIn: Overlay.overlay
     modal: true
     focus: true
+    x: parent ? (parent.width - width) / 2 : 0
+    y: Theme.windowTopRoom / 2
     width: Math.min(Theme.windowWidth, parent ? parent.width - Theme.windowSideRoom : Theme.windowWidth)
-    height: parent ? parent.height - Theme.windowTopRoom : implicitHeight
+    height: parent ? parent.height - Theme.windowTopRoom - (activeFocus ? App.keyboardInset : 0)
+        : implicitHeight
     padding: 0
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     background: DialogFrame { }

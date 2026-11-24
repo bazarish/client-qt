@@ -101,6 +101,7 @@ public slots:
     void setAvatar(const QByteArray& bytes);
     void clearAvatar();
     void setDisplayName(const QString& name);
+    void setStatus(const QString& status);
     void renameContact(const QString& peer, const QString& name);
     void removeContact(const QString& peer);
     void clearSaved();
@@ -192,6 +193,7 @@ signals:
     void aliasActivationDone(bool ok, const QString& text);
     void opened(const QString& fingerprint, const QString& displayName, bool connected);
     void renamed(const QString& newName);
+    void ownStatus(const QString& status);
     void openFailed(const QString& error);
     void connectionChanged(bool connected, const QString& connectionNote);
     void connectProgress(int percent, const QString& phase);
@@ -265,6 +267,7 @@ private:
     QString lastInvite_;
     QString lastInviteProblem_;
     void emitContacts();
+    void emitOwnStatus();
     Q_INVOKABLE void emitDeviceState();
     Q_INVOKABLE void deviceRevoked();
     QVariantList toldDeviceState_;
@@ -316,6 +319,7 @@ private:
     bool aliasErrandRunning_ = false;
     bool aliasErrandByHand_ = false;
     std::optional<std::pair<QVector<ContactState>, QStringList>> toldContacts_;
+    std::optional<QString> toldStatus_;
     QTimer* maintenanceTimer_ = nullptr;
     bool maintaining_ = false;
     bool sessionDutiesFailed_ = false;

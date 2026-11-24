@@ -370,6 +370,11 @@ public:
     bool avatarBusy() const { return avatarBusy_; }
     Q_INVOKABLE void clearAvatar();
     Q_INVOKABLE void setDisplayName(const QString& name);
+    Q_PROPERTY(QString ownStatus READ ownStatus NOTIFY ownStatusChanged)
+    QString ownStatus() const { return ownStatus_; }
+    Q_INVOKABLE void setStatus(const QString& status);
+    Q_INVOKABLE bool statusFits(const QString& status) const;
+    Q_INVOKABLE QString contactStatus(const QString& peer) const;
     Q_INVOKABLE void react(const QString& e2eId, const QString& emoji);
     Q_PROPERTY(QStringList standardReactions READ standardReactions CONSTANT)
     QStringList standardReactions() const;
@@ -488,6 +493,7 @@ signals:
     void recentEmojiChanged();
     void avatarChanged();
     void identityChanged();
+    void ownStatusChanged();
     void connectedChanged();
     void activePeerChanged();
     void activePeerNameChanged();
@@ -597,6 +603,7 @@ private:
     QString accountId_;
     QString fingerprint_;
     QString displayName_;
+    QString ownStatus_;
     bool connected_ = false;
     bool online_ = false;
     bool reachable_ = false;

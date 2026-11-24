@@ -202,6 +202,12 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
             ++presenceRevision_;
             emit presenceChanged();
         });
+    connect(&events_, &AccountEvents::ownStatus, this, [this](const QString& status) {
+        if (status != ownStatus_) {
+            ownStatus_ = status;
+            emit ownStatusChanged();
+        }
+    });
     connect(&events_, &AccountEvents::renamed, this, [this](const QString& newName) {
         if (newName != displayName_) {
             displayName_ = newName;
@@ -953,7 +959,7 @@ void SessionController::setChatTimer(const qint64 seconds)
 
 void SessionController::deleteContact()
 {
-    if (activePeer_.isEmpty()) {
+    if (activePeer_.isEmpty() || !online_) {
         return;
     }
     const QString peer = activePeer_;
@@ -991,7 +997,7 @@ QVariantList SessionController::blockedList() const
 
 void SessionController::setBlocked(const QString& peer, const bool blocked)
 {
-    if (peer.isEmpty() || isSavedChat(peer)) {
+    if (peer.isEmpty() || isSavedChat(peer) || !online_) {
         return;
     }
     book_.setBlocked(peer, blocked);
@@ -1013,6 +1019,25 @@ bool SessionController::contactCalls(const QString& peer) const
 QString SessionController::contactKind(const QString& peer) const
 {
     return book_.state(peer).kind;
+}
+
+QString SessionController::contactStatus(const QString& peer) const
+{
+    return book_.state(peer).status;
+}
+
+void SessionController::setStatus(const QString& status)
+{
+    const QString trimmed = status.trimmed();
+    if (trimmed == ownStatus_ || !statusFits(trimmed)) {
+        return;
+    }
+    emit commands_.requestSetStatus(trimmed);
+}
+
+bool SessionController::statusFits(const QString& status) const
+{
+    return client::acceptableStatus(status.trimmed().toStdString());
 }
 
 bool SessionController::peerOnline(const QString& peer) const

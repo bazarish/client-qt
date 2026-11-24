@@ -13,7 +13,7 @@ Popup {
     readonly property int kColumns: 8
     readonly property int kRows: 5
     readonly property int kCell: 40
-    readonly property int kGlyphPixels: 24
+    readonly property int kGlyphPixels: Theme.fontEmoji
     readonly property int kTabPixels: 18
     readonly property int kMarkHeight: 2
     property var recent: []

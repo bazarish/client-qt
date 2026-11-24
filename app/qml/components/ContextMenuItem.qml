@@ -9,11 +9,12 @@ MenuItem {
     focusPolicy: Theme.pressFocus
     property bool danger: false
     property string iconName: ""
-    readonly property int kIconSize: 15
+    property int iconSize: Theme.iconInline
+    property int textPixels: Theme.fontBody
     readonly property int kIconGap: 8
 
     implicitWidth: label.implicitWidth + 28
-        + (root.iconName.length > 0 ? root.kIconSize + root.kIconGap : 0)
+        + (root.iconName.length > 0 ? root.iconSize + root.kIconGap : 0)
     implicitHeight: label.implicitHeight + 14
 
     contentItem: Item {
@@ -22,7 +23,7 @@ MenuItem {
             id: glyph
             visible: root.iconName.length > 0
             name: root.iconName
-            size: root.kIconSize
+            size: root.iconSize
             color: label.color
             anchors.left: parent.left
             anchors.leftMargin: 12
@@ -31,6 +32,7 @@ MenuItem {
         Label {
             id: label
             text: root.text
+            font.pixelSize: root.textPixels
             color: !root.enabled ? Theme.textDim : (root.danger ? Theme.danger : Theme.text)
             verticalAlignment: Text.AlignVCenter
             anchors.left: root.iconName.length > 0 ? glyph.right : parent.left

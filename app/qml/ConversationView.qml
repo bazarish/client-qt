@@ -369,32 +369,48 @@ Item {
                             }
                         }
                     }
-                    Label {
-                        readonly property bool listHeld: root.session !== null
-                            && root.session.activeMemberListHeld && !root.lookingUp
+                    RowLayout {
+                        id: groupLine
+                        readonly property string status: root.session && root.session.contactsRevision >= 0
+                            && root.session.activePeer.length > 0
+                            ? root.session.contactStatus(root.session.activePeer).replace(/\n/g, " ") : ""
                         visible: root.session !== null && root.session.activeIsGroup
-                        text: root.session && root.session.activeIsChannel
-                            ? qsTr("Subscribers: %1").arg(root.session.activeGroupMembers)
-                            : qsTr("Members: %1").arg(root.session ? root.session.activeGroupMembers : 0)
-                        color: Theme.textFaint
-                        font.pixelSize: Theme.fontSmall
-                        elide: Text.ElideRight
+                        spacing: 6
                         Layout.fillWidth: true
-                        Item {
-                            x: parent.effectiveHorizontalAlignment === Text.AlignRight ? parent.width - width : 0
-                            width: Math.min(parent.contentWidth, parent.width)
-                            height: parent.height
-                            TapHandler {
-                                enabled: parent.parent.listHeld
-                                onTapped: root.membersRequested()
-                            }
-                            HoverHandler {
-                                enabled: parent.parent.listHeld
-                                cursorShape: Qt.PointingHandCursor
+                        Label {
+                            readonly property bool listHeld: root.session !== null
+                                && root.session.activeMemberListHeld && !root.lookingUp
+                            text: root.session && root.session.activeIsChannel
+                                ? qsTr("Subscribers: %1").arg(root.session.activeGroupMembers)
+                                : qsTr("Members: %1").arg(root.session ? root.session.activeGroupMembers : 0)
+                            color: Theme.textFaint
+                            font.pixelSize: Theme.fontSmall
+                            elide: Text.ElideRight
+                            Item {
+                                x: parent.effectiveHorizontalAlignment === Text.AlignRight ? parent.width - width : 0
+                                width: Math.min(parent.contentWidth, parent.width)
+                                height: parent.height
+                                TapHandler {
+                                    enabled: parent.parent.listHeld
+                                    onTapped: root.membersRequested()
+                                }
+                                HoverHandler {
+                                    enabled: parent.parent.listHeld
+                                    cursorShape: Qt.PointingHandCursor
+                                }
                             }
                         }
+                        Label {
+                            visible: groupLine.status.length > 0
+                            text: groupLine.status
+                            color: Theme.textFaint
+                            font.pixelSize: Theme.fontSmall
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
                     }
-                    Label {
+                    RowLayout {
+                        id: peerLine
                         readonly property string peer: root.session ? root.session.activePeer : ""
                         readonly property string kind: root.session && peer.length > 0
                             ? root.session.contactKind(peer) : ""
@@ -402,13 +418,27 @@ Item {
                             && root.session.peerTyping(peer)
                         readonly property bool online: root.session !== null && root.session.presenceRevision >= 0
                             && root.session.peerOnline(peer)
+                        readonly property string status: root.session && root.session.contactsRevision >= 0
+                            && peer.length > 0 ? root.session.contactStatus(peer).replace(/\n/g, " ") : ""
                         visible: root.session !== null && !root.session.activeIsGroup && !root.savedChat
-                            && (kind === "bot" || online)
-                        text: kind === "bot" ? qsTr("bot") : (typing ? qsTr("typing...") : qsTr("online"))
-                        color: kind === "bot" ? Theme.textFaint : Theme.green
-                        font.pixelSize: Theme.fontSmall
-                        elide: Text.ElideRight
+                            && (kind === "bot" || online || status.length > 0)
+                        spacing: 6
                         Layout.fillWidth: true
+                        Label {
+                            visible: peerLine.kind === "bot" || peerLine.online
+                            text: peerLine.kind === "bot" ? qsTr("bot")
+                                : (peerLine.typing ? qsTr("typing...") : qsTr("online"))
+                            color: peerLine.kind === "bot" ? Theme.textFaint : Theme.green
+                            font.pixelSize: Theme.fontSmall
+                        }
+                        Label {
+                            visible: peerLine.status.length > 0
+                            text: peerLine.status
+                            color: Theme.textFaint
+                            font.pixelSize: Theme.fontSmall
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
                     }
                 }
                 IconButton {

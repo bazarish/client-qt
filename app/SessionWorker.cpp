@@ -878,6 +878,8 @@ void SessionWorker::openAccount(
     const bool connected = session_->isConnected();
     emit opened(QString::fromStdString(session_->fingerprint()),
         QString::fromStdString(session_->displayName()), connected);
+    toldStatus_.reset();
+    emitOwnStatus();
     toldDeviceState_.clear();
     emitDeviceState();
     armDayTimer();
@@ -1050,6 +1052,7 @@ void SessionWorker::emitContacts()
         contact.notifications = session_->contactNotifications(fp);
         contact.calls = session_->contactCalls(fp);
         contact.kind = QString::fromUtf8(bazarish::accountKindName(session_->contactKind(fp)));
+        contact.status = QString::fromStdString(session_->contactStatus(fp));
         contacts.push_back(contact);
     }
     QStringList blocked;
@@ -1062,6 +1065,19 @@ void SessionWorker::emitContacts()
     }
     toldContacts_.emplace(contacts, blocked);
     emit contactsRefreshed(contacts, blocked);
+}
+
+void SessionWorker::emitOwnStatus()
+{
+    if (!session_) {
+        return;
+    }
+    const QString status = QString::fromStdString(session_->status());
+    if (toldStatus_ == status) {
+        return;
+    }
+    toldStatus_ = status;
+    emit ownStatus(status);
 }
 
 void SessionWorker::emitFacadeInfo()
@@ -1265,6 +1281,7 @@ void SessionWorker::drainMailbox()
         emit messageReceived(m);
     }
     emitContacts();
+    emitOwnStatus();
     emitDeviceState();
     emitFacadeInfo();
     refreshCalls();
@@ -2008,6 +2025,22 @@ void SessionWorker::setDisplayName(const QString& name)
         emitInvite();
         emit actionOk(tr("Name updated"));
     });
+}
+
+void SessionWorker::setStatus(const QString& status)
+{
+    if (!session_) {
+        return;
+    }
+    const QString op = beginOp(tr("Setting your status"), tr("Sending to your contacts..."));
+    try {
+        session_->setStatus(status.toStdString());
+        emitOwnStatus();
+        emit opDone(op, true, tr("Status set"));
+    } catch (const std::exception& e) {
+        emit opDone(op, false, QString::fromUtf8(e.what()));
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
 }
 
 void SessionWorker::renameContact(const QString& peer, const QString& name)

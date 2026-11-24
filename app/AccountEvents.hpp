@@ -30,6 +30,7 @@ struct ContactState {
     bool notifications = true;
     bool calls = true;
     QString kind;
+    QString status;
     Request request = eAnswered;
 
     friend bool operator==(const ContactState&, const ContactState&) = default;
@@ -51,7 +52,7 @@ struct OperationRow {
 inline QDataStream& operator<<(QDataStream& out, const ContactState& contact)
 {
     return out << contact.fingerprint << contact.name << contact.invite << contact.writable
-               << contact.notifications << contact.calls << contact.kind
+               << contact.notifications << contact.calls << contact.kind << contact.status
                << static_cast<qint32>(contact.request);
 }
 
@@ -59,7 +60,7 @@ inline QDataStream& operator>>(QDataStream& in, ContactState& contact)
 {
     qint32 request = 0;
     in >> contact.fingerprint >> contact.name >> contact.invite >> contact.writable
-        >> contact.notifications >> contact.calls >> contact.kind >> request;
+        >> contact.notifications >> contact.calls >> contact.kind >> contact.status >> request;
     contact.request = static_cast<ContactState::Request>(request);
     return in;
 }
@@ -88,6 +89,7 @@ inline constexpr Latch kAccountLatches[] = {
     {"opened"},
     {"renamed"},
     {"accountRenamed"},
+    {"ownStatus"},
     {"presence"},
     {"connectionChanged"},
     {"connectProgress"},
@@ -128,6 +130,7 @@ signals:
     void aliasActivationDone(bool ok, const QString& text);
     void opened(const QString& fingerprint, const QString& displayName, bool connected);
     void renamed(const QString& newName);
+    void ownStatus(const QString& status);
     void openFailed(const QString& error);
     void connectionChanged(bool connected, const QString& connectionNote);
     void connectProgress(int percent, const QString& phase);

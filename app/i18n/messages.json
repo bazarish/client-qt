@@ -671,11 +671,11 @@
       "zh": "要屏蔽这个联系人吗？",
       "ar": "أتريد حظر جهة الاتصال هذه؟"
     },
-    "Blocked: messages and calls from this contact are dropped, and its pass is revoked. An outgoing message lifts the block.": {
-      "ru": "Заблокирован. Сообщения и звонки от контакта отбрасываются, пропуск отозван. Исходящее сообщение снимает блокировку.",
-      "es": "Bloqueado: los mensajes y llamadas de este contacto se descartan y su pase está revocado. Un mensaje tuyo levanta el bloqueo.",
-      "zh": "已屏蔽：来自该联系人的消息和来电会被丢弃，其通行凭据已撤销。你发出一条消息即解除屏蔽。",
-      "ar": "محظورة: تُسقَط رسائل جهة الاتصال ومكالماتها، وسُحب تصريحها. ورسالة صادرة ترفع الحظر."
+    "Blocked: messages, calls and contact requests from this contact are dropped, and its pass is revoked. An outgoing message lifts the block.": {
+      "ru": "Заблокирован. Сообщения, звонки и запросы в контакты от контакта отбрасываются, пропуск отозван. Исходящее сообщение снимает блокировку.",
+      "es": "Bloqueado: los mensajes, llamadas y solicitudes de contacto de este contacto se descartan y su pase está revocado. Un mensaje tuyo levanta el bloqueo.",
+      "zh": "已屏蔽：来自该联系人的消息、来电和联系人请求会被丢弃，其通行凭据已撤销。你发出一条消息即解除屏蔽。",
+      "ar": "محظورة: تُسقَط رسائل جهة الاتصال ومكالماتها وطلبات التواصل منها، وسُحب تصريحها. ورسالة صادرة ترفع الحظر."
     },
     "Broken picture": {
       "ru": "Изображение повреждено",
@@ -1895,11 +1895,11 @@
       "zh": "匹配：%1",
       "ar": "المطابقات: ⁦%1⁩"
     },
-    "Messages and calls from this contact stop arriving, and the pass it held is revoked at your server. The conversation stays. An outgoing message lifts the block.": {
-      "ru": "Сообщения и звонки от этого контакта перестанут приходить. Его пропуск будет отозван на вашем сервере. Переписка останется. Исходящее сообщение снимает блокировку.",
-      "es": "Dejan de llegar los mensajes y las llamadas de este contacto, y su pase queda revocado en tu servidor. El chat se conserva. Un mensaje tuyo levanta el bloqueo.",
-      "zh": "来自该联系人的消息和来电将不再到达，其通行凭据会在你的服务器上被撤销。聊天记录保留。你发出一条消息即解除屏蔽。",
-      "ar": "تتوقف رسائل جهة الاتصال ومكالماتها، ويُسحب تصريحها لدى خادمك. وتبقى المحادثة. ورسالة صادرة واحدة ترفع الحظر."
+    "Messages, calls and contact requests from this contact stop arriving, and the pass it held is revoked at your server. The conversation stays. An outgoing message lifts the block.": {
+      "ru": "Сообщения, звонки и запросы в контакты от этого контакта перестанут приходить. Его пропуск будет отозван на вашем сервере. Переписка останется. Исходящее сообщение снимает блокировку.",
+      "es": "Dejan de llegar los mensajes, las llamadas y las solicitudes de contacto de este contacto, y su pase queda revocado en tu servidor. El chat se conserva. Un mensaje tuyo levanta el bloqueo.",
+      "zh": "来自该联系人的消息、来电和联系人请求将不再到达，其通行凭据会在你的服务器上被撤销。聊天记录保留。你发出一条消息即解除屏蔽。",
+      "ar": "تتوقف رسائل جهة الاتصال ومكالماتها وطلبات التواصل منها، ويُسحب تصريحها لدى خادمك. وتبقى المحادثة. ورسالة صادرة واحدة ترفع الحظر."
     },
     "Message...": {
       "ru": "Сообщение...",
@@ -2717,11 +2717,11 @@
       "zh": "已删除 %1 条消息，但空间未归还给磁盘：%2。再精简一次即可归还。",
       "ar": "حُذفت ⁦%1⁩ رسالة، لكن المساحة لم تعد إلى القرص: ⁦%2⁩. والتقليم مرة أخرى يعيدها."
     },
-    "Removes this contact and your whole history with them from this device. This cannot be undone.": {
-      "ru": "Удалит с этого устройства контакт и всю переписку с ним. Отменить нельзя.",
-      "es": "Elimina de este dispositivo el contacto y todo tu historial con él. No se puede deshacer.",
-      "zh": "将从本设备删除该联系人及与其的全部记录。此操作无法撤销。",
-      "ar": "يحذف من هذا الجهاز جهة الاتصال وكامل سجلّك معها. ولا يمكن التراجع."
+    "The contact and the conversation are removed on all devices of this account, and its pass is revoked. The contact can send a new contact request. This cannot be undone.": {
+      "ru": "Контакт и переписка удаляются на всех устройствах аккаунта, его пропуск отзывается. Контакт сможет прислать новый запрос в контакты. Отменить нельзя.",
+      "es": "El contacto y el chat se eliminan en todos los dispositivos de esta cuenta y su pase queda revocado. El contacto podrá enviar una nueva solicitud de contacto. No se puede deshacer.",
+      "zh": "该联系人及聊天记录将在此账户的所有设备上删除，其通行凭据会被撤销。该联系人仍可再次发送联系人请求。此操作无法撤销。",
+      "ar": "تُحذف جهة الاتصال والمحادثة على جميع أجهزة هذا الحساب، ويُسحب تصريحها. ويمكن لجهة الاتصال إرسال طلب تواصل جديد. ولا يمكن التراجع."
     },
     "Removing reaction": {
       "ru": "Удаление реакции",
@@ -5716,6 +5716,48 @@
       "es": "El servidor borra el correo de %1. El dispositivo se registra de nuevo la próxima vez que se conecte.",
       "zh": "服务器将删除 %1 的邮件。该设备下次连接时会重新注册。",
       "ar": "يحذف الخادم بريد ⁦%1⁩. يسجّل الجهاز نفسه من جديد في اتصاله التالي."
+    },
+    "Your status": {
+      "ru": "Ваш статус",
+      "es": "Tu estado",
+      "zh": "你的状态",
+      "ar": "حالتك"
+    },
+    "Set a status": {
+      "ru": "Указать статус",
+      "es": "Añadir un estado",
+      "zh": "设置状态",
+      "ar": "تعيين حالة"
+    },
+    "Seen by your contacts": {
+      "ru": "Видно вашим контактам",
+      "es": "Lo ven tus contactos",
+      "zh": "你的联系人可见",
+      "ar": "تراها جهات اتصالك"
+    },
+    "Setting your status": {
+      "ru": "Установка статуса",
+      "es": "Estableciendo tu estado",
+      "zh": "正在设置状态",
+      "ar": "جارٍ تعيين حالتك"
+    },
+    "Status set": {
+      "ru": "Статус установлен",
+      "es": "Estado establecido",
+      "zh": "状态已设置",
+      "ar": "عُيّنت الحالة"
+    },
+    "Show more": {
+      "ru": "Показать полностью",
+      "es": "Mostrar más",
+      "zh": "展开",
+      "ar": "عرض المزيد"
+    },
+    "Show less": {
+      "ru": "Свернуть",
+      "es": "Mostrar menos",
+      "zh": "收起",
+      "ar": "عرض أقل"
     }
   }
 }

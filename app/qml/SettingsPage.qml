@@ -153,6 +153,24 @@ WindowPopup {
                             onClicked: { root.close(); root.showInvite() }
                         }
                     }
+                    Label {
+                        id: ownStatusLine
+                        readonly property string status: root.session ? root.session.ownStatus : ""
+                        readonly property int kPreviewLines: 3
+                        Layout.fillWidth: true
+                        text: status.length > 0 ? status : qsTr("Set a status")
+                        color: status.length > 0 ? Theme.text : Theme.textDim
+                        wrapMode: Text.Wrap
+                        maximumLineCount: kPreviewLines
+                        elide: Text.ElideRight
+                        TapHandler {
+                            onTapped: {
+                                statusField.text = ownStatusLine.status
+                                statusDialog.open()
+                            }
+                        }
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                    }
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
@@ -878,6 +896,7 @@ WindowPopup {
                             MenuButton {
                                 iconName: "check"
                                 text: qsTr("Unblock")
+                                enabled: root.session !== null && root.session.online
                                 onClicked: root.session.setBlocked(modelData.fingerprint, false)
                             }
                         }
@@ -1105,6 +1124,48 @@ WindowPopup {
             Label {
                 text: qsTr("Only updates this device and your invite link")
                 color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true
+            }
+        }
+    }
+
+    Dialog {
+        id: statusDialog
+        readonly property string entered: statusField.text.trim()
+        readonly property bool fits: root.session !== null && root.session.statusFits(statusField.text)
+        bottomMargin: activeFocus ? App.keyboardInset : 0
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        focus: true
+        width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
+        title: qsTr("Your status")
+        onAccepted: if (root.session) root.session.setStatus(statusField.text)
+        background: DialogFrame { }
+        header: WindowHeader {
+            title: statusDialog.title
+            showClose: false
+        }
+        footer: DialogButtons {
+            acceptText: qsTr("Save")
+            acceptEnabled: statusDialog.fits && root.session !== null
+                && statusDialog.entered !== root.session.ownStatus
+            onAccepted: statusDialog.accept()
+            onRejected: statusDialog.reject()
+        }
+        contentItem: ColumnLayout {
+            spacing: 8
+            TextArea {
+                id: statusField
+                Layout.fillWidth: true
+                placeholderText: qsTr("Seen by your contacts")
+                wrapMode: TextEdit.Wrap
+                color: Theme.text
+                placeholderTextColor: Theme.textDim
+            }
+            Label {
+                Layout.alignment: Qt.AlignRight
+                text: Array.from(statusDialog.entered).length + "/" + App.maxStatusChars
+                color: statusDialog.fits ? Theme.textDim : Theme.danger
+                font.pixelSize: Theme.fontSmall
             }
         }
     }

@@ -48,11 +48,8 @@ Rectangle {
 
     readonly property bool pickingEmoji: emojiPicker.visible
 
-    property int manualInputH: -1
-    readonly property int autoInputH:
+    readonly property int inputH:
         Math.min(maxInputH, Math.max(minInputH, Math.ceil(input.laidOutHeight) + 18))
-    readonly property int inputH: manualInputH >= 0
-        ? Math.min(maxInputH, Math.max(minInputH, manualInputH)) : autoInputH
 
     Layout.fillWidth: true
     implicitHeight: col.implicitHeight
@@ -101,7 +98,6 @@ Rectangle {
             return
         }
         const t = input.text.trim()
-        root.manualInputH = -1
         if (root.editing) {
             root.session.commitEdit(t)
             return
@@ -232,33 +228,6 @@ Rectangle {
             }
         }
 
-        Item {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 8
-            Rectangle {
-                anchors.centerIn: parent
-                width: 34
-                height: 3
-                radius: 1.5
-                color: (gripHover.hovered || gripDrag.active) ? Theme.accent : Theme.border
-            }
-            HoverHandler { id: gripHover; cursorShape: Qt.SizeVerCursor }
-            DragHandler {
-                id: gripDrag
-                target: null
-                // A drag that starts on a popup over the grip is the popup's.
-                enabled: !(root.Overlay.overlay && root.Overlay.overlay.visible)
-                xAxis.enabled: false
-                yAxis.enabled: true
-                property int startH: 0
-                onActiveChanged: if (active) { startH = root.inputH }
-                onTranslationChanged: if (active) {
-                    root.manualInputH = Math.max(root.minInputH,
-                        Math.min(root.maxInputH, startH - Math.round(translation.y)))
-                }
-            }
-        }
-
         RowLayout {
             Layout.fillWidth: true
             Layout.leftMargin: 8
@@ -279,6 +248,7 @@ Rectangle {
                     visible: !root.editing
                     enabled: !root.switchedOff
                     Layout.preferredWidth: root.kPairedButtonWidth
+                    Layout.preferredHeight: root.minInputH
                     onClicked: attachMenu.popup(attachButton, 0,
                         -attachMenu.implicitHeight - root.kAttachMenuGap)
                 }
@@ -288,6 +258,7 @@ Rectangle {
                     focusPolicy: Qt.NoFocus
                     enabled: !root.switchedOff
                     Layout.preferredWidth: root.kPairedButtonWidth
+                    Layout.preferredHeight: root.minInputH
                     onClicked: emojiPicker.visible ? emojiPicker.close() : emojiPicker.open()
                     EmojiPicker {
                         id: emojiPicker
@@ -494,6 +465,7 @@ Rectangle {
                 tint: Theme.green
                 enabled: !root.switchedOff
                 Layout.alignment: Qt.AlignBottom
+                Layout.preferredHeight: root.minInputH
                 // The pressed fill would sink the green below 3:1 in the light theme; the growth is the feedback.
                 background: Rectangle {
                     radius: 8
@@ -542,6 +514,8 @@ Rectangle {
     ContextMenu {
         id: attachMenu
         ContextMenuItem {
+            textPixels: Theme.fontEmoji
+            iconSize: Theme.fontEmoji
             text: qsTr("File")
             iconName: "file"
             visible: !(root.session && root.session.activeIsGroup)
@@ -549,6 +523,8 @@ Rectangle {
             onTriggered: fileDialog.open()
         }
         ContextMenuItem {
+            textPixels: Theme.fontEmoji
+            iconSize: Theme.fontEmoji
             text: qsTr("Image")
             iconName: "image"
             visible: App.canPickPictures
@@ -556,6 +532,8 @@ Rectangle {
             onTriggered: App.mobile ? App.pickPictures() : imageDialog.open()
         }
         ContextMenuItem {
+            textPixels: Theme.fontEmoji
+            iconSize: Theme.fontEmoji
             text: qsTr("Photo")
             iconName: "camera"
             onTriggered: photoSheet.open()
