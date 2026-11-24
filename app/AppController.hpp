@@ -139,6 +139,7 @@ public:
     Q_PROPERTY(QString deletingId READ deletingId NOTIFY deletingChanged)
     QString deletingId() const { return deletingId_; }
     Q_INVOKABLE void deleteAccountAfterUnlock(const QString& id);
+    Q_INVOKABLE void leaveAccount(const QString& id);
     Q_INVOKABLE void forgetAccountLocally(const QString& id);
     Q_INVOKABLE void lockAccount(const QString& id);
     Q_INVOKABLE void switchTo(const QString& id);
@@ -271,7 +272,7 @@ signals:
     void importRefused(const QString& kind);
     void showPicker();
     void needPassphrase(const QString& id, const QString& name);
-    void accountDeleteFailed(const QString& id, const QString& error, bool profileNotOpened);
+    void accountDeleteFailed(const QString& id, const QString& error, bool profileNotOpened, bool leaving);
     void deletingChanged();
     void accountDeleteNeedsUnlock(const QString& id, const QString& name);
     void unlockFailed(const QString& error);

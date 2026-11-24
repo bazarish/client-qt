@@ -544,6 +544,11 @@ void AppController::deleteAccountAfterUnlock(const QString& id)
     emit commands_.deleteAccountAfterUnlock(id);
 }
 
+void AppController::leaveAccount(const QString& id)
+{
+    emit commands_.leaveAccount(id);
+}
+
 void AppController::forgetAccountLocally(const QString& id)
 {
     emit commands_.forgetAccountLocally(id);

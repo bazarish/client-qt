@@ -164,8 +164,8 @@ ApplicationWindow {
         function onRestartRequired(message) { restartDialog.show(message) }
         function onCreateFailed(error) { window.showToast(error) }
         function onImportRefused(kind) { importRefusedDialog.show(kind) }
-        function onAccountDeleteFailed(id, error, profileNotOpened) {
-            deleteFailedDialog.show(id, error, profileNotOpened)
+        function onAccountDeleteFailed(id, error, profileNotOpened, leaving) {
+            deleteFailedDialog.show(id, error, profileNotOpened, leaving)
         }
         function onAccountDeleteNeedsUnlock(id, name) { deleteLockedDialog.show(id, name) }
         function onPairLinkOpened(link) {
@@ -434,7 +434,7 @@ ApplicationWindow {
     AccountDeleteLockedDialog {
         id: deleteLockedDialog
         onUnlockRequested: (id) => App.deleteAccountAfterUnlock(id)
-        onLocalOnlyRequested: (id) => App.forgetAccountLocally(id)
+        onLocalOnlyRequested: (id) => App.leaveAccount(id)
     }
 
     AddressChoiceDialog { id: addressChoiceDialog }
@@ -462,7 +462,7 @@ ApplicationWindow {
 
     AccountDeleteFailedDialog {
         id: deleteFailedDialog
-        onRetryRequested: (id) => App.deleteAccount(id)
+        onRetryRequested: (id) => deleteFailedDialog.leaving ? App.leaveAccount(id) : App.deleteAccount(id)
         onLocalOnlyRequested: (id) => App.forgetAccountLocally(id)
     }
 

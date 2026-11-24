@@ -96,7 +96,7 @@ signals:
     void accountOpenFailed(const QString& error);
     void createFailed(const QString& error);
     void importRefused(const QString& kind);
-    void accountDeleteFailed(const QString& id, const QString& error, bool profileNotOpened);
+    void accountDeleteFailed(const QString& id, const QString& error, bool profileNotOpened, bool leaving);
     void accountDeleteNeedsUnlock(const QString& id, const QString& name);
     void deleting(const QString& id);
     void pairing(const QString& status, double progress, bool needsCode, bool active);

@@ -12,11 +12,13 @@ Dialog {
     signal localOnlyRequested(string id)
 
     property bool profileNotOpened: false
+    property bool leaving: false
 
-    function show(id, error, notOpened) {
+    function show(id, error, notOpened, leavingAccount) {
         accountId = id
         reason = error
         profileNotOpened = notOpened === true
+        leaving = leavingAccount === true
         open()
     }
 
@@ -72,21 +74,15 @@ Dialog {
                 : qsTr("Nothing was deleted. Try again when it is reachable - this profile "
                   + "holds the only key that can ask it to.")
         }
-        Label {
+        MenuButton {
             Layout.fillWidth: true
             Layout.leftMargin: 14
             Layout.rightMargin: 14
-            Layout.bottomMargin: 4
-            wrapMode: Text.Wrap
-            color: Theme.danger
-            font.pixelSize: Theme.fontSmall
             text: qsTr("Remove from this device anyway")
-            HoverHandler { cursorShape: Qt.PointingHandCursor }
-            TapHandler {
-                onTapped: {
-                    root.localOnlyRequested(root.accountId)
-                    root.close()
-                }
+            danger: true
+            onClicked: {
+                root.localOnlyRequested(root.accountId)
+                root.close()
             }
         }
         Label {

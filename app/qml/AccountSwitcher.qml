@@ -191,7 +191,7 @@ WindowPopup {
 
     AccountDeleteConfirmDialog {
         id: deleteDialog
-        onLocalOnlyRequested: (id) => App.forgetAccountLocally(id)
+        onLocalOnlyRequested: (id) => App.leaveAccount(id)
         onConfirmed: (id) => App.deleteAccount(id)
     }
 

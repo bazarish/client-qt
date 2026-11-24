@@ -23,6 +23,7 @@ signals:
     void cancelPairing();
     void deleteAccount(const QString& id);
     void deleteAccountAfterUnlock(const QString& id);
+    void leaveAccount(const QString& id);
     void forgetAccountLocally(const QString& id);
     void lockAccount(const QString& id);
     void changePassphrase(const QString& id, const QString& passphrase);

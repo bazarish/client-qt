@@ -1335,7 +1335,7 @@ WindowPopup {
         id: deleteDialog
         onLocalOnlyRequested: (id) => {
             root.close()
-            App.forgetAccountLocally(id)
+            App.leaveAccount(id)
         }
         onConfirmed: (id) => {
             root.close()

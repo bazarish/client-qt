@@ -142,7 +142,8 @@ CoreHost::CoreHost(QObject* const parent)
     connect(&commands_, &AppCommands::deleteAccount, this, &CoreHost::deleteAccount);
     connect(&commands_, &AppCommands::deleteAccountAfterUnlock, this,
         &CoreHost::deleteAccountAfterUnlock);
-    connect(&commands_, &AppCommands::forgetAccountLocally, this, &CoreHost::leaveAccount);
+    connect(&commands_, &AppCommands::leaveAccount, this, &CoreHost::leaveAccount);
+    connect(&commands_, &AppCommands::forgetAccountLocally, this, &CoreHost::forgetAccountLocally);
     connect(&commands_, &AppCommands::lockAccount, this, &CoreHost::lockAccount);
     connect(&commands_, &AppCommands::changePassphrase, this, &CoreHost::changePassphrase);
     connect(&commands_, &AppCommands::cancelUnlock, this, &CoreHost::cancelUnlock);
@@ -616,7 +617,7 @@ void CoreHost::openSession(const QString& id, const QString& passphrase, const b
                 pendingDeleteId_.clear();
                 bazarish::log::warn("account {} could not be opened to delete it: {}",
                     id.toStdString(), error.toStdString());
-                emit events_.accountDeleteFailed(id, error, /*profileNotOpened=*/true);
+                emit events_.accountDeleteFailed(id, error, /*profileNotOpened=*/true, /*leaving=*/false);
                 return;
             }
             emit events_.accountOpenFailed(error);
@@ -1082,7 +1083,7 @@ void CoreHost::deleteAccount(const QString& id)
             disconnect(*connection);
             if (!ok) {
                 setDeleting({});
-                emit events_.accountDeleteFailed(id, error, /*profileNotOpened=*/false);
+                emit events_.accountDeleteFailed(id, error, /*profileNotOpened=*/false, /*leaving=*/false);
                 return;
             }
             forgetAccountLocally(id);
@@ -1116,7 +1117,7 @@ void CoreHost::leaveAccount(const QString& id)
             disconnect(*connection);
             if (!ok) {
                 setDeleting({});
-                emit events_.accountDeleteFailed(id, error, /*profileNotOpened=*/false);
+                emit events_.accountDeleteFailed(id, error, /*profileNotOpened=*/false, /*leaving=*/true);
                 return;
             }
             forgetAccountLocally(id);
