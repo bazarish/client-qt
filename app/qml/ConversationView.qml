@@ -396,9 +396,6 @@ Item {
                     }
                     RowLayout {
                         id: groupLine
-                        readonly property string status: root.session && root.session.contactsRevision >= 0
-                            && root.session.activePeer.length > 0
-                            ? root.session.contactStatus(root.session.activePeer).replace(/\n/g, " ") : ""
                         visible: root.session !== null && root.session.activeIsGroup
                         spacing: 6
                         Layout.fillWidth: true
@@ -425,14 +422,6 @@ Item {
                                 }
                             }
                         }
-                        Label {
-                            visible: groupLine.status.length > 0
-                            text: groupLine.status
-                            color: Theme.textFaint
-                            font.pixelSize: Theme.fontSmall
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                        }
                     }
                     RowLayout {
                         id: peerLine
@@ -444,7 +433,8 @@ Item {
                         readonly property bool online: root.session !== null && root.session.presenceRevision >= 0
                             && root.session.peerOnline(peer)
                         readonly property string status: root.session && root.session.contactsRevision >= 0
-                            && peer.length > 0 ? root.session.contactStatus(peer).replace(/\n/g, " ") : ""
+                            && peer.length > 0 && kind === "user"
+                            ? root.session.contactStatus(peer).replace(/\n/g, " ") : ""
                         visible: root.session !== null && !root.session.activeIsGroup && !root.savedChat
                             && (kind === "bot" || status.length > 0)
                         spacing: 6
