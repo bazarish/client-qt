@@ -28,6 +28,7 @@ WindowPopup {
     readonly property int kDeviceActionSize: 22
     readonly property int kDevicesActionGap: 10
     readonly property int kDeviceActionIcon: 14
+    readonly property real kDeviceGapSpaces: 1.5
 
     contentItem: ColumnLayout {
         spacing: 0
@@ -363,17 +364,20 @@ WindowPopup {
                             readonly property color queueInk: showsQueue
                                 ? root.shownColor(root.session.overviewFresh, ink) : ink
                             Layout.fillWidth: true
-                            Layout.preferredHeight: root.kDeviceActionSize
-                            spacing: 8
+                            Layout.minimumHeight: root.kDeviceActionSize
+                            spacing: deviceMetrics.advanceWidth(" ") * root.kDeviceGapSpaces
                             Fingerprint {
+                                Layout.alignment: Qt.AlignTop
+                                Layout.preferredWidth: implicitWidth
                                 value: deviceRow.modelData.deviceId
                                 whole: true
                                 color: deviceRow.ink
                                 font.pixelSize: Theme.fontSmall
                             }
-                            RowLayout {
-                                spacing: 0
+                            Flow {
                                 Layout.fillWidth: true
+                                spacing: deviceMetrics.advanceWidth(" ")
+                                FontMetrics { id: deviceMetrics; font.pixelSize: Theme.fontSmall }
                                 Label {
                                     text: deviceRow.modelData.primary ? qsTr("Primary") : qsTr("Secondary")
                                     color: deviceRow.ink
@@ -383,44 +387,49 @@ WindowPopup {
                                     readonly property string status: deviceRow.modelData.revoked ? qsTr("Revoked")
                                         : (deviceRow.modelData.current ? qsTr("(this device)")
                                             : (deviceRow.modelData.departed ? qsTr("(removed from that device)")
-                                                : (!deviceRow.modelData.registered ? qsTr("(inactive)")
-                                                    : (deviceRow.showsQueue
-                                                        ? "(" + qsTr("message queue: %1").arg(deviceRow.modelData.queue)
-                                                            + (deviceRow.manages ? " \u2013 " : ")")
-                                                        : ""))))
-                                    text: status.length > 0 ? " " + status : ""
-                                    color: deviceRow.showsQueue ? deviceRow.queueInk : deviceRow.ink
+                                                : (!deviceRow.modelData.registered ? qsTr("(inactive)") : "")))
+                                    visible: status.length > 0
+                                    text: status
+                                    color: deviceRow.ink
                                     font.pixelSize: Theme.fontSmall
-                                    elide: Text.ElideRight
                                 }
-                                Label {
-                                    visible: deviceRow.showsQueue && deviceRow.manages
-                                    text: qsTr("Clear")
-                                    color: clearArea.containsMouse ? Theme.danger : deviceRow.queueInk
-                                    font.pixelSize: Theme.fontSmall
-                                    font.underline: true
-                                    MouseArea {
-                                        id: clearArea
-                                        anchors.fill: parent
-                                        anchors.margins: -4
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            clearConfirm.deviceId = deviceRow.modelData.deviceId
-                                            clearConfirm.open()
+                                Row {
+                                    visible: deviceRow.showsQueue
+                                    Label {
+                                        text: "(" + qsTr("queue %1").arg(deviceRow.modelData.queue)
+                                            + (deviceRow.manages ? " " : ")")
+                                        color: deviceRow.queueInk
+                                        font.pixelSize: Theme.fontSmall
+                                    }
+                                    Icon {
+                                        visible: deviceRow.manages
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        name: "close"
+                                        size: Theme.fontSmall
+                                        color: clearArea.containsMouse ? Theme.danger : Theme.green
+                                        MouseArea {
+                                            id: clearArea
+                                            anchors.fill: parent
+                                            anchors.margins: -root.kDeviceActionIcon / 2
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                clearConfirm.deviceId = deviceRow.modelData.deviceId
+                                                clearConfirm.open()
+                                            }
                                         }
                                     }
+                                    Label {
+                                        visible: deviceRow.manages
+                                        text: ")"
+                                        color: deviceRow.queueInk
+                                        font.pixelSize: Theme.fontSmall
+                                    }
                                 }
-                                Label {
-                                    visible: deviceRow.showsQueue && deviceRow.manages
-                                    text: ")"
-                                    color: deviceRow.queueInk
-                                    font.pixelSize: Theme.fontSmall
-                                }
-                                Item { Layout.fillWidth: true }
                             }
                             IconButton {
                                 visible: deviceRow.manages
+                                Layout.alignment: Qt.AlignTop
                                 implicitWidth: root.kDeviceActionSize
                                 implicitHeight: root.kDeviceActionSize
                                 iconName: "close"
