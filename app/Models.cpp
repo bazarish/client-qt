@@ -160,11 +160,13 @@ void ContactListModel::setUnread(const QString& fingerprint, const int count, co
     }
 }
 
-int ContactListModel::totalUnread() const
+int ContactListModel::totalUnread(const QString& except) const
 {
     int total = 0;
     for (const ContactRow& c : contacts_) {
-        total += c.unread;
+        if (c.fingerprint != except) {
+            total += c.unread;
+        }
     }
     return total;
 }

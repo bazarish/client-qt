@@ -332,7 +332,7 @@ Item {
                         anchors.right: parent.right
                         anchors.top: parent.top
                         anchors.margins: 2
-                        count: (root.session ? root.session.unreadTotal : 0) + App.unreadElsewhere
+                        count: (root.session ? root.session.unreadOtherChats : 0) + App.unreadElsewhere
                     }
                 }
                 SavedMark {

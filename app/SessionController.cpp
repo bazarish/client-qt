@@ -393,19 +393,19 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
     connect(&events_, &AccountEvents::callEndFailed, this, &SessionController::callEndFailed);
 
     connect(&contacts_, &QAbstractItemModel::dataChanged, this,
-        &SessionController::refreshUnreadTotal);
+        &SessionController::refreshUnreadOtherChats);
     connect(&contacts_, &QAbstractItemModel::rowsInserted, this,
-        &SessionController::refreshUnreadTotal);
+        &SessionController::refreshUnreadOtherChats);
     connect(&contacts_, &QAbstractItemModel::modelReset, this,
-        &SessionController::refreshUnreadTotal);
+        &SessionController::refreshUnreadOtherChats);
 }
 
-void SessionController::refreshUnreadTotal()
+void SessionController::refreshUnreadOtherChats()
 {
-    const int total = contacts_.totalUnread();
-    if (total != unreadTotal_) {
-        unreadTotal_ = total;
-        emit unreadTotalChanged();
+    const int total = contacts_.totalUnread(activePeer_);
+    if (total != unreadOtherChats_) {
+        unreadOtherChats_ = total;
+        emit unreadOtherChatsChanged();
     }
 }
 
@@ -469,6 +469,7 @@ void SessionController::activateConversation(const QString& peer)
 {
     emit commands_.viewConversation(peer);
     activePeer_ = peer;
+    refreshUnreadOtherChats();
     watchOnScreen();
     emit activePeerChanged();
     emit activePeerNameChanged();
@@ -672,6 +673,7 @@ void SessionController::closeConversation()
     }
     emit commands_.viewConversation({});
     activePeer_.clear();
+    refreshUnreadOtherChats();
     conversation_.setMessages({});
     emit activePeerChanged();
     emit activePeerNameChanged();

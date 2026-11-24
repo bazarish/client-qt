@@ -59,7 +59,7 @@ public:
     void touch(const QString& fingerprint, const QString& name, const QString& lastText,
         qint64 lastTime);
     void setUnread(const QString& fingerprint, int count, int mentions);
-    int totalUnread() const;
+    int totalUnread(const QString& except) const;
     void remove(const QString& fingerprint);
 
 private:

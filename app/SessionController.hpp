@@ -110,7 +110,7 @@ class SessionController : public QObject {
     Q_PROPERTY(bool atNewest READ atNewest NOTIFY pagingChanged)
     Q_PROPERTY(bool hasMoreOlder READ hasMoreOlder NOTIFY pagingChanged)
     Q_PROPERTY(QString accountId READ accountId CONSTANT)
-    Q_PROPERTY(int unreadTotal READ unreadTotal NOTIFY unreadTotalChanged)
+    Q_PROPERTY(int unreadOtherChats READ unreadOtherChats NOTIFY unreadOtherChatsChanged)
     Q_PROPERTY(QObject* contacts READ contacts CONSTANT)
     Q_PROPERTY(QObject* chatList READ chatList CONSTANT)
     Q_PROPERTY(QObject* conversation READ conversation CONSTANT)
@@ -214,7 +214,7 @@ public:
     bool hasMoreOlder() const;
     QString accountId() const { return accountId_; }
     bool historyIsOpen() const { return store_.isOpen(); }
-    int unreadTotal() const { return unreadTotal_; }
+    int unreadOtherChats() const { return unreadOtherChats_; }
     QObject* contacts() { return &contacts_; }
     QObject* chatList() { return &contactsProxy_; }
     Q_INVOKABLE void setChatFilter(const QString& text);
@@ -515,7 +515,7 @@ signals:
     void replyingChanged();
     void contactsRevisionChanged();
     void reactionsFlashing();
-    void unreadTotalChanged();
+    void unreadOtherChatsChanged();
     void operationsChanged();
     void onlineChanged();
     void reachableChanged();
@@ -765,8 +765,8 @@ private:
     QString callPeer_;
     bool callMuted_ = false;
     void rebuildChatList();
-    int unreadTotal_ = 0;
-    void refreshUnreadTotal();
+    int unreadOtherChats_ = 0;
+    void refreshUnreadOtherChats();
 };
 
 }  // namespace bazarish::app
