@@ -2109,7 +2109,13 @@ void SessionWorker::clearSaved()
 void SessionWorker::setBlocked(const QString& peer, const bool blocked)
 {
     withSession([&] {
-        session_->setBlocked(peer.toStdString(), blocked);
+        try {
+            session_->setBlocked(peer.toStdString(), blocked);
+        } catch (const std::exception&) {
+            toldContacts_.reset();
+            emitContacts();
+            throw;
+        }
         emitContacts();
     });
 }
