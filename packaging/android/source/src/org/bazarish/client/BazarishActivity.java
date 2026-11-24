@@ -10,6 +10,9 @@ import java.lang.ref.WeakReference;
 import org.qtproject.qt.android.bindings.QtActivity;
 
 public class BazarishActivity extends QtActivity {
+    // QtActivityBase's key: a new process that restores it as true never starts Qt.
+    private static final String QT_STARTED = "Started";
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         Window.app = getApplicationContext();
@@ -24,6 +27,12 @@ public class BazarishActivity extends QtActivity {
             Window.holdLink(this, link);
         }
         super.onCreate(savedInstanceState);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        savedInstanceState.remove(QT_STARTED);
+        super.onRestoreInstanceState(savedInstanceState);
     }
 
     @Override
