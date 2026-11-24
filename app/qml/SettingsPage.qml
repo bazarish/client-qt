@@ -363,11 +363,13 @@ WindowPopup {
                                 && modelData.queue > 0 && root.session !== null && root.session.overviewKnown
                             readonly property color queueInk: showsQueue
                                 ? root.shownColor(root.session.overviewFresh, ink) : ink
+                            readonly property real lineInset: Math.max(0, (root.kDeviceActionSize - deviceMetrics.height) / 2)
                             Layout.fillWidth: true
                             Layout.minimumHeight: root.kDeviceActionSize
                             spacing: deviceMetrics.advanceWidth(" ") * root.kDeviceGapSpaces
                             Fingerprint {
                                 Layout.alignment: Qt.AlignTop
+                                Layout.topMargin: deviceRow.lineInset
                                 Layout.preferredWidth: implicitWidth
                                 value: deviceRow.modelData.deviceId
                                 whole: true
@@ -376,6 +378,8 @@ WindowPopup {
                             }
                             Flow {
                                 Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignTop
+                                Layout.topMargin: deviceRow.lineInset
                                 spacing: deviceMetrics.advanceWidth(" ")
                                 FontMetrics { id: deviceMetrics; font.pixelSize: Theme.fontSmall }
                                 Label {
@@ -990,7 +994,7 @@ WindowPopup {
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
                 text: qsTr("The server deletes the mail for %1. The device registers again the next time it connects.")
-                    .arg(clearConfirm.deviceId)
+                    .arg((clearConfirm.deviceId.match(/.{1,4}/g) || []).join(" "))
             }
         }
     }
