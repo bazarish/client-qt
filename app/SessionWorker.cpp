@@ -1684,6 +1684,7 @@ QString SessionWorker::milestoneText(const bazarish::client::ConnectMilestone mi
 {
     using bazarish::client::ConnectMilestone;
     switch (milestone) {
+    case ConnectMilestone::eGatewayConnecting: return tr("Reaching the external gateway");
     case ConnectMilestone::eRouterStarting: return tr("Starting the I2P router");
     case ConnectMilestone::eBuiltInReseeds: return tr("Starting with the built-in reseeds");
     case ConnectMilestone::eTunnelsBuilding: return tr("Building your I2P tunnels");
