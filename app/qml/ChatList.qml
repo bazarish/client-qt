@@ -13,10 +13,8 @@ Item {
     readonly property bool narrow: width < 300
     signal accountsRequested()
 
-    readonly property int kOnlineDot: 12
+    readonly property int kOnlineDot: Theme.presenceDot + 2 * kBadgeRing
     readonly property int kTypingBadge: 20
-    readonly property int kTypingPencil: 14
-    readonly property real kTypingPencilWeight: 3
     readonly property int kSyncPadding: 6
     readonly property int kSyncSideMargin: 12
     readonly property int kSyncBarHeight: 4
@@ -296,8 +294,8 @@ Item {
                                 anchors.centerIn: parent
                                 name: "edit"
                                 color: Theme.green
-                                size: root.kTypingPencil
-                                weight: root.kTypingPencilWeight
+                                size: Theme.typingPencil
+                                weight: Theme.typingPencilWeight
                             }
                         }
                     }

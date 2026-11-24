@@ -349,23 +349,48 @@ Item {
                 ColumnLayout {
                     spacing: 0
                     Layout.fillWidth: true
-                    Label {
-                        text: root.session ? root.session.activePeerName : ""
-                        color: Theme.text
-                        font.weight: Font.Medium
-                        elide: Text.ElideRight
+                    RowLayout {
+                        spacing: 6
                         Layout.fillWidth: true
                         Item {
-                            x: parent.effectiveHorizontalAlignment === Text.AlignRight ? parent.width - width : 0
-                            width: Math.min(parent.contentWidth, parent.width)
-                            height: parent.height
-                            TapHandler {
-                                enabled: !root.lookingUp
-                                onTapped: root.contactInfoRequested()
+                            visible: peerLine.online && !root.savedChat
+                            implicitWidth: Theme.typingPencil
+                            implicitHeight: Theme.typingPencil
+                            Rectangle {
+                                visible: !peerLine.typing
+                                anchors.centerIn: parent
+                                width: Theme.presenceDot
+                                height: width
+                                radius: width / 2
+                                color: Theme.greenFill
                             }
-                            HoverHandler {
-                                enabled: !root.lookingUp
-                                cursorShape: Qt.PointingHandCursor
+                            Icon {
+                                visible: peerLine.typing
+                                anchors.centerIn: parent
+                                name: "edit"
+                                color: Theme.green
+                                size: Theme.typingPencil
+                                weight: Theme.typingPencilWeight
+                            }
+                        }
+                        Label {
+                            text: root.session ? root.session.activePeerName : ""
+                            color: Theme.text
+                            font.weight: Font.Medium
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                            Item {
+                                x: parent.effectiveHorizontalAlignment === Text.AlignRight ? parent.width - width : 0
+                                width: Math.min(parent.contentWidth, parent.width)
+                                height: parent.height
+                                TapHandler {
+                                    enabled: !root.lookingUp
+                                    onTapped: root.contactInfoRequested()
+                                }
+                                HoverHandler {
+                                    enabled: !root.lookingUp
+                                    cursorShape: Qt.PointingHandCursor
+                                }
                             }
                         }
                     }
@@ -421,14 +446,13 @@ Item {
                         readonly property string status: root.session && root.session.contactsRevision >= 0
                             && peer.length > 0 ? root.session.contactStatus(peer).replace(/\n/g, " ") : ""
                         visible: root.session !== null && !root.session.activeIsGroup && !root.savedChat
-                            && (kind === "bot" || online || status.length > 0)
+                            && (kind === "bot" || status.length > 0)
                         spacing: 6
                         Layout.fillWidth: true
                         Label {
-                            visible: peerLine.kind === "bot" || peerLine.online
-                            text: peerLine.kind === "bot" ? qsTr("bot")
-                                : (peerLine.typing ? qsTr("typing...") : qsTr("online"))
-                            color: peerLine.kind === "bot" ? Theme.textFaint : Theme.green
+                            visible: peerLine.kind === "bot"
+                            text: qsTr("bot")
+                            color: Theme.textFaint
                             font.pixelSize: Theme.fontSmall
                         }
                         Label {
