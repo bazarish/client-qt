@@ -13,6 +13,11 @@ WindowPopup {
     }
 
     readonly property int unreadSlotWidth: 34
+    property string rowId: ""
+    property string rowName: ""
+    property bool rowPrimary: false
+    property bool rowOtherPrimaries: false
+    property bool rowRoleKnown: false
 
     function statusText(m) {
         if (!m.open) {
@@ -110,11 +115,25 @@ WindowPopup {
                             checked = Qt.binding(function() { return model.online })
                         }
                     }
+                    IconButton {
+                        id: rowMore
+                        anchors.right: rowToggle.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        iconName: "more"
+                        onClicked: {
+                            root.rowId = model.accountId
+                            root.rowName = model.name
+                            root.rowPrimary = model.primary
+                            root.rowOtherPrimaries = model.otherPrimaries
+                            root.rowRoleKnown = !model.encrypted || model.open
+                            rowMenu.popup()
+                        }
+                    }
                     Item {
                         id: rowUnread
                         width: root.unreadSlotWidth
                         height: parent.height
-                        anchors.right: rowToggle.left
+                        anchors.right: rowMore.left
                         anchors.rightMargin: 8
                         UnreadBadge {
                             anchors.centerIn: parent
@@ -167,6 +186,24 @@ WindowPopup {
             onClicked: { root.close(); root.createRequested() }
             background: Rectangle { radius: 10; color: parent.down ? Theme.accentDown : (parent.hovered ? Theme.accentHover : Theme.accent) }
             contentItem: IconLabel { name: "plus"; color: Theme.accentText }
+        }
+    }
+
+    AccountDeleteConfirmDialog {
+        id: deleteDialog
+        onLocalOnlyRequested: (id) => App.forgetAccountLocally(id)
+        onConfirmed: (id) => App.deleteAccount(id)
+    }
+
+    ContextMenu {
+        id: rowMenu
+        ContextMenuItem {
+            text: qsTr("Delete account")
+            danger: true
+            onTriggered: {
+                deleteDialog.localOnly = root.rowRoleKnown && !root.rowPrimary
+                deleteDialog.show(root.rowId, root.rowName, root.rowPrimary, root.rowOtherPrimaries)
+            }
         }
     }
 }

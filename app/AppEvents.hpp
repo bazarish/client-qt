@@ -29,6 +29,8 @@ struct AccountRow {
     bool online = false;
     bool connected = false;
     bool encrypted = false;
+    bool primary = false;
+    bool otherPrimaries = false;
     int unread = 0;
     QString activeFacade;
 };
@@ -48,15 +50,16 @@ inline QDataStream& operator>>(QDataStream& in, AccountListRow& row)
 inline QDataStream& operator<<(QDataStream& out, const AccountRow& row)
 {
     return out << row.id << row.name << row.fingerprint << row.open << row.active << row.online
-               << row.connected << row.encrypted << static_cast<qint32>(row.unread)
-               << row.activeFacade;
+               << row.connected << row.encrypted << row.primary << row.otherPrimaries
+               << static_cast<qint32>(row.unread) << row.activeFacade;
 }
 
 inline QDataStream& operator>>(QDataStream& in, AccountRow& row)
 {
     qint32 unread = 0;
     in >> row.id >> row.name >> row.fingerprint >> row.open >> row.active >> row.online
-        >> row.connected >> row.encrypted >> unread >> row.activeFacade;
+        >> row.connected >> row.encrypted >> row.primary >> row.otherPrimaries >> unread
+        >> row.activeFacade;
     row.unread = unread;
     return in;
 }

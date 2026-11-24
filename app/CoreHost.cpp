@@ -533,6 +533,8 @@ void CoreHost::refreshAccounts()
         AccountRow row;
         row.id = info.id;
         row.encrypted = info.encrypted;
+        row.primary = info.primary;
+        row.otherPrimaries = info.otherPrimaries;
         if (const CoreAccount* const account = sessionFor(info.id)) {
             row.open = true;
             row.active = info.id == activeId_;

@@ -152,7 +152,8 @@ class OpenAccountsModel : public QAbstractListModel {
 public:
     enum Roles {
         IdRole = Qt::UserRole + 1, NameRole, FingerprintRole, OpenRole, ActiveRole,
-        OnlineRole, ConnectedRole, EncryptedRole, UnreadRole, ActiveFacadeRole
+        OnlineRole, ConnectedRole, EncryptedRole, UnreadRole, ActiveFacadeRole, PrimaryRole,
+        OtherPrimariesRole
     };
     using QAbstractListModel::QAbstractListModel;
 
