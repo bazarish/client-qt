@@ -101,7 +101,6 @@ WindowPopup {
     }
 
     margins: Theme.spacing
-    onAboutToShow: sheetScroll.toTop()
     onOpened: {
         publishing = ""
         showQr = false
@@ -124,7 +123,6 @@ WindowPopup {
         }
 
         ScrollColumn {
-            id: sheetScroll
             Layout.fillWidth: true
             Layout.fillHeight: true
             inset: Theme.contentInset

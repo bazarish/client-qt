@@ -8,8 +8,9 @@ Item {
     readonly property int kStreakMs: 700
     readonly property real kStreakGain: 0.5
     readonly property real kMaxGain: 4
-    // Qt's own step for one notch, measured; a single notch keeps it.
-    readonly property real kNotchPixels: 72
+    // Qt scrolls a notch by the wheel's lines of 24 px; a single notch keeps that step.
+    readonly property real kLinePixels: 24
+    readonly property real kNotchPixels: Application.styleHints.wheelScrollLines * kLinePixels
     readonly property real kNotchAngle: 120
     readonly property real baseVelocity: flickable.maximumFlickVelocity / kMaxGain
 

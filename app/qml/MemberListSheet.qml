@@ -21,10 +21,7 @@ WindowPopup {
         filter.text = ""
     }
 
-    onAboutToShow: {
-        root.stopSearch()
-        list.positionViewAtBeginning()
-    }
+    onAboutToShow: root.stopSearch()
 
     contentItem: ColumnLayout {
         spacing: 0

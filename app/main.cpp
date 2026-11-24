@@ -55,6 +55,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
+#include <QStyleHints>
 #include <QQuickWindow>
 #include <QInputMethod>
 #include <QWindow>
@@ -102,6 +103,9 @@ constexpr const char* kNoQtTextHandles = "1";
 #endif
 
 namespace {
+// Qt's three lines a notch crawled through every window on a desktop.
+constexpr int kWheelScrollLines = 8;
+
 // An input method holds the word being typed out of the field until it is committed.
 class PressCommitsWord : public QObject {
 protected:
@@ -294,6 +298,9 @@ int main(int argc, char** argv)
     QGuiApplication::setOrganizationName("Bazarish");
 
     QQuickStyle::setStyle("Basic");
+#ifndef Q_OS_ANDROID
+    QGuiApplication::styleHints()->setWheelScrollLines(kWheelScrollLines);
+#endif
 
     bazarish::app::installAppFont();
 

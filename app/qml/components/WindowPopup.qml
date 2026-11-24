@@ -22,6 +22,17 @@ Popup {
         return false
     }
 
+    // Every window opens at its top, wherever it was left the last time.
+    function scrollToTop(item) {
+        if (item instanceof Flickable) {
+            item.contentY = item.originY
+        }
+        for (const child of item.children) {
+            root.scrollToTop(child)
+        }
+    }
+    onAboutToShow: root.scrollToTop(root.contentItem)
+
     function openFrom(parentWindow) {
         root.returnTo = parentWindow
         root.open()

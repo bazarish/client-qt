@@ -63,10 +63,7 @@ WindowPopup {
         return expiry + root.kSeparator + qsTr("leases: %1").arg(leaseSet.leases)
     }
 
-    onAboutToShow: {
-        root.copied = false
-        scroll.contentItem.contentY = 0
-    }
+    onAboutToShow: root.copied = false
 
     Timer {
         interval: root.kPollMs

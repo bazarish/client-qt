@@ -18,10 +18,6 @@ ScrollView {
     onFocusedItemChanged: revealFocused()
     onAvailableHeightChanged: revealFocused()
 
-    function toTop() {
-        root.contentItem.contentY = 0
-    }
-
     function revealFocused() {
         let inside = false
         for (let up = root.focusedItem; up; up = up.parent) {
