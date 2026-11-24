@@ -273,7 +273,7 @@ Item {
 
     Rectangle {
         id: menu
-        visible: root.menuShown
+        visible: root.menuShown && (actions.visibleChildren.length > 0 || formRow.visible)
         readonly property real maxWidth: root.width - 2 * (root.kMenuMargin + root.kMenuPadding)
         readonly property real rowWidth: Math.min(menu.maxWidth,
             Math.max(root.naturalWidth(actions), formRow.visible ? root.naturalWidth(formRow) : 0))

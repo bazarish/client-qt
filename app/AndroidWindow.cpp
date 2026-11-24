@@ -195,6 +195,31 @@ bool AndroidWindow::clipboardOffers(const bool pictures)
         kWindow, "clipboardOffers", "(Z)Z", static_cast<jboolean>(pictures));
 }
 
+bool AndroidWindow::clipboardHasPicture()
+{
+    return QJniObject::callStaticMethod<jboolean>(kWindow, "clipboardHasPicture", "()Z");
+}
+
+bool AndroidWindow::copyPicture(const QByteArray& bytes, const QString& suffix)
+{
+    QJniEnvironment env;
+    const jbyteArray array = env->NewByteArray(static_cast<jsize>(bytes.size()));
+    if (array == nullptr) {
+        return false;
+    }
+    env->SetByteArrayRegion(array, 0, static_cast<jsize>(bytes.size()),
+        reinterpret_cast<const jbyte*>(bytes.constData()));
+    const QJniObject held = QJniObject::fromLocalRef(array);
+    return QJniObject::callStaticMethod<jboolean>(kWindow, "copyPicture",
+        "([BLjava/lang/String;)Z", held.object<jbyteArray>(),
+        QJniObject::fromString(suffix).object<jstring>());
+}
+
+QString AndroidWindow::clipboardPicture()
+{
+    return QJniObject::callStaticObjectMethod<jstring>(kWindow, "clipboardPicture").toString();
+}
+
 void AndroidWindow::holdFeedback()
 {
     QJniObject::callStaticMethod<void>(kWindow, "holdFeedback", "()V");

@@ -10,6 +10,9 @@
 #include "MentionText.hpp"
 #include "SessionShared.hpp"
 #include "SystemNotes.hpp"
+#ifdef Q_OS_ANDROID
+#include "AndroidWindow.hpp"
+#endif
 
 #include "I2pRouter.hpp"
 #include "Invite.hpp"
@@ -69,6 +72,15 @@
 namespace bazarish::app {
 
 namespace {
+
+// PNG files start with these bytes; every other picture this keeps is a JPEG.
+const QByteArray kPngSignature = QByteArray::fromHex("89504E47");
+
+QString pictureSuffix(const QByteArray& bytes)
+{
+    return bytes.startsWith(kPngSignature) ? QStringLiteral(".png") : QStringLiteral(".jpg");
+}
+
 const QString kTimeOfDay = QStringLiteral("HH:mm");
 const QString kDayAndTime = QStringLiteral("dd.MM.yyyy HH:mm");
 
@@ -1250,6 +1262,14 @@ QVariantMap SessionController::pictureBeside(const QString& e2eId, const int ste
 
 void SessionController::sendClipboardPicture()
 {
+#ifdef Q_OS_ANDROID
+    const QString picture = AndroidWindow::clipboardPicture();
+    if (picture.isEmpty()) {
+        emit actionFailed(tr("there is no picture in the clipboard"));
+        return;
+    }
+    sendPictureFiles({picture});
+#else
     const QClipboard* const clipboard = QGuiApplication::clipboard();
     const PreparedPicture picture = preparePicture(
         clipboard == nullptr ? QImage() : clipboard->image(), QStringLiteral("pasted"));
@@ -1258,6 +1278,7 @@ void SessionController::sendClipboardPicture()
         return;
     }
     sendPreparedPicture(picture);
+#endif
 }
 
 void SessionController::sendShot(QObject* const shot)
@@ -1904,6 +1925,18 @@ bool SessionController::savePictureToDownloads(const QString& e2eId, const QStri
 
 void SessionController::copyPicture(const QString& e2eId)
 {
+#ifdef Q_OS_ANDROID
+    const QByteArray bytes = PictureStore::instance().bytes(e2eId);
+    if (bytes.isEmpty()) {
+        emit actionFailed(tr("This picture is not here to copy"));
+        return;
+    }
+    if (!AndroidWindow::copyPicture(bytes, pictureSuffix(bytes))) {
+        emit actionFailed(tr("The picture could not be copied"));
+        return;
+    }
+    emit actionOk(tr("Picture copied"));
+#else
     const QImage picture = PictureStore::instance().image(e2eId);
     if (picture.isNull()) {
         emit actionFailed(tr("This picture is not here to copy"));
@@ -1916,13 +1949,13 @@ void SessionController::copyPicture(const QString& e2eId)
     }
     clipboard->setImage(picture);
     emit actionOk(tr("Picture copied"));
+#endif
 }
 
 QUrl SessionController::defaultPictureSaveUrl(const QString& e2eId, const QString& name) const
 {
     const QByteArray bytes = PictureStore::instance().bytes(e2eId);
-    const QString suffix = bytes.startsWith(QByteArray::fromHex("89504E47"))
-        ? QStringLiteral(".png") : QStringLiteral(".jpg");
+    const QString suffix = pictureSuffix(bytes);
     const QString base = name.isEmpty() ? QStringLiteral("picture") : QFileInfo(name).completeBaseName();
     return defaultSaveUrl(base + suffix);
 }

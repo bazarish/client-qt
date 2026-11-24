@@ -813,8 +813,12 @@ QString AppController::dataLocation() const
 
 bool AppController::clipboardHasImage() const
 {
+#ifdef Q_OS_ANDROID
+    return AndroidWindow::clipboardHasPicture();
+#else
     const QClipboard* const clipboard = QGuiApplication::clipboard();
     return clipboard != nullptr && !clipboard->image().isNull();
+#endif
 }
 
 void AppController::holdFeedback() const

@@ -31,6 +31,11 @@ import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
 
+import androidx.core.content.FileProvider;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 
 public final class Window {
@@ -43,6 +48,11 @@ public final class Window {
     private static final String HELD_ANSWER = "answer";
     private static final String HELD_LINK = "link";
     private static final String LINK_HOST = "bazari.sh";
+    private static final String PICTURE_MIME = "image/*";
+    private static final String CLIPBOARD_DIR = "clipboard";
+    private static final String CLIPBOARD_PICTURE = "picture";
+    // The FileProvider the Qt template declares over the files directory.
+    private static final String FILE_PROVIDER = ".qtprovider";
 
     private static volatile int gestureLeft = 0;
     private static volatile int gestureRight = 0;
@@ -282,6 +292,45 @@ public final class Window {
         ClipDescription about = board.getPrimaryClipDescription();
         return about != null
             && (about.hasMimeType("text/*") || (pictures && about.hasMimeType("image/*")));
+    }
+
+    public static boolean clipboardHasPicture() {
+        ClipboardManager board = app.getSystemService(ClipboardManager.class);
+        ClipDescription about = board == null ? null : board.getPrimaryClipDescription();
+        return about != null && about.hasMimeType(PICTURE_MIME);
+    }
+
+    // Android's clipboard carries an address, not bytes: the picture is lent by content URI.
+    public static boolean copyPicture(byte[] bytes, String suffix) {
+        File dir = new File(app.getFilesDir(), CLIPBOARD_DIR);
+        if (!dir.isDirectory() && !dir.mkdirs()) {
+            return false;
+        }
+        File file = new File(dir, CLIPBOARD_PICTURE + suffix);
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            out.write(bytes);
+        } catch (IOException written) {
+            return false;
+        }
+        Uri uri = FileProvider.getUriForFile(app, app.getPackageName() + FILE_PROVIDER, file);
+        app.getSystemService(ClipboardManager.class)
+            .setPrimaryClip(ClipData.newUri(app.getContentResolver(), CLIPBOARD_PICTURE, uri));
+        return true;
+    }
+
+    public static String clipboardPicture() {
+        ClipboardManager board = app.getSystemService(ClipboardManager.class);
+        ClipData clip = board == null ? null : board.getPrimaryClip();
+        if (clip == null || !clip.getDescription().hasMimeType(PICTURE_MIME)) {
+            return "";
+        }
+        for (int i = 0; i < clip.getItemCount(); ++i) {
+            Uri uri = clip.getItemAt(i).getUri();
+            if (uri != null) {
+                return uri.toString();
+            }
+        }
+        return "";
     }
 
     public static void holdFeedback() {

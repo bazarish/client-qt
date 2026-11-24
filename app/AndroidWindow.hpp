@@ -21,6 +21,9 @@ public:
     static void openBackgroundSettings();
     static bool fullScreenCallsRestricted();
     static bool clipboardOffers(bool pictures);
+    static bool clipboardHasPicture();
+    static bool copyPicture(const QByteArray& bytes, const QString& suffix);
+    static QString clipboardPicture();
     static void holdFeedback();
     static void openFullScreenCallsSettings();
     static bool linksHandled();

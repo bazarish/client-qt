@@ -2369,6 +2369,12 @@
       "zh": "图片已复制",
       "ar": "نُسخت الصورة"
     },
+    "The picture could not be copied": {
+      "ru": "Не удалось скопировать картинку",
+      "es": "No se pudo copiar la imagen",
+      "zh": "无法复制图片",
+      "ar": "تعذّر نسخ الصورة"
+    },
     "Picture saved": {
       "ru": "Картинка сохранена",
       "es": "Imagen guardada",
