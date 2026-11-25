@@ -40,6 +40,11 @@ Item {
     property bool caretShown: false
     property bool dragging: false
     readonly property bool menuShown: root.live && !root.dragging && (root.hasSelection || root.caretMenu)
+    // Asked only with the menu up: Android announces every look into the clipboard.
+    readonly property bool offersPaste: root.menuShown && root.editable
+        && App.clipboardOffersPaste(root.pastesPictures)
+    readonly property bool offersSelectAll: root.field !== null && root.field.length > 0
+        && root.field.selectedText.length < root.field.length
 
     function tapped() {
         root.caretMenu = false
@@ -273,7 +278,7 @@ Item {
 
     Rectangle {
         id: menu
-        visible: root.menuShown && (actions.visibleChildren.length > 0 || formRow.visible)
+        visible: root.menuShown && (root.hasSelection || root.offersPaste || root.offersSelectAll)
         readonly property real maxWidth: root.width - 2 * (root.kMenuMargin + root.kMenuPadding)
         readonly property real rowWidth: Math.min(menu.maxWidth,
             Math.max(root.naturalWidth(actions), formRow.visible ? root.naturalWidth(formRow) : 0))
@@ -325,9 +330,7 @@ Item {
                 }
                 Action {
                     text: qsTr("Paste")
-                    // Asked only with the menu up: Android announces every look into the clipboard.
-                    visible: root.menuShown && root.field !== null && root.editable
-                        && App.clipboardOffersPaste(root.pastesPictures)
+                    visible: root.offersPaste
                     onClicked: {
                         root.caretMenu = false
                         root.pasteRequested()
@@ -335,8 +338,7 @@ Item {
                 }
                 Action {
                     text: qsTr("Select all")
-                    visible: root.field !== null && root.field.length > 0
-                        && root.field.selectedText.length < root.field.length
+                    visible: root.offersSelectAll
                     onClicked: root.field.selectAll()
                 }
             }
