@@ -749,6 +749,12 @@
       "zh": "来自网站的质询",
       "ar": "طلب من الموقع"
     },
+    "Change": {
+      "ru": "Сменить",
+      "es": "Cambiar",
+      "zh": "更换",
+      "ar": "تغيير"
+    },
     "Change name": {
       "ru": "Сменить имя",
       "es": "Cambiar el nombre",
@@ -3935,11 +3941,11 @@
       "zh": "你的别名现在指向这里",
       "ar": "تشير أسماؤك المستعارة إلى هنا الآن"
     },
-    "Your contacts keep the copy they already have until you set a new one": {
-      "ru": "У контактов останется копия, которую они получили ранее. Она сменится, когда вы поставите новую.",
-      "es": "Tus contactos conservan la copia que ya tienen hasta que pongas una nueva",
-      "zh": "在你设置新的之前，联系人保留他们手上已有的那一份",
-      "ar": "تحتفظ جهات اتصالك بالنسخة التي لديها حتى تضع واحدة جديدة"
+    "You and your contacts see the generated picture again": {
+      "ru": "У вас и у ваших контактов снова будет сгенерированный аватар",
+      "es": "Tú y tus contactos verán de nuevo la imagen generada",
+      "zh": "你和你的联系人将再次看到自动生成的头像",
+      "ar": "ستعود أنت وجهات اتصالك إلى رؤية الصورة المُولَّدة"
     },
     "Your data moved back to your user folder. Bazarish has to be started again to use it.": {
       "ru": "Данные вернулись в пользовательскую папку. Чтобы ими пользоваться, запустите Bazarish заново.",

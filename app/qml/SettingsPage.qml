@@ -96,8 +96,7 @@ WindowPopup {
                             }
                             TapHandler {
                                 enabled: !avatarSlot.busy
-                                onTapped: App.mobile && App.canPickPictures
-                                    ? App.pickAvatar() : avatarDialog.open()
+                                onTapped: ownAvatar.open()
                             }
                             HoverHandler {
                                 enabled: !avatarSlot.busy
@@ -940,12 +939,20 @@ WindowPopup {
         nameFilters: ["I2P destination key (*.dat)", "All files (*)"]
         onAccepted: if (root.session) root.session.loadPersonalKey(selectedFile)
     }
+    AvatarViewer {
+        id: ownAvatar
+        fingerprint: root.session ? root.session.fingerprint : ""
+        own: true
+        removable: root.session ? root.session.hasAvatar : false
+        onChangeRequested: App.mobile && App.canPickPictures ? App.pickAvatar() : avatarDialog.open()
+        onRemoveRequested: dropAvatarDialog.open()
+    }
+
     FileDialog {
         id: avatarDialog
         fileMode: FileDialog.OpenFile
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)", "All files (*)"]
         onAccepted: if (root.session) { avatarCrop.openFor(selectedFile) }
-        onRejected: if (root.session && root.session.hasAvatar) { dropAvatarDialog.open() }
     }
 
     Connections {
@@ -954,8 +961,6 @@ WindowPopup {
         function onAvatarPicked(uri) {
             if (uri.length > 0) {
                 avatarCrop.openFor(uri)
-            } else if (root.session && root.session.hasAvatar) {
-                dropAvatarDialog.open()
             }
         }
     }
@@ -1102,7 +1107,7 @@ WindowPopup {
             wrapMode: Text.Wrap
             color: Theme.textDim
             padding: 14
-            text: qsTr("Your contacts keep the copy they already have until you set a new one")
+            text: qsTr("You and your contacts see the generated picture again")
         }
     }
     Dialog {
