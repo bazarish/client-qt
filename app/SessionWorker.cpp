@@ -645,6 +645,24 @@ void SessionWorker::startEventWaiter()
                     Qt::QueuedConnection);
                 bazarish::log::info("mail wait failed ({}): {}",
                     bazarish::client::linkFailureName(failure), error.what());
+                // A server that stops serving an account says no more than that; the node says why.
+                const auto* serverAnswer = dynamic_cast<const bazarish::client::ApiError*>(&error);
+                if (waiter
+                    && (failure == bazarish::client::LinkFailure::eServerRefused
+                        || (serverAnswer != nullptr
+                            && serverAnswer->code == bazarish::ErrorCode::eAccountUnknown))) {
+                    try {
+                        const bazarish::client::I2pDestStatus status = waiter->i2pStatus();
+                        if (status.approval == bazarish::client::kApprovalPending) {
+                            QMetaObject::invokeMethod(
+                                this, [this, status]() { servingStopped(status); },
+                                Qt::QueuedConnection);
+                            return;
+                        }
+                    } catch (const std::exception& asked) {
+                        bazarish::log::info("the approval was not asked: {}", asked.what());
+                    }
+                }
                 const bazarish::client::MailWaitCause cause = serverDown
                     ? mailGate_.awaitServer()
                     : mailGate_.awaitCause(
@@ -2357,7 +2375,8 @@ void SessionWorker::refreshI2pStatus()
     }
     op.succeed(summary);
     const Session::ApprovalState approval = session_->approvalState();
-    emit approvalState(approval.pending, approval.refused, QString::fromStdString(approval.message));
+    emit approvalState(
+        approval.pending, approval.held, approval.refused, QString::fromStdString(approval.message));
 }
 
 void SessionWorker::watchOverview(const bool open)
@@ -2569,7 +2588,26 @@ void SessionWorker::approvalAnswered(const bazarish::client::I2pDestStatus& stat
         return;
     }
     const Session::ApprovalState approval = session_->approvalState();
-    emit approvalState(approval.pending, approval.refused, QString::fromStdString(approval.message));
+    emit approvalState(
+        approval.pending, approval.held, approval.refused, QString::fromStdString(approval.message));
+}
+
+void SessionWorker::servingStopped(const bazarish::client::I2pDestStatus& status)
+{
+    if (!session_) {
+        return;
+    }
+    stopEventWaiter();
+    if (status.held) {
+        bazarish::log::info("the server operator took this account out of service");
+    } else {
+        bazarish::log::info("this account waits for the server operator's approval");
+    }
+    session_->takeApproval(status);
+    const Session::ApprovalState approval = session_->approvalState();
+    emit approvalState(
+        approval.pending, approval.held, approval.refused, QString::fromStdString(approval.message));
+    startApprovalWaiter();
 }
 
 void SessionWorker::approvalRefused(const std::string& reason)
@@ -2583,7 +2621,7 @@ void SessionWorker::approvalRefused(const std::string& reason)
     approvalWaiter_ = std::thread();
     bazarish::log::info("the server declined this account");
     session_->refuseApproval(reason);
-    emit approvalState(false, true, QString::fromStdString(reason));
+    emit approvalState(false, false, true, QString::fromStdString(reason));
 }
 
 void SessionWorker::revokeDevice(const QString& deviceId)

@@ -2113,12 +2113,15 @@ void SessionController::onConnectionChanged(bool connected, const QString& conne
     emit connectedChanged();
 }
 
-void SessionController::onApprovalState(const bool pending, const bool refused, const QString& note)
+void SessionController::onApprovalState(
+    const bool pending, const bool held, const bool refused, const QString& note)
 {
-    if (awaitingApproval_ == pending && approvalRefused_ == refused && approvalNote_ == note) {
+    if (awaitingApproval_ == pending && accountHeld_ == held && approvalRefused_ == refused
+        && approvalNote_ == note) {
         return;
     }
     awaitingApproval_ = pending;
+    accountHeld_ = held;
     approvalRefused_ = refused;
     approvalNote_ = note;
     emit approvalChanged();

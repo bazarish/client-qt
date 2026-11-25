@@ -236,7 +236,7 @@ signals:
     void syncLinkStage(bazarish::client::LinkStage stage);
     // shown: the backlog is more than one pass of items.
     void syncProgress(bool syncing, bool shown, qint64 takenBytes, qint64 totalBytes);
-    void approvalState(bool pending, bool refused, const QString& note);
+    void approvalState(bool pending, bool held, bool refused, const QString& note);
     void facadeInfo(const QString& activeAddress, const QStringList& configured,
         const QString& serverFp, const QStringList& reseeds);
     void i2pKeyState(bool hasKey, const QString& address);
@@ -352,6 +352,7 @@ private:
     void startApprovalWaiter();
     void stopApprovalWaiter();
     void approvalAnswered(const bazarish::client::I2pDestStatus& status);
+    void servingStopped(const bazarish::client::I2pDestStatus& status);
     void approvalRefused(const std::string& reason);
     std::thread errands_;
     std::mutex errandMutex_;

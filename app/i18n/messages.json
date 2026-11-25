@@ -263,6 +263,12 @@
       "zh": "正在接听...",
       "ar": "جارٍ القبول..."
     },
+    "Account suspended": {
+      "ru": "Аккаунт приостановлен",
+      "es": "Cuenta suspendida",
+      "zh": "账户已暂停",
+      "ar": "الحساب موقوف"
+    },
     "Account": {
       "ru": "Аккаунт",
       "es": "Cuenta",
@@ -5560,6 +5566,12 @@
       "es": "No aprobado",
       "zh": "未获批准",
       "ar": "لم تتم الموافقة"
+    },
+    "The server operator suspended this account": {
+      "ru": "Оператор сервера приостановил этот аккаунт",
+      "es": "El operador del servidor suspendió esta cuenta",
+      "zh": "服务器运营者暂停了此账户",
+      "ar": "أوقف مشغّل الخادم هذا الحساب"
     },
     "The server operator declined this account": {
       "ru": "Оператор сервера отклонил этот аккаунт",

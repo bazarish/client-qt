@@ -26,6 +26,7 @@ WindowPopup {
     property string pendingExportFile: ""
     property bool pendingExportPrimary: true
     readonly property int kDeviceActionSize: 22
+    readonly property int kHeldPadding: 10
     readonly property int kDevicesActionGap: 10
     readonly property int kDeviceActionIcon: 14
     readonly property real kDeviceGapSpaces: 1.5
@@ -577,6 +578,38 @@ WindowPopup {
                                     onClicked: root.session.keepThisDeviceAddress()
                                     Layout.fillWidth: true
                                 }
+                            }
+                        }
+                    }
+                    Rectangle {
+                        visible: root.session !== null && root.session.accountHeld
+                        Layout.fillWidth: true
+                        implicitHeight: heldColumn.implicitHeight + 2 * root.kHeldPadding
+                        radius: Theme.radiusSmall
+                        color: Theme.dangerFill
+                        ColumnLayout {
+                            id: heldColumn
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.margins: root.kHeldPadding
+                            spacing: 4
+                            Label {
+                                text: qsTr("Account suspended")
+                                color: Theme.dangerInk
+                                font.pixelSize: Theme.fontSmall
+                                font.weight: Font.DemiBold
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: root.session && root.session.approvalNote.length > 0
+                                    ? root.session.approvalNote
+                                    : qsTr("The server operator suspended this account")
+                                color: Theme.dangerInk
+                                font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
                             }
                         }
                     }

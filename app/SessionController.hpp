@@ -61,6 +61,7 @@ class SessionController : public QObject {
     Q_PROPERTY(qreal voiceSpeed READ voiceSpeed NOTIFY voiceChanged)
     Q_PROPERTY(QString voicePlaying READ voicePlaying NOTIFY voiceChanged)
     Q_PROPERTY(bool awaitingApproval READ awaitingApproval NOTIFY approvalChanged)
+    Q_PROPERTY(bool accountHeld READ accountHeld NOTIFY approvalChanged)
     Q_PROPERTY(QString approvalNote READ approvalNote NOTIFY approvalChanged)
     Q_PROPERTY(bool approvalRefused READ approvalRefused NOTIFY approvalChanged)
     Q_PROPERTY(bool overviewKnown READ overviewKnown NOTIFY i2pStatusChanged)
@@ -190,6 +191,7 @@ public:
     qreal voiceSpeed() const;
     QString voicePlaying() const { return voicePlaying_; }
     bool awaitingApproval() const { return awaitingApproval_; }
+    bool accountHeld() const { return accountHeld_; }
     QString approvalNote() const { return approvalNote_; }
     bool approvalRefused() const { return approvalRefused_; }
     bool overviewKnown() const { return overviewKnown_; }
@@ -568,7 +570,7 @@ private slots:
     void onPairOfferReady(const QString& uri, const QString& code);
     void onPairStage(const QString& status, double progress);
     void onPairFinished(bool ok, const QString& status);
-    void onApprovalState(bool pending, bool refused, const QString& note);
+    void onApprovalState(bool pending, bool held, bool refused, const QString& note);
     void onConnectProgress(int percent, const QString& phase);
     void onFacadeInfo(const QString& activeAddress, const QStringList& configured,
         const QString& serverFp, const QStringList& reseeds);
@@ -611,6 +613,7 @@ private:
     int linkFailure_ = LinkStatus::None;
     bool i2pBusy_ = false;
     bool awaitingApproval_ = false;
+    bool accountHeld_ = false;
     bool approvalRefused_ = false;
     QString approvalNote_;
     bool overviewKnown_ = false;

@@ -104,7 +104,8 @@ reason is the one the last failed wait gave:
 
 Before any wait has failed there is no reason, and the strip says only
 *Connecting*. An account its server holds for approval shows **Waiting for
-approval** in place of the state, and a declined or banned one **Not approved**
+approval** in place of the state, a declined or banned one **Not approved**, and
+one the operator took out of service **Account suspended** on a red strip
 (Waiting for approval, below).
 
 A failed connection or request to a server gives its reason in the same words;
@@ -170,6 +171,14 @@ Approved, the device registers and starts the mail wait. Declined or banned, the
 connection strip says **Not approved** with the operator's reason, and nothing is
 asked again. A failed wait is asked again on the same causes as a failed mail
 wait (step 5).
+
+An account already in service comes here too. When its server refuses the
+tunnel or answers `ACCOUNT_UNKNOWN`, the mail wait asks `i2p-status`; `pending`
+ends the mail wait and starts this one. With `held` - the operator took the
+account out of service - the strip is red and says **Account suspended** with
+the start of the operator's message; tapping it opens the account window, which
+shows the whole message under the I2P destination. Back in service, the device
+registers again and the mail wait resumes.
 
 ## Service messages
 

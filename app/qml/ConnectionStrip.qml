@@ -13,6 +13,7 @@ Rectangle {
     readonly property bool isOffline: root.session !== null && !root.session.online
     readonly property bool isConnecting: root.session !== null && root.session.online
         && !root.session.reachable
+    readonly property bool held: root.session !== null && root.session.accountHeld
     readonly property bool heldForApproval: root.session !== null && root.session.awaitingApproval
     readonly property bool refused: root.session !== null && root.session.approvalRefused
     readonly property int failure: root.session !== null ? root.session.linkFailure : LinkStatus.None
@@ -26,10 +27,11 @@ Rectangle {
     readonly property int kPadding: 4
     readonly property int kSideMargin: 12
 
+    readonly property bool danger: root.revoked || root.held
     visible: root.session !== null && (root.revoked || root.session.connected
         && (root.isOffline || root.isConnecting || root.heldForApproval || root.refused))
     implicitHeight: line.implicitHeight + 2 * root.kPadding
-    color: root.revoked ? Theme.dangerFill : Theme.warnFill
+    color: root.danger ? Theme.dangerFill : Theme.warnFill
 
     RowLayout {
         id: line
@@ -41,17 +43,22 @@ Rectangle {
         spacing: 8
         Label {
             text: root.revoked ? qsTr("Device key revoked")
+                : root.held ? qsTr("Account suspended")
                 : root.refused ? qsTr("Not approved")
                 : root.heldForApproval ? qsTr("Waiting for approval")
                 : root.isOffline ? qsTr("Disconnected")
                 : root.noNetwork ? qsTr("No network")
                 : qsTr("Connecting...")
-            color: root.revoked ? Theme.dangerInk : Theme.warnInk
+            color: root.danger ? Theme.dangerInk : Theme.warnInk
             font.pixelSize: Theme.fontSmall
             font.weight: Font.DemiBold
         }
         Label {
             text: root.revoked ? qsTr("This device no longer has access to the account")
+                : root.held
+                ? (root.session.approvalNote.length > 0
+                    ? root.session.approvalNote
+                    : qsTr("The server operator suspended this account"))
                 : root.refused
                 ? (root.session.approvalNote.length > 0
                     ? root.session.approvalNote
@@ -61,7 +68,7 @@ Rectangle {
                     ? root.session.approvalNote
                     : qsTr("Your server holds this account until its operator approves it — you cannot send or receive yet"))
                 : (root.isOffline ? qsTr("This account is not syncing") : root.whyNotReachable)
-            color: root.revoked ? Theme.dangerInk : Theme.warnInk
+            color: root.danger ? Theme.dangerInk : Theme.warnInk
             font.pixelSize: Theme.fontSmall
             elide: Text.ElideRight
             Layout.fillWidth: true
