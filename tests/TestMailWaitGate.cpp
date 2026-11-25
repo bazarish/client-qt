@@ -10,6 +10,7 @@
 #include <functional>
 #include <string>
 #include <thread>
+#include <utility>
 
 using namespace bazarish;
 using namespace bazarish::client;
@@ -18,15 +19,33 @@ namespace {
 
 using Clock = std::chrono::steady_clock;
 
-constexpr std::chrono::milliseconds kStaleBound{400};
+constexpr std::chrono::milliseconds kAsk{400};
+constexpr std::chrono::milliseconds kMissing{600};
+constexpr SilencePauses kSilence{kAsk, kMissing, std::chrono::hours{1}, std::chrono::hours{1}};
+constexpr SilencePauses kQuickSilence{std::chrono::milliseconds{50}, std::chrono::milliseconds{50},
+    std::chrono::milliseconds{300}, std::chrono::milliseconds{500}};
 constexpr std::chrono::milliseconds kEventAfter{150};
-constexpr int kFailedAsks = 5;
+constexpr int kMissingLookups = 2;
 constexpr ServerDownPauses kServerDown{std::chrono::milliseconds{100},
     std::chrono::milliseconds{250}, std::chrono::milliseconds{450}};
 constexpr std::chrono::milliseconds kPauseSlack{100};
 constexpr int kSteadyServerDownAsks = 2;
 
-const std::function<bool()> kNothingNewer = []() { return false; };
+const FacadeLink kLink{"facade-link.b32.i2p", "facade.b32.i2p"};
+const FacadeLookups kNothingNewer{[]() { return FacadeLookup::eSame; }, kLink};
+
+FacadeLookups lookingUp(std::function<FacadeLookup()> lookUp)
+{
+    return FacadeLookups{std::move(lookUp), kLink};
+}
+
+i2p::AskedLookup askedOn(const FacadeLink& link, const bool newer)
+{
+    i2p::LeaseSetRefresh refresh;
+    refresh.before = i2p::LeaseSetSeen{1, 2};
+    refresh.after = i2p::LeaseSetSeen{newer ? 2 : 1, 2};
+    return i2p::AskedLookup{link.localHost, link.remoteHost, refresh};
+}
 
 std::chrono::milliseconds since(const Clock::time_point start)
 {
@@ -55,10 +74,9 @@ Awaited awaitedWhile(MailWaitGate& gate, const std::function<void()>& meanwhile,
 }
 
 Awaited failedAsk(MailWaitGate& gate, const std::function<void()>& meanwhile,
-    const std::function<bool()>& facadeAnew = kNothingNewer)
+    const FacadeLookups& facade = kNothingNewer)
 {
-    return awaitedWhile(
-        gate, meanwhile, [&gate, &facadeAnew]() { return gate.awaitCause(facadeAnew); });
+    return awaitedWhile(gate, meanwhile, [&gate, &facade]() { return gate.awaitCause(facade); });
 }
 
 Awaited serverDownAsk(MailWaitGate& gate, const std::function<void()>& meanwhile)
@@ -81,7 +99,7 @@ bool tookTheEvent(const Awaited& awaited, const MailWaitCause cause)
 {
     std::printf("%s after %lld ms\n", std::string(mailWaitCauseName(awaited.cause)).c_str(),
         static_cast<long long>(awaited.took.count()));
-    return awaited.cause == cause && awaited.took >= kEventAfter && awaited.took < kStaleBound;
+    return awaited.cause == cause && awaited.took >= kEventAfter && awaited.took < kAsk;
 }
 
 }  // namespace
@@ -89,7 +107,7 @@ bool tookTheEvent(const Awaited& awaited, const MailWaitCause cause)
 int main()
 try {
     {
-        MailWaitGate gate(kStaleBound);
+        MailWaitGate gate(kSilence);
         CHECK(tookTheEvent(failedAsk(gate, [&gate]() { gate.serverAnswered(); }),
             MailWaitCause::eServerAnswered));
         CHECK(tookTheEvent(failedAsk(gate, [&gate]() { gate.registered(); }),
@@ -102,36 +120,49 @@ try {
     }
 
     {
-        MailWaitGate gate(kStaleBound);
+        MailWaitGate gate(kSilence);
         gate.serverAnswered();
         gate.registered();
-        gate.asking();
-        const Clock::time_point start = Clock::now();
-        CHECK(gate.awaitCause(kNothingNewer) == MailWaitCause::eStaleLeaseSet);
-        CHECK(since(start) >= kStaleBound);
-    }
-
-    {
-        MailWaitGate gate(kStaleBound);
         int lookups = 0;
         gate.asking();
         const Clock::time_point start = Clock::now();
-        CHECK(gate.awaitCause([&lookups]() {
+        CHECK(gate.awaitCause(lookingUp([&lookups]() {
             ++lookups;
-            return true;
-        }) == MailWaitCause::eNewerLeaseSet);
-        CHECK(since(start) < kEventAfter);
+            return FacadeLookup::eSame;
+        })) == MailWaitCause::eSilencePauseOver);
+        CHECK(since(start) >= 2 * kAsk);
+        CHECK(since(start) < 3 * kAsk);
         CHECK(lookups == 1);
-        gate.asking();
-        CHECK(gate.awaitCause([&lookups]() {
-            ++lookups;
-            return false;
-        }) == MailWaitCause::eStaleLeaseSet);
-        CHECK(lookups == 2);
     }
 
     {
-        MailWaitGate gate(kStaleBound);
+        MailWaitGate gate(kSilence);
+        int lookups = 0;
+        gate.asking();
+        Clock::time_point start = Clock::now();
+        CHECK(gate.awaitCause(lookingUp([&lookups]() {
+            ++lookups;
+            return FacadeLookup::eNewer;
+        })) == MailWaitCause::eNewerLeaseSet);
+        CHECK(since(start) >= kAsk);
+        CHECK(since(start) < 2 * kAsk);
+        CHECK(lookups == 1);
+
+        lookups = 0;
+        gate.asking();
+        start = Clock::now();
+        CHECK(gate.awaitCause(lookingUp([&lookups]() {
+            ++lookups;
+            return lookups <= kMissingLookups ? FacadeLookup::eMissing : FacadeLookup::eSame;
+        })) == MailWaitCause::eSilencePauseOver);
+        const std::chrono::milliseconds missingCycle = 2 * kAsk + kMissingLookups * kMissing;
+        CHECK(since(start) >= missingCycle);
+        CHECK(since(start) < missingCycle + kAsk);
+        CHECK(lookups == kMissingLookups + 1);
+    }
+
+    {
+        MailWaitGate gate(kSilence);
         gate.asking();
         gate.answered();
         gate.asking();
@@ -141,7 +172,7 @@ try {
         gate.asking();
         gate.answered();
         gate.asking();
-        CHECK(gate.awaitCause(kNothingNewer) == MailWaitCause::eStaleLeaseSet);
+        CHECK(gate.awaitCause(kNothingNewer) == MailWaitCause::eSilencePauseOver);
         gate.asking();
         gate.answered();
         gate.asking();
@@ -149,17 +180,54 @@ try {
     }
 
     {
-        MailWaitGate gate(kStaleBound);
-        const Clock::time_point start = Clock::now();
-        for (int i = 0; i < kFailedAsks; ++i) {
-            gate.asking();
-            CHECK(gate.awaitCause(kNothingNewer) == MailWaitCause::eStaleLeaseSet);
-        }
-        CHECK(since(start) >= kStaleBound * kFailedAsks);
+        MailWaitGate gate(kSilence);
+        int lookups = 0;
+        const FacadeLookups counted = lookingUp([&lookups]() {
+            ++lookups;
+            return FacadeLookup::eSame;
+        });
+        i2p::lookupAsked(askedOn(kLink, true));
+        const Awaited newer
+            = failedAsk(gate, []() { i2p::lookupAsked(askedOn(kLink, true)); }, counted);
+        CHECK(tookTheEvent(newer, MailWaitCause::eNewerLeaseSet));
+        const Awaited same
+            = failedAsk(gate, []() { i2p::lookupAsked(askedOn(kLink, false)); }, counted);
+        CHECK(same.cause == MailWaitCause::eSilencePauseOver);
+        CHECK(same.took >= kEventAfter + kAsk);
+        CHECK(same.took < 2 * kAsk);
+        CHECK(lookups == 0);
+        const FacadeLink elsewhere{"another-link.b32.i2p", kLink.remoteHost};
+        const Awaited ignored
+            = failedAsk(gate, [&elsewhere]() { i2p::lookupAsked(askedOn(elsewhere, true)); },
+                counted);
+        CHECK(ignored.cause == MailWaitCause::eSilencePauseOver);
+        CHECK(ignored.took >= 2 * kAsk);
+        CHECK(lookups == 1);
     }
 
     {
-        MailWaitGate gate(kStaleBound, kServerDown);
+        MailWaitGate gate(kQuickSilence);
+        const Clock::time_point silent = Clock::now();
+        while (since(silent) < kQuickSilence.longSilence) {
+            gate.asking();
+            CHECK(gate.awaitCause(kNothingNewer) == MailWaitCause::eSilencePauseOver);
+        }
+        gate.asking();
+        Clock::time_point start = Clock::now();
+        CHECK(gate.awaitCause(kNothingNewer) == MailWaitCause::eSilencePauseOver);
+        CHECK(since(start) >= 2 * kQuickSilence.longPause);
+        gate.asking();
+        gate.answered();
+        gate.asking();
+        CHECK(gate.awaitCause(kNothingNewer) == MailWaitCause::eHeldWaitBroke);
+        gate.asking();
+        start = Clock::now();
+        CHECK(gate.awaitCause(kNothingNewer) == MailWaitCause::eSilencePauseOver);
+        CHECK(since(start) < kQuickSilence.longPause);
+    }
+
+    {
+        MailWaitGate gate(kSilence, kServerDown);
         CHECK(pausedFor(gate, kServerDown.first));
         CHECK(pausedFor(gate, kServerDown.second));
         for (int i = 0; i < kSteadyServerDownAsks; ++i) {
@@ -169,15 +237,16 @@ try {
         CHECK(pausedFor(gate, kServerDown.first));
         CHECK(pausedFor(gate, kServerDown.second));
         gate.asking();
-        CHECK(gate.awaitCause([]() { return true; }) == MailWaitCause::eNewerLeaseSet);
+        CHECK(gate.awaitCause(lookingUp([]() { return FacadeLookup::eNewer; }))
+            == MailWaitCause::eNewerLeaseSet);
         CHECK(pausedFor(gate, kServerDown.first));
         gate.restart();
         CHECK(pausedFor(gate, kServerDown.first));
     }
 
     {
-        const ServerDownPauses longPauses{kStaleBound, kStaleBound, kStaleBound};
-        MailWaitGate gate(kStaleBound, longPauses);
+        const ServerDownPauses longPauses{kAsk, kAsk, kAsk};
+        MailWaitGate gate(kSilence, longPauses);
         CHECK(tookTheEvent(serverDownAsk(gate, [&gate]() { gate.serverAnswered(); }),
             MailWaitCause::eServerAnswered));
         CHECK(tookTheEvent(serverDownAsk(gate, [&gate]() { gate.registered(); }),

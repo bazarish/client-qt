@@ -539,21 +539,21 @@ void I2pService::refreshLeaseSet(const QString& localHost, const QString& remote
     inspectDestination(localHost);
     bazarish::i2p::Router& running = router->get();
     inBackground([this, &running, localHost, remoteHost]() {
+        bazarish::i2p::AskedLookup asked{localHost.toStdString(), remoteHost.toStdString(), {}};
         try {
-            const bazarish::i2p::LeaseSetRefresh refresh
-                = running.refreshLeaseSet(localHost.toStdString(), remoteHost.toStdString());
+            asked.refresh = running.refreshLeaseSet(asked.localHost, asked.remoteHost);
             const char* found = "none found";
-            if (refresh.after.has_value()) {
-                found = bazarish::i2p::publishedLater(*refresh.after, refresh.before)
+            if (asked.refresh.after.has_value()) {
+                found = bazarish::i2p::publishedLater(*asked.refresh.after, asked.refresh.before)
                     ? "a newer one"
                     : "the one held";
             }
-            bazarish::log::info(
-                "i2p: lease set of {} looked up again: {}", remoteHost.toStdString(), found);
+            bazarish::log::info("i2p: lease set of {} looked up again: {}", asked.remoteHost, found);
         } catch (const std::exception& error) {
             bazarish::log::warn(
-                "i2p: lease set of {} not looked up: {}", remoteHost.toStdString(), error.what());
+                "i2p: lease set of {} not looked up: {}", asked.remoteHost, error.what());
         }
+        bazarish::i2p::lookupAsked(asked);
         QMetaObject::invokeMethod(
             this,
             [this, localHost, remoteHost]() {

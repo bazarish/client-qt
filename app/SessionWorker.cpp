@@ -648,14 +648,14 @@ void SessionWorker::startEventWaiter()
                 const bazarish::client::MailWaitCause cause = serverDown
                     ? mailGate_.awaitServer()
                     : mailGate_.awaitCause(
-                        [&waiter]() { return waiter && waiter->facadePublishedAnew(); });
+                        waiter ? waiter->facadeLookups() : bazarish::client::FacadeLookups{});
                 if (cause == bazarish::client::MailWaitCause::eStopped) {
                     return;
                 }
                 askedAfterRegistering = cause == bazarish::client::MailWaitCause::eRegistered;
                 bazarish::log::info("asking for mail again: {}",
                     bazarish::client::mailWaitCauseName(cause));
-                if (waiter && cause != bazarish::client::MailWaitCause::eStaleLeaseSet) {
+                if (waiter) {
                     waiter->liftStandOff();
                 }
             }
@@ -2500,20 +2500,18 @@ void SessionWorker::startApprovalWaiter()
                 bazarish::log::info("approval wait failed: {}", error.what());
                 const bazarish::client::MailWaitCause cause = waiter->serverBehindFacadeDown()
                     ? approvalGate_.awaitServer()
-                    : approvalGate_.awaitCause([&waiter]() { return waiter->facadePublishedAnew(); });
+                    : approvalGate_.awaitCause(waiter->facadeLookups());
                 if (cause == bazarish::client::MailWaitCause::eStopped) {
                     return;
                 }
-                if (cause != bazarish::client::MailWaitCause::eStaleLeaseSet) {
-                    waiter->liftStandOff();
-                }
+                waiter->liftStandOff();
             } catch (const std::exception& error) {
                 if (!running->load()) {
                     return;
                 }
                 bazarish::log::info("approval wait failed: {}", error.what());
                 const bazarish::client::MailWaitCause cause = approvalGate_.awaitCause(
-                    [&waiter]() { return waiter && waiter->facadePublishedAnew(); });
+                    waiter ? waiter->facadeLookups() : bazarish::client::FacadeLookups{});
                 if (cause == bazarish::client::MailWaitCause::eStopped) {
                     return;
                 }

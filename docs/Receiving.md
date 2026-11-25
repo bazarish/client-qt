@@ -41,17 +41,19 @@ puts it back.
    answering at once is what continues it. Entries the account keeps waiting for
    a key or for a contact's device list (`docs-main/Messages.md`, Encoding) are
    named in the wait, so they alone do not answer it.
-5. A wait that fails, other than as in step 6, is asked again on a cause, never
-   on a period of its own:
+5. A wait that fails, other than as in step 6, pauses 5 s, looks the facade's
+   lease set up past the cache, pauses 5 s more and is asked again. A newer lease
+   set asks at once after the lookup. A lookup that finds no lease set of the
+   facade repeats alone every 10 s until one is found. After 3 minutes without an
+   answer every pause is 60 s. Each new ask lifts the stand-off of the link. A
+   pause ends early on any of these causes:
 
    | Cause | When |
    |---|---|
-   | A held wait broke | At once, one time per answered wait that had a cause of its own: the stream went, a new one is the answer |
+   | A held wait broke | At once, before any pause, one time per answered wait that had a cause of its own: the stream went, a new one is the answer |
    | The link came back | The gateway session rejoined, or the device moved to another network |
    | Our server answered | Another request of this account reached the server, a letter to the account's own mailbox among them |
    | This device was registered again | After a wait the server refused as unregistered |
-   | The facade published a newer lease set | Looked up past the cache once after each failed wait; the stand-off of the link is lifted with it |
-   | The lease set of the failed wait has expired | `kStaleLeaseSetBound` after the failure, when nothing above came first: a dial then can only use a fresh lease set |
 
 6. A wait the facade answered with 502 `UPSTREAM_UNAVAILABLE` reached the facade
    but not the server behind it, and nothing on the client hears of the server's
