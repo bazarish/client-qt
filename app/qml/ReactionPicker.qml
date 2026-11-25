@@ -15,21 +15,19 @@ Popup {
     focus: !App.mobile
     parent: Overlay.overlay
     readonly property int kColumns: 6
-    width: Math.min(parent ? parent.width - 24 : 400,
+    width: Math.min(parent ? parent.width - 2 * Theme.spacing : 400,
         kColumns * kChipSize + (kColumns - 1) * kChipSpacing + 2 * padding)
     padding: 12
     background: DialogFrame { }
 
     property Item anchor: null
     property Item area: null
-    property bool leftFirst: false
 
-    function openBeside(e2eId, bubble, chatArea, outgoing) {
+    function openFor(e2eId, bubble, chatArea) {
         root.target = e2eId
         customField.text = ""
         root.anchor = bubble
         root.area = chatArea
-        root.leftFirst = outgoing
         // Left set by a tap into it last time, the window would hand the field its focus again.
         customField.focus = false
         root.open()
@@ -41,9 +39,9 @@ Popup {
         if (!root.anchor || !root.area || !root.parent) {
             return
         }
-        const at = Placement.besideBubble(Placement.sceneRect(root.anchor),
+        const at = Placement.underOrOverBubble(Placement.sceneRect(root.anchor),
             Qt.size(root.width, root.height), Placement.sceneRect(root.area), Theme.popupGap,
-            root.leftFirst)
+            Theme.spacing)
         const local = root.parent.mapFromItem(null, at.x, at.y)
         root.x = local.x
         root.y = local.y

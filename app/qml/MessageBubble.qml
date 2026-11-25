@@ -19,7 +19,7 @@ Item {
     signal deleteRequested(var msgId, string e2eId, bool outgoing)
     signal groupActionRequested(string command, string postId, string author)
     signal imageRequested(url source, string e2eId, string name)
-    signal reactRequested(string e2eId, Item anchor, bool leftFirst)
+    signal reactRequested(string e2eId, Item anchor)
     signal forwardRequested(string e2eId)
     signal quoteRequested(var localId)
     signal selectTextRequested(Item text)
@@ -445,7 +445,7 @@ Item {
                 delegate.openMenu()
             } else if (delegate.reactable && !delegate.onTappablePart(scene)) {
                 App.holdFeedback()
-                delegate.reactRequested(model.e2eId, bubble, model.outgoing)
+                delegate.reactRequested(model.e2eId, bubble)
             }
         }
     }
@@ -1272,14 +1272,6 @@ Item {
                     font.pixelSize: 10
                     font.italic: true
                 }
-                Fingerprint {
-                    visible: delegate.menuOpen && value.length > 0
-                    value: model.device || ""
-                    whole: true
-                    wrapMode: Text.NoWrap
-                    color: Theme.textDim
-                    font.pixelSize: 10
-                }
                 Label {
                     text: model.time ? new Date(model.time).toLocaleTimeString(Qt.locale(), "hh:mm") : ""
                     color: Theme.textDim
@@ -1378,7 +1370,7 @@ Item {
                         iconName: "smile"
                         visible: delegate.reactable
                         height: visible ? implicitHeight : 0
-                        onTriggered: delegate.reactRequested(model.e2eId, bubble, model.outgoing)
+                        onTriggered: delegate.reactRequested(model.e2eId, bubble)
                     }
                     ContextMenuItem {
                         text: qsTr("Copy picture")
@@ -1474,6 +1466,50 @@ Item {
                         text: qsTr("Delete")
                         iconName: "trash"
                         onTriggered: delegate.deleteRequested(model.msgId, model.e2eId, model.outgoing)
+                    }
+                    // The device that wrote it. Inert: a disabled entry is skipped by the keys and
+                    // takes no press, and it draws no hover.
+                    MenuItem {
+                        id: deviceEntry
+                        enabled: false
+                        hoverEnabled: false
+                        focusPolicy: Qt.NoFocus
+                        visible: (model.device || "").length > 0
+                        height: visible ? implicitHeight : 0
+                        implicitWidth: deviceId.implicitWidth + 28 + deviceMark.width + kIconGap
+                        implicitHeight: contentItem.implicitHeight + 14
+                        readonly property int kIconGap: 8
+                        background: null
+                        contentItem: Item {
+                            implicitHeight: deviceId.implicitHeight
+                            // Text on the fingerprint's baseline: level with it in every font and size.
+                            Label {
+                                id: deviceMark
+                                text: "ID"
+                                width: Theme.iconInline
+                                horizontalAlignment: Text.AlignHCenter
+                                color: Theme.textFaint
+                                font.pixelSize: Theme.fontTiny
+                                font.weight: Font.DemiBold
+                                anchors.left: parent.left
+                                anchors.leftMargin: 12
+                                anchors.baseline: deviceId.baseline
+                            }
+                            Fingerprint {
+                                id: deviceId
+                                value: model.device || ""
+                                whole: true
+                                wrapMode: Text.NoWrap
+                                maximumLineCount: 1
+                                color: Theme.textFaint
+                                font.pixelSize: Theme.fontTiny
+                                anchors.left: deviceMark.right
+                                anchors.leftMargin: deviceEntry.kIconGap
+                                anchors.right: parent.right
+                                anchors.rightMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
                     }
                 }
             }

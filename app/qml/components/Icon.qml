@@ -15,10 +15,14 @@ Item {
     implicitHeight: size
 
     readonly property int kBleedDivisor: 4
+    readonly property real kGrid: 24
+    readonly property real gridScale: root.size / root.kGrid
 
     // Software rendering draws a Shape past its view's clip; a layer obeys it, sized past the 24-unit grid.
+    // Both centred at fractions of a pixel: rounding them moved the drawing.
     Item {
         anchors.centerIn: parent
+        anchors.alignWhenCentered: false
         width: root.size + 2 * root.size / root.kBleedDivisor
         height: width
         layer.enabled: GraphicsInfo.api === GraphicsInfo.Software
@@ -26,19 +30,20 @@ Item {
         Shape {
             id: shape
             anchors.centerIn: parent
+            anchors.alignWhenCentered: false
             // Set at runtime: preferredRendererType exists only from Qt 6.6 on.
             Component.onCompleted: if (shape.hasOwnProperty("preferredRendererType")) {
                 shape.preferredRendererType = Shape.CurveRenderer
             }
-            scale: root.size / 24
-            transformOrigin: Item.Center
-            width: 24
-            height: 24
+            // The paths are scaled, not the item: a scaled item drew half a pixel off at sizes off the grid.
+            width: root.size
+            height: root.size
 
             ShapePath {
                 strokeColor: root.name === "dot" ? "transparent" : root.color
                 fillColor: "transparent"
-                strokeWidth: root.weight
+                strokeWidth: root.weight * root.gridScale
+                scale: Qt.size(root.gridScale, root.gridScale)
                 capStyle: ShapePath.RoundCap
                 joinStyle: ShapePath.RoundJoin
                 PathSvg {
@@ -145,6 +150,7 @@ Item {
                     ? root.color
                     : "transparent"
                 fillRule: ShapePath.OddEvenFill
+                scale: Qt.size(root.gridScale, root.gridScale)
                 PathSvg {
                     path: {
                         switch (root.name) {

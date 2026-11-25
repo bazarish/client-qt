@@ -18,6 +18,7 @@ MenuItem {
 
     contentItem: Item {
         implicitHeight: label.implicitHeight
+        // Level with the middle of the capitals, not with the line and its descent.
         Icon {
             id: glyph
             visible: root.iconName.length > 0
@@ -26,8 +27,14 @@ MenuItem {
             color: label.color
             anchors.left: parent.left
             anchors.leftMargin: 12
-            anchors.verticalCenter: parent.verticalCenter
+            y: label.y + label.baselineOffset + parent.capital.y + parent.capital.height / 2
+                - height / 2
         }
+        FontMetrics {
+            id: capitals
+            font: label.font
+        }
+        readonly property rect capital: capitals.tightBoundingRect("H")
         Label {
             id: label
             text: root.text

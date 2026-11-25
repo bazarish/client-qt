@@ -87,6 +87,7 @@ QtObject {
     readonly property int typingPencil: 14
     readonly property real typingPencilWeight: 3
 
+    readonly property int fontTiny: 10
     readonly property int fontSmall: 12
     readonly property int fontBody: 14
     readonly property int fontLarge: 16

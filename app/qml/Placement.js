@@ -24,12 +24,18 @@ function clampY(y, size, area) {
     return Math.max(area.y, Math.min(y, area.y + area.height - size.height))
 }
 
-function besideBubble(bubble, size, area, gap, leftFirst) {
-    const side = sideX(bubble, size, area, gap, leftFirst)
-    return Qt.point(clampX(side.x, size, area), clampY(bubble.y, size, area))
+// Across the middle of the chat, under the bubble or else over it, clear of the chat's edges.
+function underOrOverBubble(bubble, size, area, gap, margin) {
+    const inner = Qt.rect(area.x + margin, area.y + margin,
+        area.width - 2 * margin, area.height - 2 * margin)
+    const under = bubble.y + bubble.height + gap
+    const over = bubble.y - gap - size.height
+    const y = under + size.height <= inner.y + inner.height || over < inner.y ? under : over
+    const x = inner.x + (inner.width - size.width) / 2
+    return Qt.point(clampX(x, size, inner), clampY(y, size, inner))
 }
 
-// The bubble's time and device sit on its right.
+// The bubble's time sits on its right.
 function besideOrOverBubble(bubble, size, area, gap, leftFirst) {
     const side = sideX(bubble, size, area, gap, leftFirst)
     const x = side.fits ? side.x : area.x
