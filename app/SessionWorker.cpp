@@ -1269,6 +1269,12 @@ void SessionWorker::drainMailbox()
             ackPending(QString::fromStdString(m.pendingId));
             continue;
         }
+        if (m.contentType == "device.account-name") {
+            emit renamed(QString::fromStdString(session_->displayName()));
+            emitInvite();
+            ackPending(QString::fromStdString(m.pendingId));
+            continue;
+        }
         if (m.contentType == "device.contact-name" || m.contentType == "device.i2p-master") {
             ackPending(QString::fromStdString(m.pendingId));
             continue;

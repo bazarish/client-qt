@@ -2225,11 +2225,11 @@
       "zh": "隧道中只有一个中转路由器，位于你与网络其余部分之间。最快。",
       "ar": "موجّه عابر واحد في النفق بينك وبين بقية الشبكة. الأسرع."
     },
-    "Only updates this device and your invite link": {
-      "ru": "Обновит только это устройство и вашу ссылку-приглашение",
-      "es": "Solo actualiza este dispositivo y tu enlace de invitación",
-      "zh": "只更新本设备和你的邀请链接",
-      "ar": "يحدّث هذا الجهاز ورابط دعوتك فقط"
+    "Only updates your invite link": {
+      "ru": "Обновит только вашу ссылку-приглашение",
+      "es": "Solo actualiza tu enlace de invitación",
+      "zh": "只更新你的邀请链接",
+      "ar": "يحدّث رابط دعوتك فقط"
     },
     "Open": {
       "ru": "Открыть",

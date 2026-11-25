@@ -1138,7 +1138,7 @@ WindowPopup {
                 onAccepted: renameSelfDialog.accept()
             }
             Label {
-                text: qsTr("Only updates this device and your invite link")
+                text: qsTr("Only updates your invite link")
                 color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true
             }
         }
