@@ -13,11 +13,6 @@ WindowPopup {
     }
 
     readonly property int unreadSlotWidth: 34
-    property string rowId: ""
-    property string rowName: ""
-    property bool rowPrimary: false
-    property bool rowOtherPrimaries: false
-    property bool rowRoleKnown: false
 
     function statusText(m) {
         if (!m.open) {
@@ -115,25 +110,38 @@ WindowPopup {
                             checked = Qt.binding(function() { return model.online })
                         }
                     }
-                    IconButton {
-                        id: rowMore
+                    Row {
+                        id: rowActions
+                        readonly property bool locked: model.encrypted && !model.open
+                        property bool deleteShown: false
                         anchors.right: rowToggle.left
                         anchors.verticalCenter: parent.verticalCenter
-                        iconName: "more"
-                        onClicked: {
-                            root.rowId = model.accountId
-                            root.rowName = model.name
-                            root.rowPrimary = model.primary
-                            root.rowOtherPrimaries = model.otherPrimaries
-                            root.rowRoleKnown = !model.encrypted || model.open
-                            rowMenu.popup()
+                        spacing: 4
+                        MenuButton {
+                            visible: rowActions.locked && rowActions.deleteShown
+                            implicitHeight: rowMore.implicitHeight
+                            iconName: "trash"
+                            danger: true
+                            Accessible.name: qsTr("Delete account")
+                            onClicked: {
+                                rowActions.deleteShown = false
+                                deleteDialog.localOnly = false
+                                deleteDialog.show(model.accountId, model.name, model.primary,
+                                    model.otherPrimaries)
+                            }
+                        }
+                        IconButton {
+                            id: rowMore
+                            visible: rowActions.locked
+                            iconName: "more"
+                            onClicked: rowActions.deleteShown = !rowActions.deleteShown
                         }
                     }
                     Item {
                         id: rowUnread
                         width: root.unreadSlotWidth
                         height: parent.height
-                        anchors.right: rowMore.left
+                        anchors.right: rowActions.left
                         anchors.rightMargin: 8
                         UnreadBadge {
                             anchors.centerIn: parent
@@ -195,15 +203,4 @@ WindowPopup {
         onConfirmed: (id) => App.deleteAccount(id)
     }
 
-    ContextMenu {
-        id: rowMenu
-        ContextMenuItem {
-            text: qsTr("Delete account")
-            danger: true
-            onTriggered: {
-                deleteDialog.localOnly = root.rowRoleKnown && !root.rowPrimary
-                deleteDialog.show(root.rowId, root.rowName, root.rowPrimary, root.rowOtherPrimaries)
-            }
-        }
-    }
 }

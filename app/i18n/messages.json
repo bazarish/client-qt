@@ -1127,12 +1127,6 @@
       "zh": "复制联系人链接",
       "ar": "نسخ رابط جهة الاتصال"
     },
-    "Copy fingerprint": {
-      "ru": "Скопировать отпечаток",
-      "es": "Copiar la huella",
-      "zh": "复制指纹",
-      "ar": "نسخ البصمة"
-    },
     "Configure": {
       "ru": "Настроить",
       "es": "Configurar",
@@ -1600,12 +1594,6 @@
       "es": "Archivo",
       "zh": "文件",
       "ar": "ملف"
-    },
-    "Fingerprint copied": {
-      "ru": "Отпечаток скопирован",
-      "es": "Huella copiada",
-      "zh": "指纹已复制",
-      "ar": "نُسخت البصمة"
     },
     "Floodfills": {
       "ru": "Floodfill-узлы",

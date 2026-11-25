@@ -14,25 +14,11 @@ Item {
         root.StackView.view.push(wizardComponent).pairLink = link
     }
 
-    property string rowId: ""
-    property string rowName: ""
-    property bool rowPrimary: false
-    property bool rowOtherPrimaries: false
-    // The role is read from the profile, which a locked one keeps to itself.
-    property bool rowRoleKnown: false
-    property string rowFingerprint: ""
-    property bool rowLockable: false
-
     function closeIfSwitching() {
         const view = root.StackView.view
         if (App.hasOpenAccounts && view && view.depth > 1) {
             view.pop()
         }
-    }
-
-    function copyFingerprint(fp) {
-        App.copyText(fp)
-        window.showToast(qsTr("Fingerprint copied"))
     }
 
     IconButton {
@@ -133,19 +119,28 @@ Item {
                             color: Theme.textDim
                             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                         }
+                        MenuButton {
+                            id: rowDelete
+                            property bool shown: false
+                            visible: rowMore.visible && shown
+                            implicitHeight: rowMore.implicitHeight
+                            Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                            iconName: "trash"
+                            danger: true
+                            Accessible.name: qsTr("Delete account")
+                            onClicked: {
+                                shown = false
+                                deleteDialog.localOnly = false
+                                deleteDialog.show(model.accountId, model.name, model.primary,
+                                    model.otherPrimaries)
+                            }
+                        }
                         IconButton {
+                            id: rowMore
+                            visible: model.encrypted && !model.open
                             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                             iconName: "more"
-                            onClicked: {
-                                root.rowFingerprint = model.fingerprint
-                                root.rowId = model.accountId
-                                root.rowName = model.name
-                                root.rowPrimary = model.primary
-                                root.rowOtherPrimaries = model.otherPrimaries
-                                root.rowRoleKnown = !model.encrypted || model.open
-                                root.rowLockable = model.encrypted && model.open
-                                rowMenu.popup()
-                            }
+                            onClicked: rowDelete.shown = !rowDelete.shown
                         }
                     }
                 }
@@ -188,27 +183,5 @@ Item {
         id: deleteDialog
         onLocalOnlyRequested: (id) => App.leaveAccount(id)
         onConfirmed: (id) => App.deleteAccount(id)
-    }
-
-    ContextMenu {
-        id: rowMenu
-        ContextMenuItem {
-            text: qsTr("Copy fingerprint")
-            onTriggered: root.copyFingerprint(root.rowFingerprint)
-        }
-        ContextMenuItem {
-            text: qsTr("Lock account")
-            visible: root.rowLockable
-            height: visible ? implicitHeight : 0
-            onTriggered: App.lockAccount(root.rowId)
-        }
-        ContextMenuItem {
-            text: qsTr("Delete account")
-            danger: true
-            onTriggered: {
-                deleteDialog.localOnly = root.rowRoleKnown && !root.rowPrimary
-                deleteDialog.show(root.rowId, root.rowName, root.rowPrimary, root.rowOtherPrimaries)
-            }
-        }
     }
 }

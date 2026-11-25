@@ -863,10 +863,10 @@ WindowPopup {
                             }
                         }
                         MenuButton {
-                            Layout.fillWidth: true
+                            Layout.fillHeight: true
                             enabled: App.deletingId.length === 0 && root.session !== null
                             iconName: "trash"
-                            text: App.deletingId.length > 0 ? qsTr("Deleting...") : qsTr("Delete account")
+                            Accessible.name: qsTr("Delete account")
                             danger: true
                             onClicked: {
                                 deleteDialog.localOnly = !root.session.primaryDevice

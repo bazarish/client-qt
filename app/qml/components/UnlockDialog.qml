@@ -56,7 +56,7 @@ Dialog {
             placeholderText: qsTr("Passphrase")
             color: Theme.text
             placeholderTextColor: Theme.textDim
-            Layout.preferredWidth: 280
+            Layout.fillWidth: true
             onAccepted: dialog.submit()
         }
         Label {
@@ -65,7 +65,7 @@ Dialog {
             color: Theme.danger
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap
-            Layout.preferredWidth: 280
+            Layout.fillWidth: true
         }
     }
 }
