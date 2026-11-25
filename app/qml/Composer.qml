@@ -517,16 +517,19 @@ Rectangle {
             iconSize: Theme.fontEmoji
             text: qsTr("File")
             iconName: "file"
-            visible: !(root.session && root.session.activeIsGroup)
-            height: visible ? implicitHeight : 0
+            // Not visible: a closed menu's items read as hidden, so its first height came out short.
+            readonly property bool offered: !(root.session && root.session.activeIsGroup)
+            visible: offered
+            height: offered ? implicitHeight : 0
             onTriggered: fileDialog.open()
         }
         ContextMenuItem {
             iconSize: Theme.fontEmoji
             text: qsTr("Image")
             iconName: "image"
-            visible: App.canPickPictures
-            height: visible ? implicitHeight : 0
+            readonly property bool offered: App.canPickPictures
+            visible: offered
+            height: offered ? implicitHeight : 0
             onTriggered: App.mobile ? App.pickPictures() : imageDialog.open()
         }
         ContextMenuItem {
