@@ -5,17 +5,6 @@ function sceneRect(item) {
     return item.mapToItem(null, 0, 0, item.width, item.height)
 }
 
-function sideX(bubble, size, area, gap, leftFirst) {
-    const leftX = bubble.x - gap - size.width
-    const rightX = bubble.x + bubble.width + gap
-    const fitsLeft = leftX >= area.x
-    const fitsRight = rightX + size.width <= area.x + area.width
-    const sides = leftFirst ? [[fitsLeft, leftX], [fitsRight, rightX]]
-        : [[fitsRight, rightX], [fitsLeft, leftX]]
-    const fitting = sides.find(side => side[0])
-    return { fits: fitting !== undefined, x: fitting ? fitting[1] : sides[0][1] }
-}
-
 function clampX(x, size, area) {
     return Math.max(area.x, Math.min(x, area.x + area.width - size.width))
 }
@@ -35,9 +24,8 @@ function underOrOverBubble(bubble, size, area, gap, margin) {
     return Qt.point(clampX(x, size, inner), clampY(y, size, inner))
 }
 
-// The bubble's time sits on its right.
-function besideOrOverBubble(bubble, size, area, gap, leftFirst) {
-    const side = sideX(bubble, size, area, gap, leftFirst)
-    const x = side.fits ? side.x : area.x
+// Always on the one side; short of room it covers the bubble instead of crossing over.
+function besideBubble(bubble, size, area, gap, onLeft) {
+    const x = onLeft ? bubble.x - gap - size.width : bubble.x + bubble.width + gap
     return Qt.point(clampX(x, size, area), clampY(bubble.y, size, area))
 }

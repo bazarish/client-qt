@@ -408,7 +408,7 @@ Item {
     // Placed again as it opens: the items' width is known only once the menu lays them out.
     function placeMenu() {
         const menu = contextMenu.item.menu
-        const at = Placement.besideOrOverBubble(Placement.sceneRect(bubble),
+        const at = Placement.besideBubble(Placement.sceneRect(bubble),
             Qt.size(menu.width, menu.height),
             Placement.sceneRect(delegate.ListView.view), Theme.popupGap, model.outgoing)
         const local = bubble.mapFromItem(null, at.x, at.y)
