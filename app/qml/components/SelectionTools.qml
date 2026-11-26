@@ -51,7 +51,13 @@ Item {
         root.caretShown = true
         caretTimer.restart()
     }
+    // Android's input context keeps its own place for a word in progress and puts the cursor
+    // back there when the word ends; the word ends first, as Qt's own handles do it.
+    function finishWord() {
+        Qt.inputMethod.commit()
+    }
     function longPressed(at) {
+        root.finishWord()
         root.field.cursorPosition = root.field.positionAt(at.x, at.y)
         root.field.selectWord()
         if (root.hasSelection) {
@@ -224,6 +230,7 @@ Item {
             }
             onCentroidChanged: {
                 if (active) {
+                    root.finishWord()
                     handle.moved(root.positionUnder(Qt.point(centroid.scenePosition.x + drag.offset.x,
                         centroid.scenePosition.y + drag.offset.y)))
                 }
