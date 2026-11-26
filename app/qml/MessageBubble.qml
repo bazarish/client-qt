@@ -1482,18 +1482,14 @@ Item {
                         background: null
                         contentItem: Item {
                             implicitHeight: deviceId.implicitHeight
-                            // Text on the fingerprint's baseline: level with it in every font and size.
-                            Label {
+                            Icon {
                                 id: deviceMark
-                                text: "ID"
-                                width: Theme.iconInline
-                                horizontalAlignment: Text.AlignHCenter
+                                name: "devices"
+                                size: Theme.iconInline
                                 color: Theme.textFaint
-                                font.pixelSize: Theme.fontTiny
-                                font.weight: Font.DemiBold
                                 anchors.left: parent.left
                                 anchors.leftMargin: 12
-                                anchors.baseline: deviceId.baseline
+                                anchors.verticalCenter: deviceId.verticalCenter
                             }
                             Fingerprint {
                                 id: deviceId
