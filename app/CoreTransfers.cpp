@@ -128,15 +128,21 @@ void CoreAccount::saveAttachment(
                 carried.constData(), static_cast<std::size_t>(carried.size()))));
             out->finish();
         } catch (const std::exception& error) {
-            onDownloadFinished(token, false, QString::fromUtf8(error.what()));
+            settleCarriedSave(token, false, QString::fromUtf8(error.what()));
             return;
         }
-        onDownloadFinished(token, true, {});
+        settleCarriedSave(token, true, {});
         return;
     }
     log_.begin(downloadOpId(token), QStringLiteral("file-down"), name,
         tr("Connecting..."), peer, e2eId);
     emit commands_.requestSaveAttachment(peer, e2eId, message.attRef, dest, token);
+}
+
+void CoreAccount::settleCarriedSave(const qint64 token, const bool ok, const QString& error)
+{
+    onDownloadFinished(token, ok, error);
+    emit events_.downloadFinished(token, ok, error);
 }
 
 void CoreAccount::onTransferStage(const QString& peer, const QString& e2eId, const QString& stage)

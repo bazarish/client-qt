@@ -6,6 +6,7 @@
 #include "TranscriptStore.hpp"
 #include "TestUtil.hpp"
 
+#include "AccountDb.hpp"
 #include "AccountKey.hpp"
 #include "Session.hpp"
 
@@ -64,6 +65,9 @@ try {
     const fs::path& dir = scratch.path();
     const QString db = QString::fromStdString((dir / "account.db").string());
 
+    {
+        const client::AccountDb account(dir / "account.db", {});
+    }
     TranscriptStore store;
     CHECK(store.open(db));
     ContactBook book;
@@ -115,6 +119,17 @@ try {
     CHECK(took(incoming(kBob, "text", "m1", "hello")));
     CHECK(saw({}));
     CHECK(store.latestMessages(kBob, 10).size() == 1);
+
+    CHECK(store.keepMedia(QStringLiteral("file:f1"), QByteArrayLiteral("carried")));
+    client::IncomingMessage carried = incoming(kBob, "file", "f1");
+    carried.attachmentName = "a.txt";
+    CHECK(took(carried));
+    CHECK(store.messageByE2e("f1", kBob).hasPicture);
+    client::IncomingMessage offered = incoming(kBob, "file", "f2");
+    offered.attachmentName = "b.txt";
+    CHECK(took(offered));
+    CHECK(!store.messageByE2e("f2", kBob).hasPicture);
+    CHECK(store.latestMessages(kBob, 10).size() == 3);
 
     CHECK(took(ours(kBob, "text", "o1", "from my other device")));
     CHECK(saw({"added"}));

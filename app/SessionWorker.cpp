@@ -142,7 +142,9 @@ QString textForTransferStage(const bazarish::client::TransferStage stage)
     case TransferStage::eNone:
         return QString();
     case TransferStage::eAsking:
-        return QObject::tr("Asking the sender...");
+        return QObject::tr("Sending the request...");
+    case TransferStage::eAwaitingAnswer:
+        return QObject::tr("Waiting for an answer...");
     case TransferStage::eEncrypting:
         return QObject::tr("Encrypting...");
     case TransferStage::eMakingAddress:

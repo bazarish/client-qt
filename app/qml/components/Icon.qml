@@ -131,6 +131,8 @@ Item {
                                              + "M 14.5 20 V 20.1 M 20 20 V 20.1"
                         case "camera":  return "M 3 8 H 7.5 L 9.5 5.5 H 14.5 L 16.5 8 H 21 V 19 H 3 Z "
                                              + "M 12 10.2 A 3.3 3.3 0 1 1 11.99 10.2"
+                        case "cloud":   return "M 7 18 A 4 4 0 0 1 6.6 10 A 5.5 5.5 0 0 1 17.4 9.2 "
+                                             + "A 4.4 4.4 0 0 1 17 18 Z"
                         case "folder":  return "M 3 19 V 5 H 10 L 12 8 H 21 V 19 Z"
                         case "block":   return "M 12 3 A 9 9 0 1 1 11.99 3 M 5.6 18.4 L 18.4 5.6"
                         case "people":  return "M 9 5 A 3.2 3.2 0 1 1 8.99 5 M 2.5 19 A 6.5 6.5 0 0 1 15.5 19 "

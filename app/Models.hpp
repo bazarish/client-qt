@@ -101,7 +101,7 @@ public:
         ForwardedRole,
         TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole, DayRole,
         DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole, SavedPathRole,
-        TransferStageRole, ReplyToRole, PictureRole,
+        TransferStageRole, ReplyToRole, PictureRole, CarriedRole,
         DurationRole, WaveRole, AuthorRole, ContactableRole, FromHostRole, DeviceRole,
         ReactionsRole, FreshReactionsRole, PictureVersionRole, MentionsMeRole
     };

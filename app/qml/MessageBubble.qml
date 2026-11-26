@@ -742,7 +742,7 @@ Item {
                                     + App.humanBytes(model.downloadTotal))
                                 : (model.transferStage.length > 0
                                     ? model.transferStage
-                                    : qsTr("Connecting over I2P..."))
+                                    : qsTr("Sending the request..."))
                             color: Theme.textDim
                             font.pixelSize: Theme.fontSmall
                             elide: Text.ElideRight
@@ -760,7 +760,7 @@ Item {
                         visible: !model.outgoing && !model.downloading
                         readonly property bool savedExists: model.savedPath.length > 0
                             && delegate.session && delegate.session.fileExists(model.savedPath)
-                        text: savedExists ? qsTr("Open") : qsTr("Save")
+                        text: savedExists ? qsTr("Open") : (model.carried ? qsTr("Save") : qsTr("Request"))
                         onClicked: {
                             if (model.savedPath.length > 0 && delegate.session
                                     && delegate.session.fileExists(model.savedPath)) {
@@ -776,7 +776,7 @@ Item {
                         }
                         background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
                         contentItem: IconLabel {
-                            name: saveButton.savedExists ? "folder" : "save"
+                            name: saveButton.savedExists ? "folder" : (model.carried ? "save" : "cloud")
                             color: Theme.accent
                         }
                     }

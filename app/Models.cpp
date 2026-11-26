@@ -206,6 +206,7 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case TransferStageRole: return live_.value(m.id).transferStage;
     case SavedPathRole: return m.savedPath;
     case PictureRole: return m.hasPicture;
+    case CarriedRole: return m.type == QStringLiteral("file") && m.hasPicture;
     case DurationRole: return m.attDurationMs;
     case WaveRole: return m.attWave;
     case ReplyToRole: return m.replyTo;
@@ -235,7 +236,7 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
         {UploadProgressRole, "uploadProgress"}, {DayRole, "day"},
         {DownloadingRole, "downloading"}, {DownloadReceivedRole, "downloadReceived"},
         {DownloadTotalRole, "downloadTotal"}, {DownloadErrorRole, "downloadError"},
-        {SavedPathRole, "savedPath"}, {PictureRole, "hasPicture"},
+        {SavedPathRole, "savedPath"}, {PictureRole, "hasPicture"}, {CarriedRole, "carried"},
         {DurationRole, "attDurationMs"}, {WaveRole, "attWave"},
         {TransferStageRole, "transferStage"},
         {ReplyToRole, "replyTo"}, {AuthorRole, "author"}, {ContactableRole, "contactable"},

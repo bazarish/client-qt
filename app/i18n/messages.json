@@ -95,6 +95,12 @@
       "zh": "短名称（别名）可以在登记处购买：",
       "ar": "يمكن شراء اسم قصير (اسم مستعار) من السجل:"
     },
+    "Sending the request...": {
+      "ru": "Отправка запроса...",
+      "es": "Enviando la solicitud...",
+      "zh": "正在发送请求...",
+      "ar": "جارٍ إرسال الطلب..."
+    },
     "The server is not answering": {
       "ru": "Сервер не отвечает",
       "es": "El servidor no responde",
@@ -136,6 +142,12 @@
       "es": "Los datos no se han movido: %1. Para conectarte, inicia Bazarish de nuevo.",
       "zh": "数据未迁移：%1。要联网，请重新启动 Bazarish。",
       "ar": "لم تُنقل البيانات: ⁦%1⁩. وللاتصال بالشبكة شغّل Bazarish من جديد."
+    },
+    "Waiting for an answer...": {
+      "ru": "Ожидание ответа...",
+      "es": "Esperando respuesta...",
+      "zh": "正在等待回复...",
+      "ar": "بانتظار الرد..."
     },
     "WWW": {
       "ru": "WWW",
@@ -454,12 +466,6 @@
       "es": "Preguntando...",
       "zh": "正在询问...",
       "ar": "جارٍ الاستعلام..."
-    },
-    "Asking the sender...": {
-      "ru": "Запрос к отправителю...",
-      "es": "Consultando al remitente...",
-      "zh": "正在询问发送方...",
-      "ar": "جارٍ الطلب من المرسل..."
     },
     "Encrypting...": {
       "ru": "Шифрование...",
@@ -1048,12 +1054,6 @@
       "es": "Conectando por I2P: la primera conexión tarda varios minutos",
       "zh": "正在通过 I2P 连接 — 首次连接需要几分钟",
       "ar": "جارٍ الاتصال عبر I2P — يستغرق الاتصال الأول دقائق"
-    },
-    "Connecting over I2P...": {
-      "ru": "Подключение через I2P...",
-      "es": "Conectando por I2P...",
-      "zh": "正在通过 I2P 连接...",
-      "ar": "جارٍ الاتصال عبر I2P..."
     },
     "Connecting this account": {
       "ru": "Подключение аккаунта",

@@ -212,6 +212,7 @@ private:
         const QString& label, const QString& keyRef);
     void saveAttachment(
         const QString& peer, const QString& e2eId, const QString& dest, qint64 token);
+    void settleCarriedSave(qint64 token, bool ok, const QString& error);
     void onTransferStage(const QString& peer, const QString& e2eId, const QString& stage);
     void onServedProgress(const QString& peer, const QString& e2eId, qint64 sent, qint64 total);
     void onServedFinished(const QString& peer, const QString& e2eId, bool ok, const QString& error);
