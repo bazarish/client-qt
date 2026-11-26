@@ -7,6 +7,7 @@
 #pragma pop_macro("emit")
 
 #include <QCryptographicHash>
+#include <QFile>
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QLockFile>
@@ -46,7 +47,12 @@ QString SingleInstance::socketName() const
 
 bool SingleInstance::claim()
 {
-    lock_ = std::make_unique<QLockFile>(folder_ + QStringLiteral("/.lock"));
+    const QString lockPath = folder_ + QStringLiteral("/.lock");
+#ifdef Q_OS_WIN
+    // Windows refuses to delete a file its owner holds open: only a dead owner's lock goes.
+    (void)QFile::remove(lockPath);
+#endif
+    lock_ = std::make_unique<QLockFile>(lockPath);
     if (!lock_->tryLock()) {
         if (lock_->error() != QLockFile::LockFailedError) {
             bazarish::log::warn("account folder could not be locked: QLockFile error {}",
