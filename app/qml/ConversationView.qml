@@ -814,7 +814,8 @@ Item {
                             messages.landAt(-1, false, false)
                         }
                     }
-                    function onModelReset() { messages.land(true) }
+                    // Qt sends this before the view takes the reset.
+                    function onModelReset() { Qt.callLater(messages.land, true) }
                 }
 
                 Component.onCompleted: land(false)

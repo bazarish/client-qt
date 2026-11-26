@@ -538,6 +538,18 @@ if(Qt6_FOUND)
         set_tests_properties(TestConversationView PROPERTIES
             ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=Basic")
 
+        add_executable(TestMessageBubble tests/TestMessageBubble.cpp app/Models.cpp app/Models.hpp)
+        target_compile_definitions(TestMessageBubble PRIVATE
+            BAZARISH_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/app/qml"
+            BAZARISH_BUBBLE_STUBS="${CMAKE_CURRENT_SOURCE_DIR}/tests/MessageBubbleStubs"
+            BAZARISH_VIEW_STUBS="${CMAKE_CURRENT_SOURCE_DIR}/tests/ConversationViewStubs")
+        target_link_libraries(TestMessageBubble PRIVATE bazarish_test_util bazarish_app_shared
+            Qt6::Quick Qt6::Qml Qt6::Test)
+        target_compile_options(TestMessageBubble PRIVATE -Wall -Wextra -Werror)
+        add_test(NAME TestMessageBubble COMMAND TestMessageBubble)
+        set_tests_properties(TestMessageBubble PROPERTIES
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=Basic")
+
         add_executable(TestMentionsUi tests/TestMentionsUi.cpp app/MentionText.cpp)
         target_compile_definitions(TestMentionsUi PRIVATE
             BAZARISH_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/app/qml"
