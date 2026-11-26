@@ -1,7 +1,7 @@
 # Bazarish - client-qt
 
 The desktop client of the [Bazarish](https://github.com/bazarish/docs-main)
-messenger: a Qt6 Quick application, `bazarish-app`, over the client core library.
+messenger: a Qt6 Quick application, `bazarish`, over the client core library.
 
 The core - the API transport, the typed endpoints, and the session that holds the
 identity, the contacts, the mailbox sync, calls and file transfer - is shared

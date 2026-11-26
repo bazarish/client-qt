@@ -3,7 +3,7 @@
 set -eu
 
 readonly kBuild=${1:-build}
-readonly kApp="$kBuild/bazarish-app.app"
+readonly kApp="$kBuild/bazarish.app"
 
 if [ ! -d "$kApp" ]; then
     echo "there is no bundle at $kApp" >&2

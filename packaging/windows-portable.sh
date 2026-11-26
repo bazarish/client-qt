@@ -5,7 +5,7 @@ set -eu
 
 readonly kOut=${1:?usage: windows-portable.sh <folder> [build dir]}
 readonly kBuild=${2:-build}
-readonly kBinary=bazarish-app.exe
+readonly kBinary=bazarish.exe
 readonly kPrefix="${MSYSTEM_PREFIX:?run this from an MSYS2 shell}/bin"
 
 objdump=$(command -v objdump || command -v llvm-objdump)

@@ -65,12 +65,12 @@ export BAZARISH_WIN_ARCH=$kArch BAZARISH_LLVM_MINGW=$kLlvmMingw BAZARISH_WIN_SYS
 cmake -S "$kSource" -B "$kBuild" -G Ninja -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_TOOLCHAIN_FILE="$kScripts/toolchain.cmake" \
     -DSQLCIPHER_LIBRARY="$kSysroot/lib/libsqlcipher.dll.a" -DSQLCIPHER_INCLUDE_DIR="$kSysroot/include"
-cmake --build "$kBuild" -j "$kJobs" --target bazarish-app
+cmake --build "$kBuild" -j "$kJobs" --target bazarish
 
 "$kQtHostPath/libexec/qmlimportscanner" -rootPath "$kSource/app/qml" \
     -importPath "$kSysroot/share/qt6/qml" > "$kWork/qml-imports.json"
 rm -rf "$kWork/out"
-python3 -I "$kScripts/deploy.py" "$kWork/out/$kFolder" "$kBuild/bazarish-app.exe" \
+python3 -I "$kScripts/deploy.py" "$kWork/out/$kFolder" "$kBuild/bazarish.exe" \
     "$kWork/qml-imports.json" "$kLlvmMingw" "$kSysroot" "$kArch-w64-mingw32"
 rm -f "$kZip"
 (cd "$kWork/out" && zip -q -r -9 "$kZip" "$kFolder")

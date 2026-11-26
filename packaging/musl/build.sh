@@ -243,13 +243,13 @@ if step app; then
         -DSQLCIPHER_LIBRARY="$kPrefix/lib/libsqlcipher.a" \
         -DSQLCIPHER_INCLUDE_DIR="$kPrefix/include" \
         -DCMAKE_EXE_LINKER_FLAGS="-static -lexpat -Wl,-z,stack-size=8388608"
-    cmake --build /out/build -j"$kJobs" --target bazarish-app
+    cmake --build /out/build -j"$kJobs" --target bazarish
     # A static Qt carries a great deal of debug information into the binary.
-    strip /out/build/bazarish-app
+    strip /out/build/bazarish
     done_with app
 fi
 
 echo "== what came out"
-file /out/build/bazarish-app
-ldd /out/build/bazarish-app 2>&1 | head -2 || true
-ls -la /out/build/bazarish-app
+file /out/build/bazarish
+ldd /out/build/bazarish 2>&1 | head -2 || true
+ls -la /out/build/bazarish

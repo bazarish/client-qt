@@ -168,7 +168,7 @@ if(Qt6_FOUND)
     target_compile_options(bazarish_app_ui PRIVATE -Wall -Wextra)
     bazarish_stamp_version(bazarish_app_ui)
 
-    qt_add_executable(bazarish-app
+    qt_add_executable(bazarish
         app/main.cpp
         app/DeliveryStatus.hpp
         app/LinkStatus.hpp
@@ -179,37 +179,37 @@ if(Qt6_FOUND)
         app/Utf8Limit.cpp
         app/Utf8Limit.hpp
     )
-    target_link_libraries(bazarish-app PRIVATE bazarish_app_core bazarish_app_ui)
-    target_include_directories(bazarish-app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app
+    target_link_libraries(bazarish PRIVATE bazarish_app_core bazarish_app_ui)
+    target_include_directories(bazarish PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app
         ${QRENCODE_INCLUDE_DIR} ${SQLCIPHER_INCLUDE_DIR})
-    target_compile_options(bazarish-app PRIVATE -Wall -Wextra)
+    target_compile_options(bazarish PRIVATE -Wall -Wextra)
     if(NOT QT6_IS_SHARED_LIBS_BUILD)
-        target_compile_definitions(bazarish-app PRIVATE BAZARISH_STATIC_QT)
+        target_compile_definitions(bazarish PRIVATE BAZARISH_STATIC_QT)
         target_compile_definitions(bazarish_app_ui PRIVATE BAZARISH_STATIC_QT)
         if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-            qt_import_plugins(bazarish-app INCLUDE Qt6::QXdgDesktopPortalThemePlugin)
+            qt_import_plugins(bazarish INCLUDE Qt6::QXdgDesktopPortalThemePlugin)
         endif()
     endif()
 
     if(APPLE)
-        set_target_properties(bazarish-app PROPERTIES
+        set_target_properties(bazarish PROPERTIES
             MACOSX_BUNDLE TRUE
             MACOSX_BUNDLE_INFO_PLIST
                 ${CMAKE_CURRENT_SOURCE_DIR}/packaging/macos/Info.plist.in
             MACOSX_BUNDLE_GUI_IDENTIFIER org.bazarish.client
             MACOSX_BUNDLE_BUNDLE_NAME Bazarish
-            MACOSX_BUNDLE_EXECUTABLE_NAME bazarish-app)
+            MACOSX_BUNDLE_EXECUTABLE_NAME bazarish)
     endif()
 
     if(ANDROID)
         # 31 is Android 12, the first with Notification.CallStyle for the incoming call.
         set(kAndroidMinSdk 31)
         set(kAndroidTargetSdk 34)
-        target_sources(bazarish-app PRIVATE app/AndroidShade.cpp app/AndroidShade.hpp
+        target_sources(bazarish PRIVATE app/AndroidShade.cpp app/AndroidShade.hpp
             app/AndroidWindow.cpp app/AndroidWindow.hpp
             app/AndroidCallAudio.cpp app/AndroidCallAudio.hpp)
         bazarish_git_version(${CMAKE_CURRENT_SOURCE_DIR} kAndroidVersionName kAndroidVersionCode)
-        set_target_properties(bazarish-app PROPERTIES
+        set_target_properties(bazarish PROPERTIES
             QT_ANDROID_VERSION_NAME "${kAndroidVersionName}"
             QT_ANDROID_VERSION_CODE ${kAndroidVersionCode}
             QT_ANDROID_PACKAGE_NAME org.bazarish.client
@@ -221,11 +221,11 @@ if(Qt6_FOUND)
     if(WIN32)
         # Without RC enabled the .rc file is silently skipped and the binary gets no icon.
         enable_language(RC)
-        set_target_properties(bazarish-app PROPERTIES WIN32_EXECUTABLE TRUE)
-        target_sources(bazarish-app PRIVATE app/icon/bazarish.rc)
+        set_target_properties(bazarish PROPERTIES WIN32_EXECUTABLE TRUE)
+        target_sources(bazarish PRIVATE app/icon/bazarish.rc)
         set_source_files_properties(app/icon/bazarish.rc PROPERTIES
             COMPILE_OPTIONS "-I${CMAKE_CURRENT_SOURCE_DIR}/app/icon")
-        target_sources(bazarish-app PRIVATE app/UrlScheme.cpp app/UrlScheme.hpp)
+        target_sources(bazarish PRIVATE app/UrlScheme.cpp app/UrlScheme.hpp)
     endif()
 
     if(TARGET Qt6::DBus)
@@ -233,7 +233,7 @@ if(Qt6_FOUND)
         target_compile_definitions(bazarish_app_ui PRIVATE BAZARISH_HAVE_QTDBUS)
     endif()
 
-    qt_add_resources(bazarish-app appfonts
+    qt_add_resources(bazarish appfonts
         PREFIX "/fonts"
         BASE app/fonts
         FILES
@@ -248,7 +248,7 @@ if(Qt6_FOUND)
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Checking that every string shown has every language"
         VERBATIM)
-    add_dependencies(bazarish-app check-translations)
+    add_dependencies(bazarish check-translations)
 
     qt_add_resources(bazarish_app_shared appi18n
         PREFIX "/i18n"
@@ -266,7 +266,7 @@ if(Qt6_FOUND)
             app/sound/ringtone.wav
     )
 
-    qt_add_resources(bazarish-app appicon
+    qt_add_resources(bazarish appicon
         PREFIX "/icon"
         BASE app/icon
         FILES
@@ -277,7 +277,7 @@ if(Qt6_FOUND)
 
     set_source_files_properties(app/qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
     set_source_files_properties(app/qml/components/TextSelection.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
-    qt_add_qml_module(bazarish-app
+    qt_add_qml_module(bazarish
         URI Bazarish
         VERSION 1.0
         # Explicit: the default prefix moved in Qt 6.5, and the engine loads one fixed URL.
@@ -385,9 +385,9 @@ if(Qt6_FOUND)
             app/qml/components/CallButton.qml
             app/qml/components/CopyableError.qml
     )
-    message(STATUS "Qt6 Quick found: building bazarish-app")
+    message(STATUS "Qt6 Quick found: building bazarish")
 else()
-    message(STATUS "Qt6 Quick not found: skipping bazarish-app")
+    message(STATUS "Qt6 Quick not found: skipping bazarish")
 endif()
 
 enable_testing()

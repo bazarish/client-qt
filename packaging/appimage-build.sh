@@ -84,20 +84,20 @@ cmake -S . -B build-appimage -DCMAKE_BUILD_TYPE=Release -UOPENSSL_* -USQLCIPHER_
     -DCMAKE_PREFIX_PATH="$QTDIR" -DOPENSSL_ROOT_DIR=/opt/openssl \
     -DSQLCIPHER_LIBRARY=/opt/sqlcipher/lib/libsqlcipher.so \
     -DSQLCIPHER_INCLUDE_DIR=/opt/sqlcipher/include
-cmake --build build-appimage -j"$kJobs" --target bazarish-app
+cmake --build build-appimage -j"$kJobs" --target bazarish
 
 APPDIR=/src/AppDir
 rm -rf "$APPDIR"
 mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" \
          "$APPDIR/usr/share/icons/hicolor/512x512/apps"
-cp build-appimage/bazarish-app "$APPDIR/usr/bin/"
+cp build-appimage/bazarish "$APPDIR/usr/bin/"
 cp app/icon/bazarish.png "$APPDIR/usr/share/icons/hicolor/512x512/apps/bazarish.png"
 cat > "$APPDIR/usr/share/applications/bazarish.desktop" <<'DESKTOP'
 [Desktop Entry]
 Type=Application
 Name=Bazarish
 Comment=I2P messenger
-Exec=bazarish-app
+Exec=bazarish
 Icon=bazarish
 Categories=Network;InstantMessaging;
 Terminal=false
@@ -116,7 +116,7 @@ export LD_LIBRARY_PATH="$QTDIR/lib:/opt/openssl/lib:${LD_LIBRARY_PATH:-}"
 export EXTRA_QT_MODULES="multimedia"
 # libxcb-glx belongs to the host's GL stack: an older bundled copy breaks GLX on a newer host.
 "./linuxdeploy-$kDeploy.AppImage" --appdir "$APPDIR" \
-  -e "$APPDIR/usr/bin/bazarish-app" \
+  -e "$APPDIR/usr/bin/bazarish" \
   -d "$APPDIR/usr/share/applications/bazarish.desktop" \
   -i "$APPDIR/usr/share/icons/hicolor/512x512/apps/bazarish.png" \
   --exclude-library "libxcb-glx.so*" \
