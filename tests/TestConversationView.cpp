@@ -29,6 +29,8 @@ constexpr int kLongWords = 30;
 constexpr int kPictureEvery = 10;
 constexpr int kPictureAt = 9;
 constexpr int kSettleMs = 600;
+// Past the view's 1600 ms reaction flash.
+constexpr int kFlashForgetMs = 2400;
 constexpr double kPixel = 1.0;
 constexpr qint64 kSentAt = 1'700'000'000'000;
 constexpr qint64 kFirstChat = 1;
@@ -174,7 +176,7 @@ try {
     CHECK(QFile::copy(viewFile, module + QStringLiteral("/ConversationView.qml")));
     QString qmldir = QStringLiteral("module Bazarish\nConversationView 1.0 ConversationView.qml\n");
     for (const QString& name : QDir(stubDir).entryList({QStringLiteral("*.qml")})) {
-        if (name == QStringLiteral("Scene.qml")) {
+        if (name.endsWith(QStringLiteral("Scene.qml"))) {
             CHECK(QFile::copy(stubDir + '/' + name, dir.filePath(name)));
             continue;
         }
@@ -249,6 +251,18 @@ try {
     expect(atEnd(list), "another account's chat opens at its end");
     expect(shownOnlyAtEnd(frames), "no frame of it is drawn away from the end");
     expect(bubblesShowTheirRows(list), "every bubble shows its own row after the account switch");
+
+    QQuickView opened;
+    opened.engine()->addImportPath(dir.path());
+    opened.rootContext()->setContextProperty(QStringLiteral("firstModel"), &first);
+    opened.setSource(QUrl::fromLocalFile(dir.filePath(QStringLiteral("OpenedScene.qml"))));
+    CHECK(opened.status() == QQuickView::Ready);
+    QObject* const openedSession
+        = opened.rootObject()->findChild<QObject*>(QStringLiteral("session"));
+    CHECK(openedSession != nullptr);
+    QTest::qWait(kFlashForgetMs);
+    expect(openedSession->property("flashesForgotten").toInt() > 0,
+        "a view made for an already open chat forgets its reaction flashes");
 
     std::printf("TestConversationView: %s\n", failures == 0 ? "all checks passed" : "FAILED");
     return failures == 0 ? 0 : 1;

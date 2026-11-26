@@ -163,6 +163,7 @@ Item {
     Timer {
         id: reactionFlashTimer
         interval: 1600
+        running: true
         onTriggered: if (root.session) { root.session.forgetReactionFlash() }
     }
     Connections {

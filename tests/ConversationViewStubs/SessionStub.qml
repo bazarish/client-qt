@@ -19,6 +19,7 @@ QtObject {
     property bool atNewest: true
     property bool hasMoreOlder: false
     property int saved: 0
+    property int flashesForgotten: 0
     signal contactRequestBusy(string fingerprint)
     signal resendFilePickRequested()
     signal scrollToBottom()
@@ -36,6 +37,6 @@ QtObject {
     function markReadThroughRow(row) {}
     function loadOlderMessages() { return 0 }
     function loadNewerMessages() { return 0 }
-    function forgetReactionFlash() {}
+    function forgetReactionFlash() { flashesForgotten += 1 }
     function jumpToLatest() { scrollToBottom() }
 }
