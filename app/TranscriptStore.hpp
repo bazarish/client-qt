@@ -132,8 +132,10 @@ public:
     };
     LastMessage lastMessage(const QString& peer) const;
     qint64 lastTime(const QString& peer) const;
-    // 0 when this side wrote nothing in the chat.
-    qint64 newestOwnOrderKey(const QString& peer) const;
+    // 0 when the chat has no row.
+    qint64 newestOrderKey(const QString& peer) const;
+    // The id of the newest row that carries one and sorts before this one; empty when none.
+    QString idPlacedBefore(const StoredMessage& row) const;
     QStringList conversationPeers() const;
     qint64 lastReadId(const QString& peer) const;
     bool isPinned(const QString& peer) const;

@@ -252,9 +252,14 @@ qint64 TranscriptReader::lastTime(const QString& peer) const
     return core_->lastTime(utf8(peer));
 }
 
-qint64 TranscriptReader::newestOwnOrderKey(const QString& peer) const
+qint64 TranscriptReader::newestOrderKey(const QString& peer) const
 {
-    return core_->newestOwnOrderKey(utf8(peer));
+    return core_->newestOrderKey(utf8(peer));
+}
+
+QString TranscriptReader::idPlacedBefore(const StoredMessage& row) const
+{
+    return qt(core_->idPlacedBefore(utf8(row.peer), row.orderKey, row.id));
 }
 
 QStringList TranscriptReader::conversationPeers() const

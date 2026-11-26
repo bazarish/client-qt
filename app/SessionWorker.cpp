@@ -1528,11 +1528,12 @@ void SessionWorker::watchUnsent(const QVariantList& rows)
 }
 
 void SessionWorker::sendText(const QString& peer, const QString& text, qint64 localId,
-    const QString& e2eId, const QString& replyTo, const bool forwarded)
+    const QString& e2eId, const QString& replyTo, const QString& after, const bool forwarded)
 {
     try {
         openSession().sendMessage(peer.toStdString(), text.toStdString(), e2eId.toStdString(),
-            watchFor(*this, localId), replyTo.toStdString(), forwarded);
+            watchFor(*this, localId), replyTo.toStdString(), forwarded,
+            after.toStdString());
         emitContacts();
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
@@ -1540,11 +1541,12 @@ void SessionWorker::sendText(const QString& peer, const QString& text, qint64 lo
 }
 
 void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint64 localId,
-    const QString& e2eId, const QString& replyTo, const bool forwarded)
+    const QString& e2eId, const QString& replyTo, const QString& after, const bool forwarded)
 {
     try {
         openSession().sendFile(peer.toStdString(), localPath.toStdString(), e2eId.toStdString(),
-            watchFor(*this, localId), replyTo.toStdString(), forwarded);
+            watchFor(*this, localId), replyTo.toStdString(), forwarded,
+            after.toStdString());
         emitContacts();
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
@@ -1553,12 +1555,13 @@ void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint
 
 void SessionWorker::sendVoice(const QString& peer, const QByteArray& opus,
     const qint64 durationMs, const qint64 localId, const QString& e2eId,
-    const QString& replyTo, const bool forwarded)
+    const QString& replyTo, const QString& after, const bool forwarded)
 {
     try {
         const Bytes audio(opus.begin(), opus.end());
         openSession().sendVoice(peer.toStdString(), audio, durationMs, e2eId.toStdString(),
-            watchFor(*this, localId), replyTo.toStdString(), forwarded);
+            watchFor(*this, localId), replyTo.toStdString(), forwarded,
+            after.toStdString());
         emitContacts();
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
@@ -1567,12 +1570,13 @@ void SessionWorker::sendVoice(const QString& peer, const QByteArray& opus,
 
 void SessionWorker::sendFileBytes(const QString& peer, const QByteArray& bytes,
     const QString& name, qint64 localId, const QString& e2eId, const QString& replyTo,
-    const bool forwarded)
+    const QString& after, const bool forwarded)
 {
     try {
         openSession().sendFileBytes(peer.toStdString(), name.toStdString(),
             bazarish::Bytes(bytes.begin(), bytes.end()), e2eId.toStdString(),
-            watchFor(*this, localId), replyTo.toStdString(), forwarded);
+            watchFor(*this, localId), replyTo.toStdString(), forwarded,
+            after.toStdString());
         emitContacts();
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
@@ -1581,12 +1585,13 @@ void SessionWorker::sendFileBytes(const QString& peer, const QByteArray& bytes,
 
 void SessionWorker::sendPicture(const QString& peer, const QByteArray& bytes,
     const QString& name, const QString& mime, qint64 localId, const QString& e2eId,
-    const QString& replyTo, const bool forwarded)
+    const QString& replyTo, const QString& after, const bool forwarded)
 {
     try {
         openSession().sendPicture(peer.toStdString(),
             bazarish::Bytes(bytes.begin(), bytes.end()), name.toStdString(), mime.toStdString(),
-            e2eId.toStdString(), watchFor(*this, localId), replyTo.toStdString(), forwarded);
+            e2eId.toStdString(), watchFor(*this, localId), replyTo.toStdString(), forwarded,
+            after.toStdString());
         emitContacts();
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));

@@ -10,6 +10,7 @@
 #include <QMimeDatabase>
 #include <QVariantMap>
 
+#include <algorithm>
 #include <array>
 
 namespace bazarish::app {
@@ -43,8 +44,9 @@ QString sendOpId(const qint64 localId)
     return QStringLiteral("send:") + QString::number(localId);
 }
 
+// Messages.md: a new row never sorts above what the chat already holds.
 StoredMessage outgoing(const QString& device, const QString& peer, const QString& type,
-    const QString& e2eId, const QString& replyTo, const int status)
+    const QString& e2eId, const QString& replyTo, const int status, const qint64 newestKey)
 {
     StoredMessage m;
     m.peer = peer;
@@ -54,7 +56,7 @@ StoredMessage outgoing(const QString& device, const QString& peer, const QString
     m.e2eId = e2eId;
     m.replyTo = replyTo;
     m.ts = nowMillis();
-    m.orderKey = m.ts;
+    m.orderKey = std::max(m.ts, newestKey + 1);
     m.status = status;
     return m;
 }
@@ -71,7 +73,8 @@ void CoreAccount::sendText(
 {
     const bool saved = isSavedChat(peer);
     StoredMessage m = outgoing(ownDevice_, peer, QStringLiteral("text"), e2eId, replyTo,
-        saved ? DeliveryStatus::Delivering : DeliveryStatus::Preparing);
+        saved ? DeliveryStatus::Delivering : DeliveryStatus::Preparing,
+        store_.newestOrderKey(peer));
     m.text = text;
     m.id = store_.append(m);
     if (m.id == 0) {
@@ -86,7 +89,7 @@ void CoreAccount::sendText(
         log_.begin(sendOpId(m.id), QStringLiteral("send"),
             tr("To %1").arg(contacts_.peerName(peer)), tr("Sending..."), peer);
     }
-    emit commands_.requestSendText(peer, text, m.id, e2eId, replyTo);
+    emit commands_.requestSendText(peer, text, m.id, e2eId, replyTo, store_.idPlacedBefore(m));
 }
 
 qint64 CoreAccount::beginSend(StoredMessage m, const QString& kind, const QString& title)
@@ -123,20 +126,22 @@ QByteArray CoreAccount::mediaOf(const StoredMessage& m) const
 
 void CoreAccount::dispatchSend(const StoredMessage& m, const QByteArray& media)
 {
+    const QString after = store_.idPlacedBefore(m);
     if (m.type == QStringLiteral("file") && !media.isEmpty()) {
         emit commands_.requestSendFileBytes(
-            m.peer, media, m.attName, m.id, m.e2eId, m.replyTo, m.forwarded);
+            m.peer, media, m.attName, m.id, m.e2eId, m.replyTo, after, m.forwarded);
     } else if (m.type == QStringLiteral("file")) {
         emit commands_.requestSendFile(
-            m.peer, m.attSrcPath, m.id, m.e2eId, m.replyTo, m.forwarded);
+            m.peer, m.attSrcPath, m.id, m.e2eId, m.replyTo, after, m.forwarded);
     } else if (m.type == QStringLiteral("audio")) {
         emit commands_.requestSendVoice(
-            m.peer, media, m.attDurationMs, m.id, m.e2eId, m.replyTo, m.forwarded);
+            m.peer, media, m.attDurationMs, m.id, m.e2eId, m.replyTo, after, m.forwarded);
     } else if (m.type == QStringLiteral("image")) {
         emit commands_.requestSendPicture(
-            m.peer, media, m.attName, m.attMime, m.id, m.e2eId, m.replyTo, m.forwarded);
+            m.peer, media, m.attName, m.attMime, m.id, m.e2eId, m.replyTo, after, m.forwarded);
     } else {
-        emit commands_.requestSendText(m.peer, m.text, m.id, m.e2eId, m.replyTo, m.forwarded);
+        emit commands_.requestSendText(
+            m.peer, m.text, m.id, m.e2eId, m.replyTo, after, m.forwarded);
     }
 }
 
@@ -145,14 +150,15 @@ void CoreAccount::sendFile(
 {
     const FileFacts facts = factsOf(path);
     StoredMessage m = outgoing(ownDevice_, peer, QStringLiteral("file"), e2eId, replyTo,
-        isSavedChat(peer) ? DeliveryStatus::Delivering : DeliveryStatus::Preparing);
+        isSavedChat(peer) ? DeliveryStatus::Delivering : DeliveryStatus::Preparing,
+        store_.newestOrderKey(peer));
     m.attName = facts.name;
     m.attSize = facts.size;
     m.attMime = QMimeDatabase().mimeTypeForFile(facts.name, QMimeDatabase::MatchExtension).name();
     m.attSrcPath = path;
-    const qint64 id = beginSend(m, QStringLiteral("file-up"), m.attName);
-    if (id != 0) {
-        emit commands_.requestSendFile(peer, path, id, e2eId, replyTo);
+    m.id = beginSend(m, QStringLiteral("file-up"), m.attName);
+    if (m.id != 0) {
+        emit commands_.requestSendFile(peer, path, m.id, e2eId, replyTo, store_.idPlacedBefore(m));
     }
 }
 
@@ -160,39 +166,42 @@ void CoreAccount::sendPicture(const QString& peer, const QByteArray& bytes, cons
     const QString& mime, const QString& replyTo, const QString& e2eId)
 {
     StoredMessage m = outgoing(ownDevice_, peer, QStringLiteral("image"), e2eId, replyTo,
-        isSavedChat(peer) ? DeliveryStatus::Delivering : DeliveryStatus::Preparing);
+        isSavedChat(peer) ? DeliveryStatus::Delivering : DeliveryStatus::Preparing,
+        store_.newestOrderKey(peer));
     m.attName = name;
     m.attSize = bytes.size();
     m.attMime = mime;
     m.hasPicture = true;
-    const qint64 id = beginSend(m, QStringLiteral("file-up"), m.attName);
-    if (id == 0) {
+    m.id = beginSend(m, QStringLiteral("file-up"), m.attName);
+    if (m.id == 0) {
         return;
     }
-    if (!store_.keepMedia(mediaKeyOf(m), bytes) || !store_.setHasPicture(id, true)) {
+    if (!store_.keepMedia(mediaKeyOf(m), bytes) || !store_.setHasPicture(m.id, true)) {
         reportUnsaved();
     }
-    emit commands_.requestSendPicture(peer, bytes, name, mime, id, e2eId, replyTo);
+    emit commands_.requestSendPicture(
+        peer, bytes, name, mime, m.id, e2eId, replyTo, store_.idPlacedBefore(m));
 }
 
 void CoreAccount::sendVoice(const QString& peer, const QByteArray& opus, const qint64 durationMs,
     const QString& wave, const QString& replyTo, const QString& e2eId)
 {
     StoredMessage m = outgoing(ownDevice_, peer, QStringLiteral("audio"), e2eId, replyTo,
-        isSavedChat(peer) ? DeliveryStatus::Delivering : DeliveryStatus::Preparing);
+        isSavedChat(peer) ? DeliveryStatus::Delivering : DeliveryStatus::Preparing,
+        store_.newestOrderKey(peer));
     m.attMime = QStringLiteral("audio/opus");
     m.attSize = opus.size();
     m.attDurationMs = durationMs;
     m.attWave = wave;
-    const qint64 id
-        = beginSend(m, QStringLiteral("send"), tr("To %1").arg(contacts_.peerName(peer)));
-    if (id == 0) {
+    m.id = beginSend(m, QStringLiteral("send"), tr("To %1").arg(contacts_.peerName(peer)));
+    if (m.id == 0) {
         return;
     }
     if (!store_.keepMedia(mediaKeyOf(m), opus)) {
         reportUnsaved();
     }
-    emit commands_.requestSendVoice(peer, opus, durationMs, id, e2eId, replyTo);
+    emit commands_.requestSendVoice(
+        peer, opus, durationMs, m.id, e2eId, replyTo, store_.idPlacedBefore(m));
 }
 
 void CoreAccount::forwardMessage(
@@ -202,8 +211,8 @@ void CoreAccount::forwardMessage(
     if (source.id == 0) {
         return;
     }
-    StoredMessage m
-        = outgoing(ownDevice_, toPeer, source.type, newE2eId, QString(), DeliveryStatus::Preparing);
+    StoredMessage m = outgoing(ownDevice_, toPeer, source.type, newE2eId, QString(),
+        DeliveryStatus::Preparing, store_.newestOrderKey(toPeer));
     m.text = source.text;
     m.forwarded = true;
     QByteArray media;

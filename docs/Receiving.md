@@ -196,15 +196,21 @@ was chosen, and so do the dates the conversation is divided by.
 
 ## Order and time
 
-A conversation is ordered by the `sentAt` inside the sealed envelope, except that
-a message from the other side never goes above what this side had written in the
-chat before it arrived (`docs-main/Messages.md`): its order key is raised to one
-millisecond after the newest own row, and the time it shows stays its `sentAt`. A
-row written on another device of the same account is not raised. The arrival
-order the mailbox lists in decides only the order items are fetched in.
+A conversation is ordered by an order key, and the time a row shows stays the
+`sentAt` inside the sealed envelope (`docs-main/Messages.md`, *Ordering and
+timestamps*):
 
-A message that arrives long after it was written therefore appears where it was
-written among the other side's messages, but under anything written here before it
-came, which can still be above the fold. The unread mark is kept over stored rows in
+- A message written here sorts at least one millisecond after the newest row of
+  the chat, and is sent with that row's id as `after`.
+- An arriving message with an `after` the chat holds sorts at least one
+  millisecond after that row.
+- Any other arriving message sorts at least one millisecond after the newest row
+  from the other side as seen from it: after the newest own row for a message
+  from the contact or the group, after the newest row from them for a message
+  written on another device of this account.
+
+The arrival order the mailbox lists in decides only the order items are fetched
+in. A message that arrives long after it was written therefore appears right under
+the message it was written after, which can still be above the fold. The unread mark is kept over stored rows in
 the order they were received, so such a message is unread whatever its own clock
 says.

@@ -285,7 +285,26 @@ try {
     CHECK(took(later));
     CHECK(store.messageByE2e("a2", carl).orderKey == 2 * kOwnAt);
     CHECK(took(ours(carl, "text", "q2", "from another device")));
-    CHECK(store.messageByE2e("q2", carl).orderKey == kSentAt);
+    CHECK(store.messageByE2e("q2", carl).orderKey == 2 * kOwnAt + 1);
+
+    // A message naming what it was written after goes right under it, whoever wrote since.
+    StoredMessage newer = asked;
+    newer.e2eId = QStringLiteral("q3");
+    newer.ts = 3 * kOwnAt;
+    newer.orderKey = 3 * kOwnAt;
+    CHECK(store.append(newer) != 0);
+    client::IncomingMessage anchored = incoming(carl, "text", "a3", "late");
+    anchored.after = "q1";
+    CHECK(took(anchored));
+    CHECK(store.messageByE2e("a3", carl).orderKey == kOwnAt + 1);
+    client::IncomingMessage stranger = incoming(carl, "text", "a4", "after a stranger");
+    stranger.after = "gone";
+    CHECK(took(stranger));
+    CHECK(store.messageByE2e("a4", carl).orderKey == 3 * kOwnAt + 1);
+    client::IncomingMessage echoed = ours(carl, "text", "q4", "under a2");
+    echoed.after = "a2";
+    CHECK(took(echoed));
+    CHECK(store.messageByE2e("q4", carl).orderKey == 2 * kOwnAt + 1);
 
     client::IncomingMessage fromHost = incoming(kClub, "chat.timer", "t3");
     fromHost.timerSeconds = bazarish::kSecondsPerHour;
