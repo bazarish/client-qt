@@ -135,7 +135,7 @@ Item {
     Button {
         id: signatureButton
         focusPolicy: Theme.pressFocus
-        text: qsTr("Signature")
+        text: qsTr("Sign with the account key")
         readonly property real kDisabledOpacity: 0.4
         enabled: root.session !== null && root.session.primaryDevice
         opacity: enabled ? 1 : kDisabledOpacity
