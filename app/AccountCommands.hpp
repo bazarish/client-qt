@@ -63,6 +63,7 @@ signals:
     void setChatTimer(const QString& peer, qint64 seconds);
     void forgetChat(const QString& peer);
     void clearSavedEverywhere();
+    void clearSavedHere();
     void addByInvite(const QString& uri, const QString& intro);
     void addByAlias(const QString& alias, const QString& intro);
     void retryContactAdd(const QString& peer);

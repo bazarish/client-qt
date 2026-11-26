@@ -175,4 +175,15 @@ void CoreAccount::clearSavedEverywhere()
     emit commands_.requestClearSaved();
 }
 
+void CoreAccount::clearSavedHere()
+{
+    const QString saved = contacts_.ownFingerprint();
+    if (!store_.clearPeer(saved)) {
+        reportUnsaved();
+        return;
+    }
+    emit events_.peerReset(saved);
+    emit events_.chatsChanged();
+}
+
 }  // namespace bazarish::app

@@ -995,6 +995,11 @@ void SessionController::clearSavedEverywhere()
     emit commands_.clearSavedEverywhere();
 }
 
+void SessionController::clearSavedHere()
+{
+    emit commands_.clearSavedHere();
+}
+
 bool SessionController::isBlocked(const QString& peer) const
 {
     return book_.isBlocked(peer);

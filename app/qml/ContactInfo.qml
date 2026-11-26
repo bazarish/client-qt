@@ -78,9 +78,22 @@ WindowPopup {
                 Layout.fillWidth: true
                 Layout.topMargin: 4
                 iconName: "trash"
+                text: qsTr("Clear only here")
+                onClicked: {
+                    clearSavedDialog.everywhere = false
+                    clearSavedDialog.open()
+                }
+            }
+            MenuButton {
+                visible: root.saved
+                Layout.fillWidth: true
+                iconName: "trash"
                 text: qsTr("Clear on all devices")
                 danger: true
-                onClicked: clearSavedDialog.open()
+                onClicked: {
+                    clearSavedDialog.everywhere = true
+                    clearSavedDialog.open()
+                }
             }
 
             Avatar {
@@ -376,6 +389,7 @@ WindowPopup {
 
     Dialog {
         id: clearSavedDialog
+        property bool everywhere: true
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true
@@ -386,21 +400,29 @@ WindowPopup {
             showClose: false
         }
         footer: DialogButtons {
-            acceptText: qsTr("Clear everywhere")
+            acceptText: clearSavedDialog.everywhere ? qsTr("Clear everywhere") : qsTr("Clear here")
             rejectText: qsTr("Cancel")
             danger: true
             onAccepted: clearSavedDialog.accept()
             onRejected: clearSavedDialog.reject()
         }
         onAccepted: {
-            if (root.session) { root.session.clearSavedEverywhere() }
+            if (root.session) {
+                if (clearSavedDialog.everywhere) {
+                    root.session.clearSavedEverywhere()
+                } else {
+                    root.session.clearSavedHere()
+                }
+            }
             root.close()
         }
         contentItem: Label {
             padding: 14
             wrapMode: Text.Wrap
             color: Theme.text
-            text: qsTr("Everything kept here goes, on this device and on every other device of this account")
+            text: clearSavedDialog.everywhere
+                ? qsTr("Everything kept here goes, on this device and on every other device of this account")
+                : qsTr("Everything kept here goes from this device only")
         }
     }
 

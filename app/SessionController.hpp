@@ -352,6 +352,7 @@ public:
         return !peer.isEmpty() && peer == savedPeer();
     }
     Q_INVOKABLE void clearSavedEverywhere();
+    Q_INVOKABLE void clearSavedHere();
 
     Q_INVOKABLE bool isBlocked(const QString& peer) const;
     Q_INVOKABLE void setBlocked(const QString& peer, bool blocked);

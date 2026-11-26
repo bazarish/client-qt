@@ -547,6 +547,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&commands_, &AccountCommands::forgetChat, this, &CoreAccount::forgetChat);
     connect(&commands_, &AccountCommands::clearSavedEverywhere, this,
         &CoreAccount::clearSavedEverywhere);
+    connect(&commands_, &AccountCommands::clearSavedHere, this, &CoreAccount::clearSavedHere);
     connect(&commands_, &AccountCommands::addByInvite, this, &CoreAccount::addByInvite);
     connect(&commands_, &AccountCommands::addByAlias, this, &CoreAccount::addByAlias);
     connect(&commands_, &AccountCommands::retryContactAdd, this, &CoreAccount::retryContactAdd);

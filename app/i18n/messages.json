@@ -101,6 +101,24 @@
       "zh": "短名称（别名）可以在登记处购买：",
       "ar": "يمكن شراء اسم قصير (اسم مستعار) من السجل:"
     },
+    "Clear here": {
+      "ru": "Удалить здесь",
+      "es": "Vaciar aquí",
+      "zh": "在此处清空",
+      "ar": "الإفراغ هنا"
+    },
+    "Clear only here": {
+      "ru": "Удалить только здесь",
+      "es": "Vaciar solo aquí",
+      "zh": "仅在此处清空",
+      "ar": "الإفراغ هنا فقط"
+    },
+    "Everything kept here goes from this device only": {
+      "ru": "Всё содержимое будет удалено только на этом устройстве",
+      "es": "Todo lo guardado aquí desaparece solo de este dispositivo",
+      "zh": "这里保存的所有内容仅从本设备删除",
+      "ar": "سيُحذف كل ما هو محفوظ هنا من هذا الجهاز فقط"
+    },
     "Sending the request...": {
       "ru": "Отправка запроса...",
       "es": "Enviando la solicitud...",
