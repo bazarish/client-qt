@@ -10,8 +10,10 @@
 #include <QQmlEngine>
 #include <QQuickItem>
 #include <QQuickView>
+#include <QStyleHints>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QWheelEvent>
 
 #include <cmath>
 #include <cstdio>
@@ -31,6 +33,11 @@ constexpr int kPictureAt = 9;
 constexpr int kSettleMs = 600;
 constexpr int kFlashForgetMs = 2400;
 constexpr double kPixel = 1.0;
+// Qt: a wheel notch turns by 120 eighths of a degree, a line by 24 px.
+constexpr int kNotchAngle = 120;
+constexpr double kLinePixels = 24;
+constexpr int kQuickNotches = 4;
+constexpr int kBetweenNotchesMs = 50;
 constexpr qint64 kSentAt = 1'700'000'000'000;
 constexpr qint64 kFirstChat = 1;
 constexpr qint64 kSecondChat = 101;
@@ -173,7 +180,9 @@ try {
     const QString module = dir.filePath(QStringLiteral("Bazarish"));
     CHECK(QDir().mkpath(module));
     CHECK(QFile::copy(viewFile, module + QStringLiteral("/ConversationView.qml")));
-    QString qmldir = QStringLiteral("module Bazarish\nConversationView 1.0 ConversationView.qml\n");
+    CHECK(QFile::copy(QStringLiteral(BAZARISH_SCROLL_BOOST), module + QStringLiteral("/ScrollBoost.qml")));
+    QString qmldir = QStringLiteral(
+        "module Bazarish\nConversationView 1.0 ConversationView.qml\nScrollBoost 1.0 ScrollBoost.qml\n");
     for (const QString& name : QDir(stubDir).entryList({QStringLiteral("*.qml")})) {
         if (name.endsWith(QStringLiteral("Scene.qml"))) {
             CHECK(QFile::copy(stubDir + '/' + name, dir.filePath(name)));
@@ -250,6 +259,43 @@ try {
     expect(atEnd(list), "another account's chat opens at its end");
     expect(shownOnlyAtEnd(frames), "no frame of it is drawn away from the end");
     expect(bubblesShowTheirRows(list), "every bubble shows its own row after the account switch");
+
+    const double beforeWheel = list->property("contentY").toDouble();
+    const QPointF middle(list->width() / 2, list->height() / 2);
+    const QPointF inWindow = list->mapToScene(middle);
+    QWheelEvent notch(inWindow, view.mapToGlobal(inWindow), QPoint(), QPoint(0, kNotchAngle),
+        Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+    QCoreApplication::sendEvent(&view, &notch);
+    QTest::qWait(kSettleMs);
+    const double afterWheel = list->property("contentY").toDouble();
+    const double notchPixels = QGuiApplication::styleHints()->wheelScrollLines() * kLinePixels;
+    std::printf("  one notch moved the chat by %.1f px\n", beforeWheel - afterWheel);
+    expect(std::abs(beforeWheel - afterWheel - notchPixels) < kPixel,
+        "a wheel notch moves the chat by one notch");
+    QTest::qWait(kSettleMs);
+    expect(std::abs(list->property("contentY").toDouble() - afterWheel) < kPixel,
+        "the chat stays put after a wheel notch");
+
+    int tracked = -1;
+    CHECK(QMetaObject::invokeMethod(list, "indexAt", Q_RETURN_ARG(int, tracked),
+        Q_ARG(qreal, list->width() / 2),
+        Q_ARG(qreal, list->property("contentY").toDouble() + list->height() / 2)));
+    const auto onScreen = [&]() {
+        QQuickItem* const row = itemAt(list, tracked);
+        return row == nullptr ? 0.0 : row->y() - list->property("contentY").toDouble();
+    };
+    const double trackedBefore = onScreen();
+    for (int notches = 0; notches < kQuickNotches; ++notches) {
+        QWheelEvent quick(inWindow, view.mapToGlobal(inWindow), QPoint(), QPoint(0, kNotchAngle),
+            Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+        QCoreApplication::sendEvent(&view, &quick);
+        QTest::qWait(kBetweenNotchesMs);
+    }
+    QTest::qWait(kSettleMs);
+    const double movedOnScreen = onScreen() - trackedBefore;
+    std::printf("  %d quick notches moved a row by %.1f px on screen\n", kQuickNotches, movedOnScreen);
+    expect(std::abs(movedOnScreen - kQuickNotches * notchPixels) < kPixel,
+        "quick notches move the chat by as many notches, no faster");
 
     QQuickView opened;
     opened.engine()->addImportPath(dir.path());

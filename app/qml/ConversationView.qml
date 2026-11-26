@@ -584,7 +584,17 @@ Item {
             ListView {
                 id: messages
                 property TextEdit selectingText: null
-                ScrollBoost { flickable: messages }
+                ScrollBoost {
+                    id: wheel
+                    flickable: messages
+                    onWheelingChanged: {
+                        if (wheel.wheeling && messages.landing) {
+                            messages.endLanding()
+                        } else if (!wheel.wheeling && messages.stickToBottom && !messages.paging) {
+                            messages.scrollToEnd()
+                        }
+                    }
+                }
                 anchors.fill: parent
                 clip: true
                 spacing: 6
@@ -769,7 +779,7 @@ Item {
                     if (autoScrolling || !root.session) {
                         return
                     }
-                    if (moving || dragging || flicking) {
+                    if (moving || dragging || flicking || wheel.wheeling) {
                         stickToBottom = atYEnd && root.session.atNewest
                         const anchor = stickToBottom
                             ? -1 : indexAt(width / 2, contentY + topMargin + 2)
@@ -784,7 +794,7 @@ Item {
                     }
                 }
                 // Follow the bottom as bubbles settle, but not mid-gesture: a drag past the end re-measures rows above.
-                onContentHeightChanged: if (stickToBottom && !paging && !moving) { scrollToEnd() }
+                onContentHeightChanged: if (stickToBottom && !paging && !moving && !wheel.wheeling) { scrollToEnd() }
                 onMovementEnded: if (stickToBottom && !paging) { scrollToEnd() }
                 onHeightChanged: if (stickToBottom && !paging) { scrollToEnd() }
 

@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 import QtQuick
+import Bazarish
 
 Item {
     id: boost
@@ -8,16 +9,21 @@ Item {
     readonly property int kStreakMs: 700
     readonly property real kStreakGain: 0.5
     readonly property real kMaxGain: 4
-    // Qt scrolls a notch by the wheel's lines of 24 px; a single notch keeps that step.
+    // Qt scrolls a notch by the wheel's lines of 24 px.
     readonly property real kLinePixels: 24
     readonly property real kNotchPixels: Application.styleHints.wheelScrollLines * kLinePixels
     readonly property real kNotchAngle: 120
+    readonly property real kGlideMs: 40
+    readonly property int kGlideTickMs: 16
+    readonly property real kSettledPixels: 0.5
     readonly property real baseVelocity: flickable.maximumFlickVelocity / kMaxGain
 
     property int streak: 0
     property real lastAt: 0
     property int lastWay: 0
     property bool steering: false
+    property real gliding: 0
+    readonly property bool wheeling: gliding !== 0
 
     function gainFor(way) {
         const now = Date.now()
@@ -34,10 +40,23 @@ Item {
         steering = false
     }
 
-    Component.onCompleted: flickable.maximumFlickVelocity *= kMaxGain
+    // Moved by what is left rather than to a point: a page loaded above shifts contentY under the glide.
+    function glideBy(pixels) {
+        const top = flickable.originY - flickable.topMargin
+        const bottom = Math.max(top, flickable.originY + flickable.contentHeight
+            + flickable.bottomMargin - flickable.height)
+        const wanted = flickable.contentY + pixels
+        const to = Math.max(top, Math.min(wanted, bottom))
+        flickable.contentY = to
+        if (to !== wanted) {
+            gliding = 0
+        }
+    }
+
+    Component.onCompleted: if (App.mobile) { flickable.maximumFlickVelocity *= kMaxGain }
 
     Connections {
-        target: boost.flickable
+        target: App.mobile ? boost.flickable : null
         function onFlickStarted() {
             if (boost.steering) {
                 return
@@ -49,21 +68,38 @@ Item {
         }
     }
 
+    Timer {
+        id: glide
+        interval: boost.kGlideTickMs
+        repeat: true
+        running: boost.gliding !== 0
+        property real lastTick: 0
+        onRunningChanged: glide.lastTick = Date.now()
+        onTriggered: {
+            const now = Date.now()
+            const share = 1 - Math.exp(-(now - glide.lastTick) / boost.kGlideMs)
+            glide.lastTick = now
+            const step = Math.abs(boost.gliding) <= boost.kSettledPixels
+                ? boost.gliding : boost.gliding * share
+            const left = boost.gliding - step
+            boost.glideBy(step)
+            if (boost.wheeling) {
+                boost.gliding = left
+            }
+        }
+    }
+
     WheelHandler {
         parent: boost.flickable
+        enabled: !App.mobile
         acceptedDevices: PointerDevice.Mouse
         onWheel: function(event) {
             if (event.angleDelta.y === 0) {
                 event.accepted = false
                 return
             }
-            const way = event.angleDelta.y > 0 ? -1 : 1
-            const step = boost.kNotchPixels * Math.abs(event.angleDelta.y) / boost.kNotchAngle
-            const moving = boost.flickable.verticalVelocity
-            const deceleration = boost.flickable.flickDeceleration
-            const left = moving * way > 0 ? moving * moving / (2 * deceleration) : 0
-            const distance = left + step * boost.gainFor(way)
-            boost.flickAlong(way * Math.sqrt(2 * deceleration * distance))
+            boost.flickable.cancelFlick()
+            boost.gliding -= boost.kNotchPixels * event.angleDelta.y / boost.kNotchAngle
             event.accepted = true
         }
     }

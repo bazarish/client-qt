@@ -529,6 +529,7 @@ if(Qt6_FOUND)
             app/Models.hpp)
         target_compile_definitions(TestConversationView PRIVATE
             BAZARISH_CONVERSATION_VIEW="${CMAKE_CURRENT_SOURCE_DIR}/app/qml/ConversationView.qml"
+            BAZARISH_SCROLL_BOOST="${CMAKE_CURRENT_SOURCE_DIR}/app/qml/components/ScrollBoost.qml"
             BAZARISH_VIEW_STUBS="${CMAKE_CURRENT_SOURCE_DIR}/tests/ConversationViewStubs")
         target_link_libraries(TestConversationView PRIVATE bazarish_test_util bazarish_app_shared
             Qt6::Quick Qt6::Qml Qt6::Test)
