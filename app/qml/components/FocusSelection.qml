@@ -54,7 +54,7 @@ SelectionTools {
         // Qt's own field reports its release before the focus it takes on it.
         function onTapped(field, at) {
             field.forceActiveFocus()
-            root.tapped()
+            root.tapped(at)
         }
         function onLongPressed(field, at) {
             field.forceActiveFocus()

@@ -46,7 +46,11 @@ Item {
     readonly property bool offersSelectAll: root.field !== null && root.field.length > 0
         && root.field.selectedText.length < root.field.length
 
-    function tapped() {
+    function tapped(at) {
+        if (root.editable) {
+            root.finishWord()
+            root.field.cursorPosition = root.field.positionAt(at.x, at.y)
+        }
         root.caretMenu = false
         root.caretShown = true
         caretTimer.restart()
