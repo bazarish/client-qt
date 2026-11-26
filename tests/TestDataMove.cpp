@@ -4,7 +4,9 @@
 
 #include <bazarish/PathText.hpp>
 
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 #include <algorithm>
 #include <cstdio>
@@ -216,10 +218,20 @@ void emptyRouterDirectoryIsFilled()
     CHECK(result.leftBehind.empty());
 }
 
+// Windows keeps only a read-only flag of them, and nothing binds root.
+bool permissionsDenyReading()
+{
+#ifdef _WIN32
+    return false;
+#else
+    return ::geteuid() != 0;
+#endif
+}
+
 void failedCopyLeavesBothSidesAsTheyWere()
 {
-    if (::geteuid() == 0) {
-        std::fprintf(stderr, "failed-copy case skipped: permissions do not bind root\n");
+    if (!permissionsDenyReading()) {
+        std::fprintf(stderr, "failed-copy case skipped: permissions do not deny reading here\n");
         return;
     }
     const Roots roots("copy-fails");

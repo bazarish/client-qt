@@ -11,6 +11,10 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/common/CMakeLists.txt")
         " - run: git submodule update --init --recursive")
 endif()
 set(BAZARISH_WITH_CHROME_TLS ON CACHE BOOL "Build the Chrome-like TLS of the link to a gateway" FORCE)
+# Without it PE/COFF caps an object file at 32767 sections.
+if(MINGW)
+    add_compile_options(-Wa,-mbig-obj)
+endif()
 add_subdirectory(common bazarish-common)
 
 # No Svg: the qsvg plugin draws the logo, and a missing Svg dev config would fail this find.
