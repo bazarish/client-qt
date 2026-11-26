@@ -1199,6 +1199,12 @@ void SessionController::sendFile(const QString& fileUrl)
     if (source.isEmpty() || activePeer_.isEmpty()) {
         return;
     }
+    if (activeIsGroup()
+        && factsOf(source).size > static_cast<qint64>(bazarish::kMaxMediaBytes)) {
+        emit actionFailed(tr("A group takes files up to %1")
+                .arg(humanBytes(static_cast<qint64>(bazarish::kMaxMediaBytes))));
+        return;
+    }
     unblockBeforeWriting(activePeer_);
     emit commands_.sendFile(activePeer_, source, takeReply(), newE2eId());
 }
