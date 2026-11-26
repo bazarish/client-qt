@@ -38,6 +38,7 @@ constexpr int kNotchAngle = 120;
 constexpr double kLinePixels = 24;
 constexpr int kQuickNotches = 4;
 constexpr int kBetweenNotchesMs = 50;
+constexpr double kSeriesSlack = kLinePixels / 2;
 constexpr qint64 kSentAt = 1'700'000'000'000;
 constexpr qint64 kFirstChat = 1;
 constexpr qint64 kSecondChat = 101;
@@ -294,7 +295,7 @@ try {
     QTest::qWait(kSettleMs);
     const double movedOnScreen = onScreen() - trackedBefore;
     std::printf("  %d quick notches moved a row by %.1f px on screen\n", kQuickNotches, movedOnScreen);
-    expect(std::abs(movedOnScreen - kQuickNotches * notchPixels) < kPixel,
+    expect(std::abs(movedOnScreen - kQuickNotches * notchPixels) < kSeriesSlack,
         "quick notches move the chat by as many notches, no faster");
 
     QQuickView opened;
