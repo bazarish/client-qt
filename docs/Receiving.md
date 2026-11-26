@@ -140,7 +140,7 @@ device outside these paths, such as its storage, keeps its own text.
 
 | Parameter | Value |
 |---|---|
-| Held-open request | No time limit; answered the moment mail lands |
+| Held-open request | answered the moment mail lands, else after at most 300 s; no answer within 300 s plus 240 s is a broken link |
 | A failed wait asked again | on a cause (step 5); without one, after 11 min (lease lifetime 10 min and 1 min of clock skew) |
 | A wait the facade answered with 502 asked again | after 1 s, 5 s, 10 s, then every 10 s (step 6) |
 | Items per pass | 5 |
