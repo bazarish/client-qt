@@ -108,6 +108,8 @@ class SessionController : public QObject {
     // In byte order; the member list window sorts them for the language.
     Q_PROPERTY(QStringList activeMembers READ activeMembers NOTIFY activeMembersChanged)
     Q_PROPERTY(bool activeMemberListHeld READ activeMemberListHeld NOTIFY activeMembersChanged)
+    Q_PROPERTY(QStringList activeContactable READ activeContactable NOTIFY activeMembersChanged)
+    Q_PROPERTY(QString activeOwnName READ activeOwnName NOTIFY activeMembersChanged)
     Q_PROPERTY(bool atNewest READ atNewest NOTIFY pagingChanged)
     Q_PROPERTY(bool hasMoreOlder READ hasMoreOlder NOTIFY pagingChanged)
     Q_PROPERTY(QString accountId READ accountId CONSTANT)
@@ -257,6 +259,8 @@ public:
     bool activeGroupWrite() const { return !activeGroup_ || activeGroup_->write; }
     bool activeGroupAdmin() const { return activeGroup_ && activeGroup_->admin; }
     QStringList activeMembers() const { return activeMembers_; }
+    QStringList activeContactable() const { return activeContactable_; }
+    QString activeOwnName() const { return activeOwnName_; }
     bool activeMemberListHeld() const { return activeMemberListHeld_; }
     Q_INVOKABLE QVariantMap mentionAt(const QString& before) const;
     Q_INVOKABLE QString mentionText(const QString& name) const;
@@ -637,6 +641,7 @@ private:
     QHash<QString, QString> drafts_;
     std::optional<GroupState> activeGroup_;
     QStringList activeMembers_;
+    QStringList activeContactable_;
     QString activeOwnName_;
     bool activeMemberListHeld_ = false;
     qint64 activeChatTimer_ = 0;

@@ -505,6 +505,7 @@ void SessionController::refreshActiveMembers()
     activeMemberListHeld_
         = group && store_.memberListState(activePeer_) == client::MemberListState::eHeld;
     activeMembers_ = activeMemberListHeld_ ? store_.groupMembers(activePeer_) : QStringList();
+    activeContactable_ = activeMemberListHeld_ ? store_.groupContactable(activePeer_) : QStringList();
     activeOwnName_ = activeMemberListHeld_ ? store_.ownGroupName(activePeer_) : QString();
     emit activeMembersChanged();
 }

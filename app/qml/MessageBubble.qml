@@ -1432,7 +1432,7 @@ Item {
                         iconName: "person"
                         visible: delegate.fromMember && model.contactable === true
                         height: visible ? implicitHeight : 0
-                        onTriggered: delegate.session.sendCommand("contact", model.e2eId, text)
+                        onTriggered: delegate.session.sendCommand("contact", model.author, text)
                     }
                     ContextMenuItem {
                         text: qsTr("Exclude")

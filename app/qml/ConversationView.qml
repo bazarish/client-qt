@@ -43,6 +43,10 @@ Item {
     readonly property int chosenCount: Object.keys(root.chosen).length
     readonly property int chosenOwn: Object.values(root.chosen).filter(own => own).length
     readonly property bool choosing: root.chosenCount > 0
+    function insertMention(name) {
+        composer.insertMention(name)
+    }
+
     function toggleChosen(msgId, outgoing) {
         const next = Object.assign({}, root.chosen)
         if (next[msgId] !== undefined) {

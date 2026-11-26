@@ -9,6 +9,7 @@ WindowPopup {
     bottomMargin: typing ? App.keyboardInset : 0
     property var session: null
     property bool searching: false
+    signal mentionRequested(string name)
     readonly property int kRowHeight: 44
     readonly property int kLetterSize: 30
     readonly property var members: root.session
@@ -75,8 +76,35 @@ WindowPopup {
             delegate: Item {
                 id: memberRow
                 required property string modelData
+                readonly property bool own: root.session !== null
+                    && memberRow.modelData === root.session.activeOwnName
                 width: ListView.view.width
                 height: root.kRowHeight
+                function mention() {
+                    root.close()
+                    root.mentionRequested(memberRow.modelData)
+                }
+                TapHandler {
+                    acceptedButtons: Qt.LeftButton
+                    onTapped: if (App.mobile) { memberRow.mention() }
+                    onDoubleTapped: if (!App.mobile) { memberRow.mention() }
+                    onLongPressed: if (!memberRow.own) { memberMenu.popup() }
+                }
+                TapHandler {
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    acceptedButtons: Qt.RightButton
+                    onTapped: if (!memberRow.own) { memberMenu.popup() }
+                }
+                ContextMenu {
+                    id: memberMenu
+                    ContextMenuItem {
+                        text: qsTr("Request contact")
+                        iconName: "person"
+                        enabled: root.session !== null
+                            && root.session.activeContactable.indexOf(memberRow.modelData) >= 0
+                        onTriggered: root.session.sendCommand("contact", memberRow.modelData, text)
+                    }
+                }
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: Theme.contentInset

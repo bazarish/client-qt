@@ -191,6 +191,11 @@ Item {
     MemberListSheet {
         id: memberList
         session: root.session
+        onMentionRequested: function(name) {
+            if (root.conversation) {
+                root.conversation.insertMention(name)
+            }
+        }
     }
     ContactShareSheet {
         id: contactShare

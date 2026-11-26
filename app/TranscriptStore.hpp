@@ -143,6 +143,7 @@ public:
     QVector<Reaction> reactionsFor(const QString& peer, const QString& target) const;
     std::optional<GroupState> groupState(const QString& peer) const;
     QStringList groupMembers(const QString& peer) const;
+    QStringList groupContactable(const QString& peer) const;
     client::MemberListState memberListState(const QString& peer) const;
     QString ownGroupName(const QString& peer) const;
     int unreadMentionCount(const QString& peer) const;

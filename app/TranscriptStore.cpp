@@ -323,6 +323,15 @@ QStringList TranscriptReader::groupMembers(const QString& peer) const
     return names;
 }
 
+QStringList TranscriptReader::groupContactable(const QString& peer) const
+{
+    QStringList names;
+    for (const std::string& name : core_->groupContactable(utf8(peer))) {
+        names << qt(name);
+    }
+    return names;
+}
+
 client::MemberListState TranscriptReader::memberListState(const QString& peer) const
 {
     return core_->memberListState(utf8(peer));

@@ -75,6 +75,14 @@ Rectangle {
         : ({})
     readonly property var mentionChoices: root.mention.choices || []
 
+    function insertMention(name) {
+        const written = root.session.mentionText(name) + " "
+        const at = input.cursorPosition
+        input.insert(at, written)
+        input.cursorPosition = at + written.length
+        input.forceActiveFocus()
+    }
+
     function completeMention(name) {
         const from = root.mention.from
         const written = root.session.mentionText(name) + " "
