@@ -29,7 +29,6 @@ constexpr int kLongWords = 30;
 constexpr int kPictureEvery = 10;
 constexpr int kPictureAt = 9;
 constexpr int kSettleMs = 600;
-// Past the view's 1600 ms reaction flash.
 constexpr int kFlashForgetMs = 2400;
 constexpr double kPixel = 1.0;
 constexpr qint64 kSentAt = 1'700'000'000'000;

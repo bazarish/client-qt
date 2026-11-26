@@ -10,9 +10,9 @@ applies where the protocol names none.
 
 ## One mechanism
 
-Mail is heard about in exactly one way: a request held open by the server. A
-wait that ends in an error is asked again immediately, on the same connection the
-loop already holds.
+Mail is heard about in exactly one way: a request held open by the server for a
+hold the client draws for each ask (*Parameters*, below). A wait that ends in an
+error is asked again immediately, on the same connection the loop already holds.
 
 The same request is also what the account's connection state is drawn from: an
 answer means the server is there, an error means it is not.
@@ -140,7 +140,9 @@ device outside these paths, such as its storage, keeps its own text.
 
 | Parameter | Value |
 |---|---|
-| Held-open request | answered the moment mail lands, else after at most 300 s; no answer within 300 s plus 240 s is a broken link |
+| Held-open request | names a hold drawn between 60 and 300 s; answered the moment mail lands, else when the hold runs out; no answer 60 s after the hold is a broken link |
+| Next ask after an answer | after a pause drawn between 0 and 800 ms |
+| Any other request | an answer within 180 s |
 | A failed wait asked again | on a cause (step 5); without one, after 11 min (lease lifetime 10 min and 1 min of clock skew) |
 | A wait the facade answered with 502 asked again | after 1 s, 5 s, 10 s, then every 10 s (step 6) |
 | Items per pass | 5 |
@@ -166,7 +168,8 @@ new messages are not accepted; tapping it opens the account window.
 
 An account its server holds for approval does not wait for mail. It keeps one
 held `GET /v1/account/i2p-status?hold=1&since=pending` on a connection of its own,
-which the node answers when the operator approves, declines or bans the account.
+which the node answers when the operator approves, declines or bans the account,
+or with the same status when the hold it names runs out.
 Approved, the device registers and starts the mail wait. Declined or banned, the
 connection strip says **Not approved** with the operator's reason, and nothing is
 asked again. A failed wait is asked again on the same causes as a failed mail

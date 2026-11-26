@@ -5,6 +5,7 @@
 
 #include <bazarish/I2p.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <functional>
@@ -26,6 +27,8 @@ constexpr SilencePauses kQuickSilence{std::chrono::milliseconds{50}, std::chrono
     std::chrono::milliseconds{300}, std::chrono::milliseconds{500}};
 constexpr std::chrono::milliseconds kEventAfter{150};
 constexpr int kMissingLookups = 2;
+constexpr int kPauses = 20;
+constexpr std::chrono::milliseconds kWakeSlack{100};
 constexpr ServerDownPauses kServerDown{std::chrono::milliseconds{100},
     std::chrono::milliseconds{250}, std::chrono::milliseconds{450}};
 constexpr std::chrono::milliseconds kPauseSlack{100};
@@ -256,6 +259,25 @@ try {
         CHECK(tookTheEvent(serverDownAsk(gate, [&gate]() { gate.stop(); }), MailWaitCause::eStopped));
         gate.asking();
         CHECK(gate.awaitServer() == MailWaitCause::eStopped);
+    }
+
+    {
+        MailWaitGate gate;
+        std::chrono::steady_clock::duration shortest = std::chrono::hours{1};
+        std::chrono::steady_clock::duration longest{};
+        for (int i = 0; i < kPauses; ++i) {
+            const auto from = std::chrono::steady_clock::now();
+            CHECK(gate.pausedAfterAnswer());
+            const auto took = std::chrono::steady_clock::now() - from;
+            shortest = std::min(shortest, took);
+            longest = std::max(longest, took);
+        }
+        CHECK(longest <= kLongestReaskPause + kWakeSlack);
+        CHECK(shortest < longest && longest >= kWakeSlack);
+        gate.stop();
+        const auto from = std::chrono::steady_clock::now();
+        CHECK(!gate.pausedAfterAnswer());
+        CHECK(std::chrono::steady_clock::now() - from < kWakeSlack);
     }
 
     std::printf("TestMailWaitGate ok\n");

@@ -134,7 +134,8 @@ The server's side of the account window - the state of the address, the
 delegation's expiry, the mailbox usage and the device queues - comes from one
 request, `GET /v1/messaging/overview`. Opening the window asks it at once; while
 the window stays open the client keeps one held request with the version of the
-last answer, which the server answers when anything on it changes. Closing the
+last answer, which the server answers when anything on it changes or when the
+hold it names runs out (`Receiving.md`, *Parameters*). Closing the
 window sends one plain overview request, which ends the held one. The held
 request runs on a connection of its own, so sends and mail never wait behind it.
 

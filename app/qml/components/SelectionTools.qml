@@ -51,8 +51,7 @@ Item {
         root.caretShown = true
         caretTimer.restart()
     }
-    // Android's input context keeps its own place for a word in progress and puts the cursor
-    // back there when the word ends; the word ends first, as Qt's own handles do it.
+    // Qt's Android input context puts the cursor back into a word it still composes.
     function finishWord() {
         Qt.inputMethod.commit()
     }

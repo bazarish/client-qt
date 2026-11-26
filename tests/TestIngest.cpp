@@ -287,7 +287,6 @@ try {
     CHECK(took(ours(carl, "text", "q2", "from another device")));
     CHECK(store.messageByE2e("q2", carl).orderKey == 2 * kOwnAt + 1);
 
-    // A message naming what it was written after goes right under it, whoever wrote since.
     StoredMessage newer = asked;
     newer.e2eId = QStringLiteral("q3");
     newer.ts = 3 * kOwnAt;

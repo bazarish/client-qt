@@ -550,6 +550,9 @@ void SessionWorker::startEventWaiter()
                 drainDone_.wait(
                     lock, [this, &running]() { return drainSettled_ || !running->load(); });
             }
+            if (answered && !mailGate_.pausedAfterAnswer()) {
+                return;
+            }
             mailGate_.asking();
             try {
                 if (!waiter) {
@@ -2500,7 +2503,12 @@ void SessionWorker::startApprovalWaiter()
     approvalGate_.restart();
     approvalWaiter_ = std::thread([this, context, running = approvalWaiterRunning_]() {
         std::unique_ptr<bazarish::client::Client> waiter;
+        bool answered = false;
         while (running->load()) {
+            if (answered && !approvalGate_.pausedAfterAnswer()) {
+                return;
+            }
+            answered = false;
             approvalGate_.asking();
             try {
                 if (!waiter) {
@@ -2512,6 +2520,7 @@ void SessionWorker::startApprovalWaiter()
                     return;
                 }
                 approvalGate_.answered();
+                answered = true;
                 QMetaObject::invokeMethod(
                     this, [this, status]() { approvalAnswered(status); }, Qt::QueuedConnection);
                 if (status.approval != bazarish::client::kApprovalPending) {

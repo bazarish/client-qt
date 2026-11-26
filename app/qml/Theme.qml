@@ -58,7 +58,6 @@ QtObject {
     readonly property color mentionInk: light ? "#7a4a00" : "#ffc56b"
     readonly property color mentionMarkInk: light ? "#ffffff" : accentInk
     readonly property color authorName: light ? green : "#7fd36f"
-    // Edges hold 3:1 on both bubbles; the dark fills keep a yellow emoji readable.
     readonly property color reactionMine: light ? "#eef8ea" : "#1f4a26"
     readonly property color reactionMineEdge: light ? greenFill : authorName
     readonly property color reactionMineInk: light ? selectedInk : authorName

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # Bazarish project (c) 2026
 # Lays out the portable folder: the program, the Qt plugins and QML modules it uses, and every
-# DLL any of them imports, taken from the sysroot before the toolchain: MSYS2 builds import
-# _Unwind_* from its libc++.dll, which llvm-mingw's does not export.
+# DLL any of them imports, taken from the sysroot before the toolchain.
 import json
 import os
 import re
