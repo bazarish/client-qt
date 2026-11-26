@@ -1218,8 +1218,8 @@ Item {
                         height: 18
                         width: chipRow.implicitWidth + 8
                         radius: 4
-                        color: modelData.mine ? Theme.reactionMine : Theme.surfaceAlt
-                        border.color: modelData.mine ? Theme.reactionMineEdge : Theme.border
+                        color: modelData.mine ? Theme.reactionMine : Theme.reactionOther
+                        border.color: modelData.mine ? Theme.reactionMineEdge : Theme.reactionOtherEdge
                         Rectangle {
                             id: pulse
                             anchors.fill: parent
