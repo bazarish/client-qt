@@ -66,10 +66,10 @@ WindowPopup {
             id: list
             Layout.fillWidth: true
             Layout.fillHeight: true
-            implicitHeight: contentHeight
+            implicitHeight: contentHeight + topMargin + bottomMargin
             clip: true
             topMargin: Theme.rowInset
-            bottomMargin: Theme.radius
+            bottomMargin: Theme.rowInset
             model: root.shown
             ScrollBar.vertical: ScrollBar { }
             delegate: Item {
