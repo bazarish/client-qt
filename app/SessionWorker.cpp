@@ -308,6 +308,8 @@ bazarish::client::DeliveryWatch watchFor(SessionWorker& owner, const qint64 loca
         }
         if (phase == bazarish::client::kPhaseDialing || phase == bazarish::client::kPhaseWaiting) {
             emit worker->sendProgress(localId, DeliveryStatus::Delivering);
+        } else if (phase == bazarish::client::kPhaseOffline) {
+            emit worker->sendProgress(localId, DeliveryStatus::Preparing);
         }
         emit worker->sendPhase(localId, QString::fromStdString(phase));
     };

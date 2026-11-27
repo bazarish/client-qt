@@ -396,6 +396,10 @@ void CoreAccount::bumpStatus(const qint64 localId, const int status)
 
 void CoreAccount::onSendProgress(const qint64 localId, const int state)
 {
+    if (state == DeliveryStatus::Preparing) {
+        sendingStalled(localId);
+        return;
+    }
     if (state == DeliveryStatus::AtRecipientServer && savedSends_.contains(localId)) {
         bumpStatus(localId, DeliveryStatus::Delivered);
         log_.finish(sendOpId(localId), true, tr("Saved"));
@@ -405,6 +409,19 @@ void CoreAccount::onSendProgress(const qint64 localId, const int state)
     if (state == DeliveryStatus::AtRecipientServer) {
         log_.finish(sendOpId(localId), true, tr("Handed to the recipient's server"));
     }
+}
+
+void CoreAccount::sendingStalled(const qint64 localId)
+{
+    const StoredMessage row = store_.messageById(localId);
+    if (savedSends_.contains(localId) || row.status != DeliveryStatus::Delivering) {
+        return;
+    }
+    if (!store_.updateStatus(localId, DeliveryStatus::Preparing)) {
+        reportUnsaved();
+        return;
+    }
+    emit events_.rowChanged(row.peer, localId);
 }
 
 void CoreAccount::onSendResult(const qint64 localId, const bool ok, const QString& error)

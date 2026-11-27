@@ -224,6 +224,7 @@ private:
     void finishStoreUpkeep(const StoreUpkeep& done, bool trimmed);
     void restartDelivery(const QString& peer, qint64 localId);
     void bumpStatus(qint64 localId, int status);
+    void sendingStalled(qint64 localId);
     void onSendProgress(qint64 localId, int state);
     void onSendResult(qint64 localId, bool ok, const QString& error);
     void onSendPhase(qint64 localId, const QString& phase);
