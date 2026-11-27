@@ -334,7 +334,8 @@ private:
     void streamMailbox(bazarish::client::Client& waiter,
         const std::vector<bazarish::client::PendingEntry>& waiting, bool catchUp,
         const std::atomic<bool>& running);
-    void beginStream(bool catchUp, std::uint64_t totalBytes, std::size_t items);
+    void beginStream(
+        bool catchUp, std::uint64_t totalBytes, std::size_t items, std::uint64_t network);
     void registerThisDevice();
     void finishRegistration();
     void registerAgain();
@@ -376,6 +377,7 @@ private:
     std::deque<bazarish::client::Session::MailboxItem> streamed_;
     std::vector<std::string> owedAcks_;
     bool streamEnded_ = true;
+    std::uint64_t streamNetwork_ = 0;
     bool catchingUp_ = false;
     bool syncShown_ = false;
     std::uint64_t streamBytes_ = 0;

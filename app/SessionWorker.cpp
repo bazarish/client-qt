@@ -690,6 +690,7 @@ void SessionWorker::streamMailbox(bazarish::client::Client& waiter,
     const std::vector<bazarish::client::PendingEntry>& waiting, const bool catchUp,
     const std::atomic<bool>& running)
 {
+    const std::uint64_t network = bazarish::i2p::networkChanges();
     std::uint64_t totalBytes = 0;
     for (const bazarish::client::PendingEntry& entry : waiting) {
         totalBytes += entry.bytes;
@@ -701,8 +702,8 @@ void SessionWorker::streamMailbox(bazarish::client::Client& waiter,
     }
     QMetaObject::invokeMethod(
         this,
-        [this, catchUp, totalBytes, items = waiting.size()]() {
-            beginStream(catchUp, totalBytes, items);
+        [this, catchUp, totalBytes, items = waiting.size(), network]() {
+            beginStream(catchUp, totalBytes, items, network);
         },
         Qt::QueuedConnection);
     if (waiting.empty()) {
@@ -747,11 +748,15 @@ void SessionWorker::streamMailbox(bazarish::client::Client& waiter,
     drainDone_.wait(lock, [this, &running]() { return drainSettled_ || !running.load(); });
 }
 
-void SessionWorker::beginStream(
-    const bool catchUp, const std::uint64_t totalBytes, const std::size_t items)
+void SessionWorker::beginStream(const bool catchUp, const std::uint64_t totalBytes,
+    const std::size_t items, const std::uint64_t network)
 {
     streamBytes_ = totalBytes;
     takenBytes_ = 0;
+    streamNetwork_ = network;
+    if (items == 0 && session_) {
+        session_->noteMailboxRead(network);
+    }
     if (!catchUp) {
         return;
     }
@@ -1315,6 +1320,9 @@ void SessionWorker::drainMailbox()
     emitFacadeInfo();
     refreshCalls();
     takenBytes_ += chunkBytes;
+    if (ended) {
+        session_->noteMailboxRead(streamNetwork_);
+    }
     if (catchingUp_) {
         catchingUp_ = !ended;
         emit syncProgress(catchingUp_, syncShown_, static_cast<qint64>(takenBytes_),
