@@ -94,7 +94,10 @@ Item {
     Connections {
         target: field
         function onActiveFocusChanged() {
-            if (!field.activeFocus) {
+            const window = root.Window.window
+            if (field.activeFocus) {
+                root.raiseKeyboard()
+            } else if (window && window.active) {
                 root.keyboardWanted = false
             }
         }
