@@ -620,6 +620,7 @@ void SessionWorker::startEventWaiter()
                 if (!running->load()) {
                     return;
                 }
+                const bool wasHeld = answered && !bazarish::i2p::networkDown();
                 answered = false;
                 caughtUp = false;
                 if (const auto* apiError = dynamic_cast<const bazarish::client::ApiError*>(&error);
@@ -644,14 +645,18 @@ void SessionWorker::startEventWaiter()
                 const bool serverDown = waiter && waiter->serverBehindFacadeDown();
                 const bazarish::client::LinkFailure failure
                     = waiter ? waiter->linkFailure() : bazarish::client::LinkFailure::eNone;
-                QMetaObject::invokeMethod(
-                    this,
-                    [this, refusal, failure]() { emit syncReachable(false, refusal, failure); },
-                    Qt::QueuedConnection);
+                const auto* serverAnswer = dynamic_cast<const bazarish::client::ApiError*>(&error);
+                const bool serverSpoke = serverAnswer != nullptr && serverAnswer->code.has_value();
+                // A held wait cut by the link is asked again at once: only that ask failing shows.
+                if (!(wasHeld && refusal.isEmpty() && !serverDown && !serverSpoke)) {
+                    QMetaObject::invokeMethod(
+                        this,
+                        [this, refusal, failure]() { emit syncReachable(false, refusal, failure); },
+                        Qt::QueuedConnection);
+                }
                 bazarish::log::info("mail wait failed ({}): {}",
                     bazarish::client::linkFailureName(failure), error.what());
                 // A server that stops serving an account says no more than that; the node says why.
-                const auto* serverAnswer = dynamic_cast<const bazarish::client::ApiError*>(&error);
                 if (waiter
                     && (failure == bazarish::client::LinkFailure::eServerRefused
                         || (serverAnswer != nullptr
