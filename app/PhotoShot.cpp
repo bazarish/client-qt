@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "PhotoShot.hpp"
 
+#include "Background.hpp"
 #include "PictureStore.hpp"
 #include "SessionShared.hpp"
 
@@ -97,13 +98,25 @@ void PhotoShot::take()
         emit failed(QStringLiteral("there is no camera to take a photograph with"));
         return;
     }
-    // toImage() leaves out the frame's own turn and mirror, which only the preview applies.
-    QTransform turn;
-    turn.rotate(static_cast<qreal>(frame.rotation()));
-    const QImage shown = frame.toImage().transformed(turn).mirrored(frame.mirrored(), false);
-    QTransform upright;
-    upright.rotate(static_cast<qreal>(turnToUpright()));
-    publish(shown.transformed(upright));
+    const int toUpright = turnToUpright();
+    const QPointer<PhotoShot> self(this);
+    inBackground([self, frame, toUpright]() {
+        // toImage() leaves out the frame's own turn and mirror, which only the preview applies.
+        QTransform turn;
+        turn.rotate(static_cast<qreal>(frame.rotation()));
+        const QImage shown = frame.toImage().transformed(turn).mirrored(frame.mirrored(), false);
+        QTransform upright;
+        upright.rotate(static_cast<qreal>(toUpright));
+        PreparedPicture picture = preparePicture(shown.transformed(upright), kShotName);
+        QMetaObject::invokeMethod(
+            qApp,
+            [self, picture = std::move(picture)]() {
+                if (self) {
+                    self->publish(picture);
+                }
+            },
+            Qt::QueuedConnection);
+    });
 }
 
 void PhotoShot::discard()
@@ -125,10 +138,10 @@ void PhotoShot::release()
     picture_ = {};
 }
 
-void PhotoShot::publish(const QImage& image)
+void PhotoShot::publish(const PreparedPicture& picture)
 {
     release();
-    picture_ = preparePicture(image, kShotName);
+    picture_ = picture;
     if (picture_.isEmpty()) {
         emit failed(QStringLiteral("the camera's frame could not be read"));
         emit shotChanged();

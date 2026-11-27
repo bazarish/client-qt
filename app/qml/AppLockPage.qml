@@ -109,16 +109,17 @@ WindowPopup {
                     }
                 }
                 RowLayout {
-                    visible: App.uiLockEnabled && root.fingerprintReady
+                    visible: App.uiLockEnabled && App.mobile
                     Layout.fillWidth: true
                     Label {
                         text: qsTr("Unlock by fingerprint")
-                        color: Theme.text
+                        color: root.fingerprintReady ? Theme.text : Theme.textDim
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
                     }
                     Toggle {
-                        checked: App.uiLockFingerprint
+                        enabled: root.fingerprintReady
+                        checked: App.uiLockFingerprint && root.fingerprintReady
                         onToggled: App.setUiLockFingerprint(checked)
                     }
                 }

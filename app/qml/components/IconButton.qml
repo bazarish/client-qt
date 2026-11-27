@@ -11,6 +11,7 @@ Button {
     property color tint: Theme.text
     property string iconName: ""
     property real iconSize: 18
+    property real iconWeight: 2
     implicitWidth: 40
     implicitHeight: 40
     contentItem: Item {
@@ -19,6 +20,7 @@ Button {
             name: control.iconName
             color: control.tint
             size: control.iconSize
+            weight: control.iconWeight
         }
     }
     background: Rectangle {

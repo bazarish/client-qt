@@ -38,8 +38,6 @@ Item {
     function offerGateway(link) { appSettings.offerGateway(link) }
     AppSettingsPage {
         id: appSettings
-        parent: Overlay.overlay
-        anchors.centerIn: parent
         onShowRouterStatus: routerStatus.openFrom(appSettings)
     }
 

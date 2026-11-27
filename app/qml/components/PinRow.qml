@@ -5,7 +5,10 @@ import Bazarish
 
 Item {
     id: root
-    property bool waiting: false
+    property double waitUntil: 0
+    property real waitLeft: 0
+    readonly property bool waiting: waitRun.running
+    property bool keyboardBack: false
     property string actionName: ""
     property bool failed: false
     property bool pending: false
@@ -27,15 +30,39 @@ Item {
     readonly property real kWaitingOpacity: 0.4
     readonly property int waveMs: (root.kCells - 1) * root.kStepMs + 2 * root.kRiseMs
     readonly property int kArrowSize: 22
+    readonly property int kBarGap: 10
+    readonly property int kBarHeight: 3
     readonly property int cell: Math.max(0, Math.min(root.kMaxCell,
         Math.floor((root.width - root.kCells * root.kGap) / (root.kCells + 1))))
 
     implicitWidth: (root.kCells + 1) * root.kMaxCell + root.kCells * root.kGap
-    implicitHeight: root.cell + root.kLift
+    implicitHeight: root.kLift + root.cell + root.kBarGap + root.kBarHeight
+
+    onWaitUntilChanged: {
+        const left = root.waitUntil - Date.now()
+        waitRun.stop()
+        if (left > 0) {
+            waitRun.duration = left
+            waitRun.start()
+        }
+    }
+    onWaitingChanged: {
+        if (!root.waiting && !root.pending && root.keyboardBack) {
+            root.focusInput()
+        }
+    }
+    NumberAnimation {
+        id: waitRun
+        target: root
+        property: "waitLeft"
+        from: 1
+        to: 0
+    }
 
     property bool keyboardWanted: false
     // Android drops a keyboard asked for before the window holds the input focus, as at a start or after a system prompt.
     function focusInput() {
+        root.keyboardBack = true
         field.forceActiveFocus()
         root.keyboardWanted = true
         Qt.callLater(root.raiseKeyboard)
@@ -60,6 +87,8 @@ Item {
         function onVisibleChanged() {
             if (Qt.inputMethod.visible) {
                 root.keyboardWanted = false
+            } else if (!root.pending) {
+                root.keyboardBack = false
             }
         }
     }
@@ -79,6 +108,7 @@ Item {
         if (field.text.length === 0 || root.waiting || root.busy) {
             return
         }
+        root.keyboardBack = Qt.inputMethod.visible
         root.pending = true
         root.failed = false
         wave.restart()
@@ -99,6 +129,9 @@ Item {
         if (!ok) {
             root.failed = true
             failTimer.restart()
+            if (!root.waiting && root.keyboardBack) {
+                root.focusInput()
+            }
         }
         root.settled(ok)
     }
@@ -147,8 +180,10 @@ Item {
     }
 
     Row {
+        id: cells
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
+        anchors.top: parent.top
+        anchors.topMargin: root.kLift
         spacing: root.kGap
         opacity: root.waiting ? root.kWaitingOpacity : 1
 
@@ -199,8 +234,17 @@ Item {
         }
     }
 
+    Rectangle {
+        visible: root.waiting
+        x: cells.x
+        y: cells.y + cells.height + root.kBarGap
+        width: cells.width * root.waitLeft
+        height: root.kBarHeight
+        radius: height / 2
+        color: Theme.textDim
+    }
+
     TapHandler {
-        enabled: !root.waiting
         onTapped: root.focusInput()
     }
 }

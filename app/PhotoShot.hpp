@@ -9,7 +9,6 @@
 #include <QVideoSink>
 #include <QtQml/qqmlregistration.h>
 
-class QImage;
 
 namespace bazarish::app {
 
@@ -42,7 +41,7 @@ signals:
     void failed(const QString& reason);
 
 private:
-    void publish(const QImage& image);
+    void publish(const PreparedPicture& picture);
     void release();
 
     QPointer<QVideoSink> sink_;

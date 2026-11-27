@@ -2,7 +2,6 @@
 import QtCore
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 import QtMultimedia
 import Bazarish
 
@@ -21,21 +20,10 @@ Popup {
     visible: App.uiLocked || pins.busy
     background: Rectangle { color: Theme.bg }
 
-    readonly property int kTickMs: 250
     readonly property int kCameraSettleMs: 700
-    property double now: Date.now()
-    readonly property bool waiting: App.uiWaitUntil > root.now
     property bool fingerprintOffered: false
     property bool cameIn: true
     property bool byHand: false
-
-    Timer {
-        running: root.visible && root.waiting
-        interval: root.kTickMs
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: root.now = Date.now()
-    }
 
     function showUp() {
         if (!root.opened || (App.mobile && Qt.application.state !== Qt.ApplicationActive)) {
@@ -50,7 +38,6 @@ Popup {
         }
     }
     onOpened: {
-        root.now = Date.now()
         root.fingerprintOffered = App.mobile && App.uiLockFingerprint && App.fingerprintReady()
         if (root.byHand) {
             root.byHand = false
@@ -144,46 +131,43 @@ Popup {
     contentItem: Item {
         Item {
             id: room
+            readonly property int kLogoHeight: 44
+            readonly property int kLogoGap: 36
+            readonly property int kFingerprintGap: 20
             anchors.fill: parent
             anchors.bottomMargin: App.keyboardInset
-        }
-        ColumnLayout {
-            id: column
-            readonly property int kLogoHeight: 44
-            readonly property bool roomy: room.height >= column.kLogoHeight + column.spacing
-                + pins.implicitHeight + (root.fingerprintOffered ? column.spacing + fingerprint.implicitHeight : 0)
-                + 2 * Theme.spacing
-            x: (parent.width - width) / 2
-            y: Math.min((room.height - height) / 2, room.height - height)
-            width: Math.min(parent.width - 2 * Theme.spacing, 460)
-            spacing: 28
 
+            PinRow {
+                id: pins
+                width: Math.min(room.width - 2 * Theme.spacing, implicitWidth)
+                height: implicitHeight
+                x: (room.width - width) / 2
+                y: Math.max(Theme.spacing, Math.min((room.height - height) / 2, room.height - height))
+                waitUntil: App.uiWaitUntil
+                actionName: qsTr("Unlock the app")
+                onSubmitted: (pin) => App.unlockUi(pin)
+            }
             Image {
-                visible: column.roomy
+                visible: y >= Theme.spacing
                 source: Theme.light ? "qrc:/icon/logo-onlight.svg" : "qrc:/icon/logo.svg"
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredHeight: column.kLogoHeight
-                Layout.preferredWidth: 230
+                width: 230
+                height: room.kLogoHeight
+                x: (room.width - width) / 2
+                y: pins.y - room.kLogoGap - height
                 fillMode: Image.PreserveAspectFit
                 sourceSize.height: 96
                 smooth: true
             }
-            PinRow {
-                id: pins
-                Layout.fillWidth: true
-                Layout.preferredHeight: implicitHeight
-                waiting: root.waiting
-                actionName: qsTr("Unlock the app")
-                onSubmitted: (pin) => App.unlockUi(pin)
-            }
             IconButton {
                 id: fingerprint
-                visible: root.fingerprintOffered
-                Layout.alignment: Qt.AlignHCenter
+                visible: root.fingerprintOffered && y + height <= room.height
+                x: (room.width - width) / 2
+                y: pins.y + pins.height + room.kFingerprintGap
                 iconName: "fingerprint"
-                iconSize: 28
-                implicitWidth: 52
-                implicitHeight: 52
+                iconSize: 42
+                iconWeight: 1.25
+                implicitWidth: 72
+                implicitHeight: 72
                 Accessible.name: qsTr("Unlock by fingerprint")
                 onClicked: App.askFingerprint()
             }

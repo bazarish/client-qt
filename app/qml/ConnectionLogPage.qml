@@ -24,7 +24,7 @@ WindowPopup {
     }
 
     preferredWidth: root.kWindowWidth
-    height: parent ? parent.height - Theme.windowTopRoom : implicitHeight
+    height: parent ? root.room - Theme.windowTopRoom : implicitHeight
 
     Connections {
         target: root.session

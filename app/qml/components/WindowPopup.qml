@@ -49,11 +49,13 @@ Popup {
     onClosed: root.returnTo = null
 
     parent: Overlay.overlay
-    anchors.centerIn: Overlay.overlay
+    readonly property real room: parent ? parent.height - root.bottomMargin : 0
+    x: parent ? Math.round((parent.width - width) / 2) : 0
+    y: Math.max(0, Math.round((root.room - height) / 2))
     modal: true
     focus: true
     width: Math.min(root.preferredWidth, parent ? parent.width - Theme.windowSideRoom : root.preferredWidth)
-    height: Math.min(parent ? parent.height - Theme.windowTopRoom : implicitHeight, implicitHeight)
+    height: Math.min(parent ? root.room - Theme.windowTopRoom : implicitHeight, implicitHeight)
     padding: 0
     background: DialogFrame { }
 

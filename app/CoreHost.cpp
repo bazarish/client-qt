@@ -132,7 +132,10 @@ CoreHost::CoreHost(QObject* const parent)
     , intruder_(appRoot())
 {
     autoLock_.setSingleShot(true);
-    connect(&autoLock_, &QTimer::timeout, this, &CoreHost::lockUi);
+    connect(&autoLock_, &QTimer::timeout, this, [this]() {
+        bazarish::log::info("app lock: the window stayed inactive, locking");
+        lockUi();
+    });
     manager_->discardInterruptedImports();
     connect(&ringtone_, &Ringtone::levelChanged, &events_, &AppEvents::ringLevel);
     connect(&i2p_, &I2pService::tunnelsNeedRebuild, this, &CoreHost::rebuildI2pLinks);
@@ -262,10 +265,14 @@ void CoreHost::announceIntruder()
 
 void CoreHost::armAutoLock()
 {
+    const bool wasArmed = autoLock_.isActive();
     autoLock_.stop();
     const int seconds = AppSettings::instance().uiAutoLockSeconds();
     if (!windowActive_ && uiLock_.enabled() && !uiLock_.locked() && seconds > 0) {
         autoLock_.start(std::chrono::seconds(seconds));
+        bazarish::log::info("app lock: the window is inactive, locking in {} s", seconds);
+    } else if (wasArmed) {
+        bazarish::log::info("app lock: the window is active again, no lock");
     }
 }
 
