@@ -30,6 +30,13 @@ Popup {
         App.askFingerprint()
     }
 
+    function reclaimFocus() {
+        const item = root.contentItem.Window.activeFocusItem
+        if (root.opened && App.inFront && item && !pins.keyboardDismissed
+                && (item === root.contentItem || item === root.contentItem.parent)) {
+            pins.focusInput()
+        }
+    }
     function showUp() {
         if (!root.opened || (App.mobile && !App.inFront)) {
             return
@@ -56,13 +63,7 @@ Popup {
     }
     Connections {
         target: root.contentItem.Window.window
-        function onActiveFocusItemChanged() {
-            const item = root.contentItem.Window.activeFocusItem
-            if (root.opened && App.inFront && item
-                    && (item === root.contentItem || item === root.contentItem.parent)) {
-                pins.holdFocus()
-            }
-        }
+        function onActiveFocusItemChanged() { Qt.callLater(root.reclaimFocus) }
     }
     Connections {
         target: App
