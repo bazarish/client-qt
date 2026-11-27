@@ -1400,7 +1400,7 @@ QVariantMap SessionController::replyPreview(const QString& e2eId) const
     info[QStringLiteral("localId")] = m.id;
     info[QStringLiteral("text")] = chatPreviewOf({m.text, m.type, m.attName, {}});
     if (m.outgoing) {
-        info[QStringLiteral("sender")] = QStringLiteral("You");
+        info[QStringLiteral("sender")] = tr("You");
     } else if (!m.author.isEmpty()) {
         info[QStringLiteral("sender")] = m.author;
     } else {
