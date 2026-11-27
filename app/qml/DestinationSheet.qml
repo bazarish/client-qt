@@ -263,11 +263,10 @@ WindowPopup {
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 2
-                                Label {
-                                    text: leaseRow.modelData.host
+                                MiddleElided {
+                                    full: leaseRow.modelData.host
                                     color: Theme.text
                                     font.pixelSize: Theme.fontSmall
-                                    elide: Text.ElideMiddle
                                     Layout.fillWidth: true
                                 }
                                 DimLine { text: root.leaseSetLine(leaseRow.modelData) }

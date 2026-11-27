@@ -216,14 +216,14 @@ WindowPopup {
                             implicitWidth: 8; implicitHeight: 8; radius: 4
                             color: (root.session && root.session.reachable) ? Theme.greenFill : Theme.warn
                         }
-                        Label {
+                        MiddleElided {
                             Layout.fillWidth: true
-                            text: root.session && root.session.activeFacadeHost.length > 0
+                            full: root.session && root.session.activeFacadeHost.length > 0
                                 ? (root.session.reachable
                                     ? root.session.activeFacadeHost
                                     : qsTr("connecting via %1").arg(root.session.activeFacadeHost))
                                 : ""
-                            color: Theme.textDim; font.pixelSize: Theme.fontSmall; elide: Text.ElideMiddle
+                            color: Theme.textDim; font.pixelSize: Theme.fontSmall
                         }
                     }
                     Label {
@@ -626,11 +626,10 @@ WindowPopup {
                             required property var modelData
                             Layout.fillWidth: true
                             spacing: 8
-                            Label {
+                            MiddleElided {
                                 Layout.fillWidth: true
-                                text: modelData.name
+                                full: modelData.name
                                 color: Theme.text
-                                elide: Text.ElideMiddle
                             }
                             MenuButton {
                                 iconName: "check"

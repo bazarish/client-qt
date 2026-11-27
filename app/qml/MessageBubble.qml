@@ -971,12 +971,11 @@ Item {
                                 font.pixelSize: Theme.fontSmall
                                 Layout.fillWidth: true
                             }
-                            Label {
-                                visible: text.length > 0
-                                text: modelData.role || modelData.host || ""
+                            MiddleElided {
+                                visible: full.length > 0
+                                full: modelData.role || modelData.host || ""
                                 color: Theme.textFaint
                                 font.pixelSize: Theme.fontSmall
-                                elide: Text.ElideMiddle
                                 Layout.fillWidth: true
                             }
                         }

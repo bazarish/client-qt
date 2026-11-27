@@ -43,14 +43,13 @@ Dialog {
     contentItem: ColumnLayout {
         spacing: 12
 
-        Label {
+        MiddleElided {
             Layout.fillWidth: true
             Layout.leftMargin: 16
             Layout.rightMargin: 16
             Layout.topMargin: 4
-            text: root.fileName
+            full: root.fileName
             color: Theme.text
-            elide: Text.ElideMiddle
         }
         Label {
             Layout.fillWidth: true

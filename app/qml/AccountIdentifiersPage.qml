@@ -92,11 +92,10 @@ WindowPopup {
                             font.pixelSize: Theme.fontSmall
                             Layout.alignment: Qt.AlignTop
                         }
-                        Label {
-                            text: root.cardKnown ? root.card.address : ""
+                        MiddleElided {
+                            full: root.cardKnown ? root.card.address : ""
                             color: Theme.text
                             font.pixelSize: Theme.fontSmall
-                            elide: Text.ElideMiddle
                             Layout.fillWidth: true
                         }
                         Label {
@@ -184,10 +183,10 @@ WindowPopup {
                                 wrapMode: Text.Wrap
                                 Layout.fillWidth: true
                             }
-                            Label {
+                            MiddleElided {
                                 visible: root.session && root.session.i2pAddress.length > 0
-                                text: root.session ? root.session.i2pAddress : ""
-                                color: Theme.textDim; font.pixelSize: Theme.fontSmall; elide: Text.ElideMiddle; Layout.fillWidth: true
+                                full: root.session ? root.session.i2pAddress : ""
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true
                             }
                             RowLayout {
                                 visible: root.session !== null && root.session.epochReserveLow
@@ -226,11 +225,10 @@ WindowPopup {
                                     Layout.fillWidth: true
                                     wrapMode: Text.Wrap
                                 }
-                                Label {
-                                    text: root.session ? root.session.i2pServedAddress : ""
+                                MiddleElided {
+                                    full: root.session ? root.session.i2pServedAddress : ""
                                     color: Theme.warn
                                     font.pixelSize: Theme.fontSmall
-                                    elide: Text.ElideMiddle
                                     Layout.fillWidth: true
                                 }
                                 Label {

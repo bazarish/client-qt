@@ -353,6 +353,7 @@ if(Qt6_FOUND)
             app/qml/components/Toggle.qml
             app/qml/components/ContextMenu.qml
             app/qml/components/Fingerprint.qml
+            app/qml/components/MiddleElided.qml
             app/qml/components/FormatChip.qml
             app/qml/components/SelectionTools.qml
             app/qml/components/TextSelection.qml

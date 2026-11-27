@@ -41,7 +41,8 @@ const QStringList kRealFiles = {QStringLiteral("ConversationView.qml"),
 const QStringList kRealComponents = {QStringLiteral("Label"), QStringLiteral("Icon"),
     QStringLiteral("IconButton"), QStringLiteral("MenuButton"), QStringLiteral("IconLabel"),
     QStringLiteral("ContextMenu"), QStringLiteral("ContextMenuItem"),
-    QStringLiteral("CopyableError"), QStringLiteral("Fingerprint"), QStringLiteral("ScrollBoost")};
+    QStringLiteral("CopyableError"), QStringLiteral("Fingerprint"), QStringLiteral("ScrollBoost"),
+    QStringLiteral("MiddleElided")};
 
 int failures = 0;
 std::mutex warningsMutex;

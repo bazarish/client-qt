@@ -65,10 +65,9 @@ WindowPopup {
             anchors.leftMargin: 12
             anchors.rightMargin: 4
             spacing: 2
-            Label {
-                text: site.address.replace(/^https?:\/\//, "")
+            MiddleElided {
+                full: site.address.replace(/^https?:\/\//, "")
                 color: Theme.text
-                elide: Text.ElideMiddle
                 Layout.rightMargin: 6
                 Layout.maximumWidth: siteRow.width - copySite.width - openSite.width
                     - siteRow.spacing * 2 - Layout.rightMargin
