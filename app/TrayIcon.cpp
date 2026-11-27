@@ -49,6 +49,9 @@ QIcon iconFromMaster(const QImage& master, const QColor& tint)
 
 QString statusOf(const AccountRow& account)
 {
+    if (account.serverless) {
+        return QObject::tr("no server");
+    }
     if (!account.open || !account.online) {
         return QObject::tr("disabled");
     }

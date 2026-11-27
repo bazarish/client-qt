@@ -12,7 +12,7 @@
 namespace bazarish::app {
 
 inline constexpr std::size_t kUiLockPinMaxDigits = 6;
-inline constexpr int kUiAutoLockChoices[] = {0, 1, 10, 30, 60, 120, 180};
+inline constexpr int kUiAutoLockChoices[] = {0, 3, 60, 600, 1800, 3600, 7200, 10800};
 inline constexpr int kIntruderAfterFailures = 3;
 
 struct UiLockPin {
@@ -22,7 +22,7 @@ struct UiLockPin {
 
 bool isUiLockPin(const std::string& digits);
 bool isUiLockPinRecord(const UiLockPin& pin);
-bool isUiAutoLockChoice(int minutes);
+bool isUiAutoLockChoice(int seconds);
 UiLockPin uiLockPinOf(const std::string& digits);
 bool uiLockPinMatches(const UiLockPin& pin, const std::string& digits);
 

@@ -78,7 +78,7 @@ class AppController : public QObject {
     Q_PROPERTY(bool uiLockEnabled READ uiLockEnabled NOTIFY uiLockChanged)
     Q_PROPERTY(bool uiLocked READ uiLocked NOTIFY uiLockChanged)
     Q_PROPERTY(double uiWaitUntil READ uiWaitUntil NOTIFY uiLockChanged)
-    Q_PROPERTY(int uiAutoLockMinutes READ uiAutoLockMinutes NOTIFY uiLockChanged)
+    Q_PROPERTY(int uiAutoLockSeconds READ uiAutoLockSeconds NOTIFY uiLockChanged)
     Q_PROPERTY(bool uiLockFingerprint READ uiLockFingerprint NOTIFY uiLockChanged)
     Q_PROPERTY(bool uiLockHidesAll READ uiLockHidesAll NOTIFY uiLockChanged)
     Q_PROPERTY(bool uiLockPhoto READ uiLockPhoto NOTIFY uiLockChanged)
@@ -255,7 +255,7 @@ public:
     bool uiLockEnabled() const { return uiLockEnabled_; }
     bool uiLocked() const { return uiLocked_; }
     double uiWaitUntil() const { return static_cast<double>(uiWaitUntilMs_); }
-    int uiAutoLockMinutes() const { return uiAutoLockMinutes_; }
+    int uiAutoLockSeconds() const { return uiAutoLockSeconds_; }
     bool uiLockFingerprint() const { return uiLockFingerprint_; }
     bool uiLockHidesAll() const { return uiLockHidesAll_; }
     bool uiLockPhoto() const { return uiLockPhoto_; }
@@ -264,12 +264,12 @@ public:
     int intruderCount() const { return intruderCount_; }
     double intruderLastMs() const { return static_cast<double>(intruderLastSeconds_) * kMsPerSecond; }
     QString intruderPhoto() const;
-    Q_INVOKABLE QString autoLockLabel(int minutes) const;
+    Q_INVOKABLE QString autoLockLabel(int seconds) const;
     Q_INVOKABLE void lockUi();
     Q_INVOKABLE void unlockUi(const QString& pin);
     Q_INVOKABLE void enableUiLock(const QString& pin);
     Q_INVOKABLE void disableUiLock();
-    Q_INVOKABLE void setUiAutoLock(int minutes);
+    Q_INVOKABLE void setUiAutoLock(int seconds);
     Q_INVOKABLE void setUiLockFingerprint(bool on);
     Q_INVOKABLE void setUiLockHidesAll(bool on);
     Q_INVOKABLE void setUiLockPhoto(bool on);
@@ -389,7 +389,7 @@ private:
     bool uiLockEnabled_ = false;
     bool uiLocked_ = false;
     qint64 uiWaitUntilMs_ = 0;
-    int uiAutoLockMinutes_ = 0;
+    int uiAutoLockSeconds_ = 0;
     bool uiLockFingerprint_ = true;
     bool uiLockHidesAll_ = false;
     bool uiLockPhoto_ = true;

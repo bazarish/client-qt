@@ -79,8 +79,8 @@ public:
 
     const std::optional<UiLockPin>& uiLockPin() const { return uiLockPin_; }
     void setUiLockPin(std::optional<UiLockPin> pin);
-    int uiAutoLockMinutes() const { return uiAutoLockMinutes_; }
-    void setUiAutoLockMinutes(int minutes);
+    int uiAutoLockSeconds() const { return uiAutoLockSeconds_; }
+    void setUiAutoLockSeconds(int seconds);
     bool uiLockFingerprint() const { return uiLockFingerprint_; }
     void setUiLockFingerprint(bool on);
     bool uiLockHidesAll() const { return uiLockHidesAll_; }
@@ -119,7 +119,7 @@ private:
     std::string samHost_;
     int samPort_ = 0;
     std::optional<UiLockPin> uiLockPin_;
-    int uiAutoLockMinutes_ = 0;
+    int uiAutoLockSeconds_ = 0;
     bool uiLockFingerprint_ = true;
     bool uiLockHidesAll_ = false;
     bool uiLockPhoto_ = true;

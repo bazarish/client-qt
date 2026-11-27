@@ -18,12 +18,18 @@ WindowPopup {
         if (!m.open) {
             return m.encrypted ? qsTr("🔒 Locked") : qsTr("Disconnected")
         }
+        if (m.serverless) {
+            return qsTr("No server")
+        }
         if (!m.online) {
             return qsTr("Disconnected")
         }
         return m.connected ? qsTr("Connected") : qsTr("Connecting...")
     }
     function statusColor(m) {
+        if (m.serverless) {
+            return Theme.textDim
+        }
         if (m.open && m.online && m.connected) {
             return Theme.greenFill
         }
@@ -103,11 +109,12 @@ WindowPopup {
                         id: rowToggle
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        checked: model.online
+                        enabled: !model.serverless
+                        checked: model.online && !model.serverless
                         onToggled: {
                             App.setOnline(model.accountId, checked)
                             // Toggling breaks the binding: rebound so a refused unlock does not leave the switch on.
-                            checked = Qt.binding(function() { return model.online })
+                            checked = Qt.binding(function() { return model.online && !model.serverless })
                         }
                     }
                     Row {

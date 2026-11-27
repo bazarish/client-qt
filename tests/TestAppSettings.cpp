@@ -13,7 +13,7 @@
 
 constexpr std::size_t kOversizedNoteBytes = 128 * 1024;
 constexpr const char* kPin = "2580";
-constexpr int kAutoLockMinutes = 10;
+constexpr int kAutoLockSeconds = 600;
 
 namespace fs = std::filesystem;
 using bazarish::app::AppSettings;
@@ -27,7 +27,7 @@ try {
             CHECK(loaded.unreadable().empty());
             CHECK(loaded.uiLockPin().has_value());
             CHECK(bazarish::app::uiLockPinMatches(*loaded.uiLockPin(), kPin));
-            CHECK(loaded.uiAutoLockMinutes() == kAutoLockMinutes);
+            CHECK(loaded.uiAutoLockSeconds() == kAutoLockSeconds);
             CHECK(loaded.uiLockHidesAll());
             CHECK(!loaded.uiLockPhoto());
             return 0;
@@ -110,9 +110,9 @@ try {
 
     CHECK(!settings.uiLockPin().has_value());
     CHECK(settings.uiLockFingerprint() && settings.uiLockPhoto() && !settings.uiLockHidesAll());
-    CHECK_THROWS(settings.setUiAutoLockMinutes(5));
+    CHECK_THROWS(settings.setUiAutoLockSeconds(5));
     settings.setUiLockPin(bazarish::app::uiLockPinOf(kPin));
-    settings.setUiAutoLockMinutes(kAutoLockMinutes);
+    settings.setUiAutoLockSeconds(kAutoLockSeconds);
     settings.setUiLockHidesAll(true);
     settings.setUiLockPhoto(false);
     CHECK(readsAs("expect-lock"));
@@ -122,11 +122,11 @@ try {
         nlohmann::json written;
         in >> written;
         CHECK(!written.at("lock").contains("pin"));
-        CHECK(written.at("lock").at("autoLockMinutes") == kAutoLockMinutes);
+        CHECK(written.at("lock").at("autoLockSeconds") == kAutoLockSeconds);
     }
     for (const nlohmann::json& lock : {
              nlohmann::json{{"pin", {{"salt", "AAAA"}, {"hash", "AAAA"}}}},
-             nlohmann::json{{"autoLockMinutes", 5}},
+             nlohmann::json{{"autoLockSeconds", 5}},
          }) {
         std::ofstream out(file, std::ios::trunc);
         out << nlohmann::json{{"lock", lock}}.dump();

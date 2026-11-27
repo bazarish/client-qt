@@ -48,6 +48,7 @@ namespace bazarish::app {
 namespace {
 
 const QString kIntruderPhotoKey = QStringLiteral("app-lock-intruder");
+constexpr int kSecondsPerMinute = 60;
 constexpr int kMinutesPerHour = 60;
 
 const QString kAppScope = QStringLiteral("app");
@@ -155,12 +156,12 @@ AppController::AppController(Translations& translations, Relay& relay, QObject* 
     connect(&events_, &AppEvents::pairingFinished, this, &AppController::pairingFinished);
     connect(&events_, &AppEvents::uiLock, this,
         [this](const bool enabled, const bool locked, const qint64 waitUntilMs,
-            const int autoLockMinutes, const bool fingerprint, const bool hidesAll,
+            const int autoLockSeconds, const bool fingerprint, const bool hidesAll,
             const bool photo) {
             uiLockEnabled_ = enabled;
             uiLocked_ = locked;
             uiWaitUntilMs_ = waitUntilMs;
-            uiAutoLockMinutes_ = autoLockMinutes;
+            uiAutoLockSeconds_ = autoLockSeconds;
             uiLockFingerprint_ = fingerprint;
             uiLockHidesAll_ = hidesAll;
             uiLockPhoto_ = photo;
@@ -830,17 +831,21 @@ void AppController::paintSystemBars(const QColor& color) const
 QVariantList AppController::uiAutoLockChoices()
 {
     QVariantList choices;
-    for (const int minutes : kUiAutoLockChoices) {
-        choices.push_back(minutes);
+    for (const int seconds : kUiAutoLockChoices) {
+        choices.push_back(seconds);
     }
     return choices;
 }
 
-QString AppController::autoLockLabel(const int minutes) const
+QString AppController::autoLockLabel(const int seconds) const
 {
-    if (minutes == 0) {
+    if (seconds == 0) {
         return tr("Off");
     }
+    if (seconds < kSecondsPerMinute) {
+        return tr("%1 seconds").arg(seconds);
+    }
+    const int minutes = seconds / kSecondsPerMinute;
     if (minutes < kMinutesPerHour) {
         return minutes == 1 ? tr("1 minute") : tr("%1 minutes").arg(minutes);
     }
@@ -874,9 +879,9 @@ void AppController::disableUiLock()
     emit commands_.disableUiLock();
 }
 
-void AppController::setUiAutoLock(const int minutes)
+void AppController::setUiAutoLock(const int seconds)
 {
-    emit commands_.setUiAutoLock(minutes);
+    emit commands_.setUiAutoLock(seconds);
 }
 
 void AppController::setUiLockFingerprint(const bool on)

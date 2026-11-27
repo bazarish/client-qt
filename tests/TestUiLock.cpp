@@ -26,7 +26,8 @@ try {
     CHECK(!isUiLockPin("12a4"));
     CHECK(!isUiLockPin("\xef\xbc\x91"));
     CHECK_THROWS(uiLockPinOf("12345678"));
-    CHECK(isUiAutoLockChoice(0) && isUiAutoLockChoice(180) && !isUiAutoLockChoice(5));
+    CHECK(isUiAutoLockChoice(0) && isUiAutoLockChoice(3) && isUiAutoLockChoice(10800));
+    CHECK(!isUiAutoLockChoice(5) && !isUiAutoLockChoice(180));
 
     const UiLockPin pin = uiLockPinOf(kPin);
     CHECK(isUiLockPinRecord(pin));

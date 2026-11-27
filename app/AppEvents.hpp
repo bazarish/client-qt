@@ -35,6 +35,7 @@ struct AccountRow {
     bool otherPrimaries = false;
     int unread = 0;
     QString activeFacade;
+    bool serverless = false;
 };
 
 inline QDataStream& operator<<(QDataStream& out, const AccountListRow& row)
@@ -53,7 +54,7 @@ inline QDataStream& operator<<(QDataStream& out, const AccountRow& row)
 {
     return out << row.id << row.name << row.fingerprint << row.open << row.active << row.online
                << row.connected << row.encrypted << row.primary << row.otherPrimaries
-               << static_cast<qint32>(row.unread) << row.activeFacade;
+               << static_cast<qint32>(row.unread) << row.activeFacade << row.serverless;
 }
 
 inline QDataStream& operator>>(QDataStream& in, AccountRow& row)
@@ -61,7 +62,7 @@ inline QDataStream& operator>>(QDataStream& in, AccountRow& row)
     qint32 unread = 0;
     in >> row.id >> row.name >> row.fingerprint >> row.open >> row.active >> row.online
         >> row.connected >> row.encrypted >> row.primary >> row.otherPrimaries >> unread
-        >> row.activeFacade;
+        >> row.activeFacade >> row.serverless;
     row.unread = unread;
     return in;
 }
@@ -107,7 +108,7 @@ signals:
     void pairingFinished(bool ok);
     void settings(bool notifications, bool notificationText, bool systemNotifications,
         bool backgroundTasks);
-    void uiLock(bool enabled, bool locked, qint64 waitUntilMs, int autoLockMinutes,
+    void uiLock(bool enabled, bool locked, qint64 waitUntilMs, int autoLockSeconds,
         bool fingerprint, bool hidesAll, bool photo);
     void uiUnlockAnswer(bool unlocked);
     void intruderPhotoWanted();

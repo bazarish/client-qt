@@ -163,15 +163,15 @@ WindowPopup {
                     }
                     Dropdown {
                         id: autoLockBox
-                        model: App.uiAutoLockChoices.map(minutes => ({
-                            minutes: minutes,
-                            label: Tr.language.length >= 0 ? App.autoLockLabel(minutes) : ""
+                        model: App.uiAutoLockChoices.map(seconds => ({
+                            seconds: seconds,
+                            label: Tr.language.length >= 0 ? App.autoLockLabel(seconds) : ""
                         }))
                         textRole: "label"
-                        valueRole: "minutes"
+                        valueRole: "seconds"
                         Layout.preferredWidth: implicitWidth
                         Layout.alignment: Qt.AlignTop
-                        function follow() { currentIndex = indexOfValue(App.uiAutoLockMinutes) }
+                        function follow() { currentIndex = indexOfValue(App.uiAutoLockSeconds) }
                         onModelChanged: follow()
                         Component.onCompleted: follow()
                         onActivated: App.setUiAutoLock(currentValue)

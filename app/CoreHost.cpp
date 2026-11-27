@@ -248,7 +248,7 @@ void CoreHost::announceUiLock()
     }
     const AppSettings& settings = AppSettings::instance();
     emit events_.uiLock(uiLock_.enabled(), uiLock_.locked(), waitUntilMs,
-        settings.uiAutoLockMinutes(), settings.uiLockFingerprint(), settings.uiLockHidesAll(),
+        settings.uiAutoLockSeconds(), settings.uiLockFingerprint(), settings.uiLockHidesAll(),
         settings.uiLockPhoto());
 }
 
@@ -262,9 +262,9 @@ void CoreHost::announceIntruder()
 void CoreHost::armAutoLock()
 {
     autoLock_.stop();
-    const int minutes = AppSettings::instance().uiAutoLockMinutes();
-    if (!windowActive_ && uiLock_.enabled() && !uiLock_.locked() && minutes > 0) {
-        autoLock_.start(std::chrono::minutes(minutes));
+    const int seconds = AppSettings::instance().uiAutoLockSeconds();
+    if (!windowActive_ && uiLock_.enabled() && !uiLock_.locked() && seconds > 0) {
+        autoLock_.start(std::chrono::seconds(seconds));
     }
 }
 
@@ -339,9 +339,9 @@ void CoreHost::disableUiLock()
     armAutoLock();
 }
 
-void CoreHost::setUiAutoLock(const int minutes)
+void CoreHost::setUiAutoLock(const int seconds)
 {
-    AppSettings::instance().setUiAutoLockMinutes(minutes);
+    AppSettings::instance().setUiAutoLockSeconds(seconds);
     announceUiLock();
     armAutoLock();
 }
@@ -727,6 +727,7 @@ void CoreHost::refreshAccounts()
             row.connected = account->reachable();
             row.unread = account->unreadTotal();
             row.activeFacade = account->activeFacade();
+            row.serverless = account->serverless();
             row.name = account->displayName().isEmpty() ? info.name : account->displayName();
             row.fingerprint
                 = account->fingerprint().isEmpty() ? info.fingerprint : account->fingerprint();

@@ -32,7 +32,7 @@ signals:
     void unlockUiByOwner();
     void enableUiLock(const QString& pin);
     void disableUiLock();
-    void setUiAutoLock(int minutes);
+    void setUiAutoLock(int seconds);
     void setUiLockFingerprint(bool on);
     void setUiLockHidesAll(bool on);
     void setUiLockPhoto(bool on);

@@ -65,9 +65,9 @@ bool isUiLockPinRecord(const UiLockPin& pin)
     return pin.salt.size() == kSaltBytes && pin.hash.size() == kHashBytes;
 }
 
-bool isUiAutoLockChoice(const int minutes)
+bool isUiAutoLockChoice(const int seconds)
 {
-    return std::find(std::begin(kUiAutoLockChoices), std::end(kUiAutoLockChoices), minutes)
+    return std::find(std::begin(kUiAutoLockChoices), std::end(kUiAutoLockChoices), seconds)
         != std::end(kUiAutoLockChoices);
 }
 

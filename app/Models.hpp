@@ -153,7 +153,7 @@ public:
     enum Roles {
         IdRole = Qt::UserRole + 1, NameRole, FingerprintRole, OpenRole, ActiveRole,
         OnlineRole, ConnectedRole, EncryptedRole, UnreadRole, ActiveFacadeRole, PrimaryRole,
-        OtherPrimariesRole
+        OtherPrimariesRole, ServerlessRole
     };
     using QAbstractListModel::QAbstractListModel;
 

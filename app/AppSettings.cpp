@@ -125,10 +125,10 @@ void AppSettings::load()
             }
             uiLockPin_ = std::move(read);
         }
-        uiAutoLockMinutes_ = lock.value("autoLockMinutes", 0);
-        if (!isUiAutoLockChoice(uiAutoLockMinutes_)) {
+        uiAutoLockSeconds_ = lock.value("autoLockSeconds", 0);
+        if (!isUiAutoLockChoice(uiAutoLockSeconds_)) {
             unreadable_ = "the app lock names an automatic lock of "
-                + std::to_string(uiAutoLockMinutes_) + " minutes";
+                + std::to_string(uiAutoLockSeconds_) + " seconds";
             return;
         }
         uiLockFingerprint_ = lock.value("fingerprint", true);
@@ -160,7 +160,7 @@ void AppSettings::save() const
     i2p["gateway"] = {{"asked", gatewayAsked_}, {"enabled", gatewayEnabled_},
         {"address", gatewayAddress_}};
     nlohmann::json lock = {
-        {"autoLockMinutes", uiAutoLockMinutes_},
+        {"autoLockSeconds", uiAutoLockSeconds_},
         {"fingerprint", uiLockFingerprint_},
         {"hideAllText", uiLockHidesAll_},
         {"photo", uiLockPhoto_},
@@ -423,15 +423,15 @@ void AppSettings::setUiLockPin(std::optional<UiLockPin> pin)
     save();
 }
 
-void AppSettings::setUiAutoLockMinutes(const int minutes)
+void AppSettings::setUiAutoLockSeconds(const int seconds)
 {
-    if (!isUiAutoLockChoice(minutes)) {
-        throw std::invalid_argument("no automatic lock after " + std::to_string(minutes) + " minutes");
+    if (!isUiAutoLockChoice(seconds)) {
+        throw std::invalid_argument("no automatic lock after " + std::to_string(seconds) + " seconds");
     }
-    if (uiAutoLockMinutes_ == minutes) {
+    if (uiAutoLockSeconds_ == seconds) {
         return;
     }
-    uiAutoLockMinutes_ = minutes;
+    uiAutoLockSeconds_ = seconds;
     save();
 }
 
