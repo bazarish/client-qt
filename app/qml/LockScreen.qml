@@ -60,7 +60,7 @@ Popup {
             const item = root.contentItem.Window.activeFocusItem
             if (root.opened && App.inFront && item
                     && (item === root.contentItem || item === root.contentItem.parent)) {
-                pins.focusInput()
+                pins.holdFocus()
             }
         }
     }

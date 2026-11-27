@@ -59,11 +59,26 @@ Item {
     }
 
     property bool keyboardWanted: false
+    property bool keyboardDismissed: false
     // Android drops a keyboard asked for before the window holds the input focus, as at a start or after a system prompt.
     function focusInput() {
+        root.keyboardDismissed = false
+        root.holdFocus()
+    }
+    function holdFocus() {
         field.forceActiveFocus()
-        root.keyboardWanted = true
-        Qt.callLater(root.raiseKeyboard)
+        if (!root.keyboardDismissed) {
+            root.keyboardWanted = true
+            Qt.callLater(root.raiseKeyboard)
+        }
+    }
+    Connections {
+        target: Qt.inputMethod
+        function onVisibleChanged() {
+            if (!Qt.inputMethod.visible && field.activeFocus && App.inFront && !root.pending) {
+                root.keyboardDismissed = true
+            }
+        }
     }
     function raiseKeyboard() {
         const window = root.Window.window
