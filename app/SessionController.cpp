@@ -1433,12 +1433,13 @@ void SessionController::cancelEdit()
     emit editingChanged();
 }
 
-void SessionController::deleteMessage(qint64 localId, const QString& e2eId, bool outgoing)
+void SessionController::deleteMessage(
+    qint64 localId, const QString& e2eId, bool outgoing, bool everyone)
 {
     if (activePeer_.isEmpty() || localId == 0) {
         return;
     }
-    emit commands_.deleteMessage(activePeer_, localId, e2eId, outgoing);
+    emit commands_.deleteMessage(activePeer_, localId, e2eId, outgoing, everyone);
 }
 
 void SessionController::keepThisDeviceAddress()
@@ -1874,7 +1875,8 @@ void SessionController::forwardMessages(const QVariantList& localIds, const QStr
 void SessionController::deleteMessages(const QVariantList& localIds)
 {
     for (const StoredMessage& message : chosenMessages(localIds)) {
-        deleteMessage(message.id, message.e2eId, message.outgoing && !activeIsGroup());
+        deleteMessage(message.id, message.e2eId, message.outgoing,
+            message.outgoing && !activeIsGroup());
     }
 }
 

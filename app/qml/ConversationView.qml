@@ -277,10 +277,10 @@ Item {
         }
         contentItem: Label {
             text: root.savedChat ? qsTr("They are removed from your other devices too")
-                : deleteChosenDialog.own === 0 ? qsTr("They are removed from this device only")
+                : deleteChosenDialog.own === 0 ? qsTr("They are removed from your devices only")
                 : deleteChosenDialog.own === root.chosenCount
                 ? qsTr("They are removed from the other side too")
-                : qsTr("Your messages among them (%1) are removed from the other side too, the rest only from this device").arg(deleteChosenDialog.own)
+                : qsTr("Your messages among them (%1) are removed from the other side too, the rest only from your devices").arg(deleteChosenDialog.own)
             color: Theme.text
             wrapMode: Text.Wrap
         }
@@ -292,19 +292,25 @@ Item {
         modal: true
         focus: true
         width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
-        readonly property bool forEveryone: root.pendingDeleteOutgoing && root.session
-        footer: DialogButtons {
-            acceptText: qsTr("Delete")
-            danger: true
-            onAccepted: deleteMessageDialog.accept()
-            onRejected: deleteMessageDialog.reject()
-        }
-        onAccepted: {
+        readonly property bool choosing: root.pendingDeleteOutgoing && !root.savedChat
+        function erase(everyone) {
             if (root.session && root.pendingDeleteId !== null) {
                 root.session.deleteMessage(root.pendingDeleteId, root.pendingDeleteProtocol,
-                    root.pendingDeleteOutgoing)
+                    root.pendingDeleteOutgoing, everyone)
             }
             root.pendingDeleteId = null
+            deleteMessageDialog.close()
+        }
+        footer: DialogButtons {
+            acceptText: deleteMessageDialog.choosing ? qsTr("For everyone") : qsTr("Delete")
+            danger: true
+            showCancel: deleteMessageDialog.choosing
+            cancelOnOwnLine: root.narrow
+            cancelText: qsTr("Cancel")
+            rejectText: deleteMessageDialog.choosing ? qsTr("On my side") : qsTr("Cancel")
+            onAccepted: deleteMessageDialog.erase(root.savedChat || deleteMessageDialog.choosing)
+            onRejected: deleteMessageDialog.choosing ? deleteMessageDialog.erase(false) : deleteMessageDialog.reject()
+            onCancelled: deleteMessageDialog.reject()
         }
         onRejected: root.pendingDeleteId = null
         background: DialogFrame { destructive: true }
@@ -315,9 +321,9 @@ Item {
         contentItem: Label {
             text: root.savedChat
                 ? qsTr("Delete this message? It is removed from your other devices too.")
-                : deleteMessageDialog.forEveryone
-                ? qsTr("Delete this message for everyone? It is removed from the recipient too, with no trace.")
-                : qsTr("Delete this message from this device? This cannot be undone.")
+                : deleteMessageDialog.choosing
+                ? qsTr("Delete the message for everyone or only on your side?")
+                : qsTr("Delete the message on your side?")
             color: Theme.text
             wrapMode: Text.Wrap
         }

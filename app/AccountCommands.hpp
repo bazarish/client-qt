@@ -55,7 +55,8 @@ signals:
     void resend(const QString& peer, qint64 localId);
     void editMessage(
         const QString& peer, qint64 localId, const QString& e2eId, const QString& text);
-    void deleteMessage(const QString& peer, qint64 localId, const QString& e2eId, bool outgoing);
+    void deleteMessage(
+        const QString& peer, qint64 localId, const QString& e2eId, bool outgoing, bool everyone);
     void react(const QString& peer, const QString& e2eId, const QString& emoji);
     void rememberEmoji(const QString& emoji);
     void pinChat(const QString& peer, bool pinned);
@@ -108,6 +109,7 @@ signals:
     void requestSendEdit(const QString& peer, const QString& refId, qint64 localId,
         const QString& text);
     void requestSendDelete(const QString& peer, const QString& refId);
+    void requestDeleteOnOwnDevices(const QString& peer, const QString& refId, bool incoming);
     void requestUnsend(const QString& refId);
     void requestSetAvatar(const QByteArray& jpeg);
     void requestClearAvatar();

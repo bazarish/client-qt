@@ -428,7 +428,7 @@ public:
         const QString& e2eId, const QString& previewText, const QString& sender);
     Q_INVOKABLE void cancelReply();
     Q_INVOKABLE QVariantMap replyPreview(const QString& e2eId) const;
-    Q_INVOKABLE void deleteMessage(qint64 localId, const QString& e2eId, bool outgoing);
+    Q_INVOKABLE void deleteMessage(qint64 localId, const QString& e2eId, bool outgoing, bool everyone);
     Q_INVOKABLE QString inviteProblem(const QString& uri) const;
     // The fingerprint an invite names when that account is already a contact, else empty.
     Q_INVOKABLE QString contactFor(const QString& uri) const;

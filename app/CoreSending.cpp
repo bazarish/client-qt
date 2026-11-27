@@ -335,8 +335,8 @@ void CoreAccount::editMessage(
     emit commands_.requestSendEdit(peer, e2eId, localId, text);
 }
 
-void CoreAccount::deleteMessage(
-    const QString& peer, const qint64 localId, const QString& e2eId, const bool outgoing)
+void CoreAccount::deleteMessage(const QString& peer, const qint64 localId, const QString& e2eId,
+    const bool outgoing, const bool everyone)
 {
     if (!store_.removeById(localId)) {
         reportUnsaved();
@@ -347,8 +347,13 @@ void CoreAccount::deleteMessage(
         emit commands_.requestUnsend(e2eId);
     }
     emit events_.rowRemoved(peer, localId, e2eId);
-    if (outgoing && !e2eId.isEmpty()) {
+    if (e2eId.isEmpty()) {
+        return;
+    }
+    if (everyone && outgoing) {
         emit commands_.requestSendDelete(peer, e2eId);
+    } else {
+        emit commands_.requestDeleteOnOwnDevices(peer, e2eId, !outgoing);
     }
 }
 

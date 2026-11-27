@@ -1748,6 +1748,15 @@ void SessionWorker::sendDelete(const QString& peer, const QString& refId)
     }
 }
 
+void SessionWorker::deleteOnOwnDevices(const QString& peer, const QString& refId, const bool incoming)
+{
+    try {
+        openSession().deleteOnOwnDevices(peer.toStdString(), refId.toStdString(), incoming);
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
 QString SessionWorker::milestoneText(const bazarish::client::ConnectMilestone milestone)
 {
     using bazarish::client::ConnectMilestone;

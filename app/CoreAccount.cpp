@@ -59,6 +59,7 @@ const char* commandTitle(const QByteArray& signalName)
         {"requestSendReaction", QT_TR_NOOP("Sending a reaction")},
         {"requestSendEdit", QT_TR_NOOP("Sending an edit")},
         {"requestSendDelete", QT_TR_NOOP("Deleting a message for both sides")},
+        {"requestDeleteOnOwnDevices", QT_TR_NOOP("Deleting a message on your devices")},
         {"requestUnsend", QT_TR_NOOP("Withdrawing a file")},
         {"requestAcceptContact", QT_TR_NOOP("Agreeing to a contact request")},
         {"requestEmitSettings", QT_TR_NOOP("Telling your other devices")},
@@ -181,6 +182,8 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&commands_, &AccountCommands::requestSendCommand, worker_, &SessionWorker::sendCommand);
     connect(&commands_, &AccountCommands::requestSendEdit, worker_, &SessionWorker::sendEdit);
     connect(&commands_, &AccountCommands::requestSendDelete, worker_, &SessionWorker::sendDelete);
+    connect(&commands_, &AccountCommands::requestDeleteOnOwnDevices, worker_,
+        &SessionWorker::deleteOnOwnDevices);
     connect(&commands_, &AccountCommands::requestUnsend, worker_, &SessionWorker::dropSentFile);
     connect(&commands_, &AccountCommands::requestSetAvatar, worker_, &SessionWorker::setAvatar);
     connect(&commands_, &AccountCommands::requestClearAvatar, worker_, &SessionWorker::clearAvatar);

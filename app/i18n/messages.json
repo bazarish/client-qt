@@ -1433,18 +1433,6 @@
       "zh": "只删除本设备上的副本",
       "ar": "حذف نسخة هذا الجهاز فقط"
     },
-    "Delete this message for everyone? It is removed from the recipient too, with no trace.": {
-      "ru": "Удалить это сообщение у всех? Оно будет удалено и у получателя, без следа.",
-      "es": "¿Eliminar este mensaje para todos? Desaparece también del destinatario, sin rastro.",
-      "zh": "要为所有人删除这条消息吗？它也会从接收方那里删除，不留痕迹。",
-      "ar": "أتريد حذف هذه الرسالة لدى الجميع؟ ستُحذف من المستلم أيضًا دون أثر."
-    },
-    "Delete this message from this device? This cannot be undone.": {
-      "ru": "Удалить это сообщение с этого устройства? Отменить нельзя.",
-      "es": "¿Eliminar este mensaje de este dispositivo? No se puede deshacer.",
-      "zh": "要从本设备删除这条消息吗？此操作无法撤销。",
-      "ar": "أتريد حذف هذه الرسالة من هذا الجهاز؟ لا يمكن التراجع."
-    },
     "Delete this message? It is removed from your other devices too.": {
       "ru": "Удалить это сообщение? Оно удалится и на других ваших устройствах.",
       "es": "¿Eliminar este mensaje? También se elimina de tus otros dispositivos.",
@@ -4007,12 +3995,6 @@
       "zh": "你的账号就是一对密钥",
       "ar": "حسابك زوج مفاتيح"
     },
-    "Your messages among them (%1) are removed from the other side too, the rest only from this device": {
-      "ru": "Ваши сообщения среди них (%1) удалятся и у собеседника, остальные — только на этом устройстве",
-      "es": "Tus mensajes entre ellos (%1) también se eliminan para tu interlocutor; el resto, solo de este dispositivo",
-      "zh": "其中你发送的 %1 条消息在对方那里也会删除，其余只从此设备上删除",
-      "ar": "رسائلك من بينها (⁦%1⁩) ستُحذف لدى الطرف الآخر أيضًا، والباقي من هذا الجهاز فقط"
-    },
     "Your name": {
       "ru": "Ваше имя",
       "es": "Tu nombre",
@@ -4456,12 +4438,6 @@
       "es": "También se eliminan para tu interlocutor",
       "zh": "对方那里也会删除",
       "ar": "ستُحذف لدى الطرف الآخر أيضًا"
-    },
-    "They are removed from this device only": {
-      "ru": "Они удалятся только на этом устройстве",
-      "es": "Se eliminan solo de este dispositivo",
-      "zh": "它们只会从此设备上删除",
-      "ar": "ستُحذف من هذا الجهاز فقط"
     },
     "They are removed from your other devices too": {
       "ru": "Они удалятся и на других ваших устройствах",
@@ -6052,6 +6028,48 @@
       "es": "El proxy del router integrado se aplica al arrancar. Sus cuentas están cerradas. Reinicie la aplicación.",
       "zh": "内置路由器的代理在启动时生效。您的账号已关闭。请重新启动应用。",
       "ar": "يُطبَّق وكيل الموجّه المدمج عند بدء التشغيل. أُغلقت حساباتك. أعد تشغيل التطبيق."
+    },
+    "For everyone": {
+      "ru": "У всех",
+      "es": "Para todos",
+      "zh": "为所有人",
+      "ar": "لدى الجميع"
+    },
+    "On my side": {
+      "ru": "У себя",
+      "es": "Para mí",
+      "zh": "仅自己",
+      "ar": "لديّ فقط"
+    },
+    "Delete the message for everyone or only on your side?": {
+      "ru": "Удалить сообщение у всех или только на своей стороне?",
+      "es": "¿Eliminar el mensaje para todos o solo de su lado?",
+      "zh": "为所有人删除这条消息，还是只在您这边删除？",
+      "ar": "أتريد حذف الرسالة لدى الجميع أم من جهتك فقط؟"
+    },
+    "Delete the message on your side?": {
+      "ru": "Удалить сообщение на своей стороне?",
+      "es": "¿Eliminar el mensaje de su lado?",
+      "zh": "在您这边删除这条消息？",
+      "ar": "أتريد حذف الرسالة من جهتك؟"
+    },
+    "They are removed from your devices only": {
+      "ru": "Они удалятся только на ваших устройствах",
+      "es": "Se eliminan solo de sus dispositivos",
+      "zh": "它们只会从您的设备上删除",
+      "ar": "ستُحذف من أجهزتك فقط"
+    },
+    "Your messages among them (%1) are removed from the other side too, the rest only from your devices": {
+      "ru": "Ваши сообщения среди них (%1) удалятся и у собеседника, остальные только на ваших устройствах",
+      "es": "Sus mensajes entre ellos (%1) se eliminan también del otro lado, el resto solo de sus dispositivos",
+      "zh": "其中您的消息（%1 条）也会从对方那里删除，其余的只从您的设备上删除",
+      "ar": "تُحذف رسائلك بينها (%1) لدى الطرف الآخر أيضًا، والباقي من أجهزتك فقط"
+    },
+    "Deleting a message on your devices": {
+      "ru": "Удаление сообщения на ваших устройствах",
+      "es": "Eliminando un mensaje en sus dispositivos",
+      "zh": "正在从您的设备上删除消息",
+      "ar": "جارٍ حذف رسالة من أجهزتك"
     }
   }
 }

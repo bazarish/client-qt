@@ -98,6 +98,7 @@ public slots:
         const QString& opId, const QString& peer, const QString& command, const QString& args);
     void sendEdit(const QString& peer, const QString& refId, qint64 localId, const QString& text);
     void sendDelete(const QString& peer, const QString& refId);
+    void deleteOnOwnDevices(const QString& peer, const QString& refId, bool incoming);
     void dropSentFile(const QString& refId);
     void setAvatar(const QByteArray& bytes);
     void clearAvatar();

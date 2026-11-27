@@ -146,7 +146,8 @@ private:
     void resend(const QString& peer, qint64 localId);
     void editMessage(
         const QString& peer, qint64 localId, const QString& e2eId, const QString& text);
-    void deleteMessage(const QString& peer, qint64 localId, const QString& e2eId, bool outgoing);
+    void deleteMessage(
+        const QString& peer, qint64 localId, const QString& e2eId, bool outgoing, bool everyone);
     void react(const QString& peer, const QString& e2eId, const QString& emoji);
     void rememberReaction(const QString& emoji);
     void rememberEmoji(const QString& emoji);
