@@ -42,4 +42,7 @@ QString toHtml(const QString& text, const Colors& colors, const QStringList& men
 
 QString toPlain(const QString& text);
 
+// Only http(s) links are read; every other character stays as written.
+QString linksHtml(const QString& text);
+
 }  // namespace bazarish::app::markup

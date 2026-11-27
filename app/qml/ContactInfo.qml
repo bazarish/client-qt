@@ -124,11 +124,24 @@ WindowPopup {
                     id: statusText
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignHCenter
-                    text: statusBlock.status
+                    text: App.linksHtml(statusBlock.status)
+                    textFormat: Text.StyledText
+                    linkColor: Theme.accent
                     color: Theme.textDim
                     wrapMode: Text.Wrap
                     maximumLineCount: statusBlock.expanded ? undefined : 1
                     elide: Text.ElideRight
+                    onLinkActivated: function(link) {
+                        if (App.isAppLink(link)) {
+                            App.openLink(link)
+                        } else {
+                            statusLinkWarning.ask(link)
+                        }
+                    }
+                    HoverHandler {
+                        cursorShape: statusText.hoveredLink.length > 0
+                            ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    }
                 }
                 Label {
                     visible: statusText.truncated || statusBlock.expanded
@@ -539,4 +552,6 @@ WindowPopup {
             text: qsTr("The contact and the conversation are removed on all devices of this account, and its pass is revoked. The contact can send a new contact request. This cannot be undone.")
         }
     }
+
+    LinkWarningDialog { id: statusLinkWarning }
 }

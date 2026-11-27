@@ -130,6 +130,26 @@ public:
         return std::move(runs_);
     }
 
+    std::vector<Run> links()
+    {
+        QString buffer;
+        int i = 0;
+        while (i < size_) {
+            int after = 0;
+            if (matchLink(i, size_, after)) {
+                flush(buffer, Style{});
+                const QString address = text_.sliced(i, after - i);
+                emitRun(address, address, Action::eLink, Style{});
+                i = after;
+                continue;
+            }
+            buffer += text_[i];
+            ++i;
+        }
+        flush(buffer, Style{});
+        return std::move(runs_);
+    }
+
 private:
     int lineEnd(const int from, const int to) const { return std::min(lineEnds_[from], to); }
 
@@ -514,6 +534,18 @@ std::vector<Run> parse(const QString& text)
 std::vector<Run> parse(const QString& text, const QStringList& mentionNames)
 {
     return Parser(text, mentionRanges(text, mentionNames)).parse();
+}
+
+QString linksHtml(const QString& text)
+{
+    QString out;
+    for (const Run& run : Parser(text, {}).links()) {
+        out += run.action == Action::eLink
+            ? QLatin1String("<a href=\"") + href(run) + QLatin1String("\">") + escaped(run.text)
+                + QLatin1String("</a>")
+            : escaped(run.text);
+    }
+    return out;
 }
 
 QString toHtml(const QString& text, const Colors& colors, const QStringList& mentionNames)

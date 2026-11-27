@@ -854,6 +854,11 @@ QString AppController::markupPlain(const QString& text) const
     return markup::toPlain(text);
 }
 
+QString AppController::linksHtml(const QString& text) const
+{
+    return markup::linksHtml(text);
+}
+
 int AppController::emojiCount(const QString& text) const
 {
     return emojiOnlyCount(text);

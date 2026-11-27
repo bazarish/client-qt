@@ -269,6 +269,17 @@ void testMentions()
 
 }  // namespace
 
+void testStatusLinks()
+{
+    CHECK(linksHtml(QStringLiteral("see https://example.org/a?b=1&c=2, **as is** <i>x</i>"))
+        == QStringLiteral("see <a href=\"https://example.org/a?b=1&amp;c=2\">"
+                          "https://example.org/a?b=1&amp;c=2</a>, **as is** &lt;i&gt;x&lt;/i&gt;"));
+    CHECK(linksHtml(QStringLiteral("javascript:alert(1) ftp://host !alias `code`"))
+        == QStringLiteral("javascript:alert(1) ftp://host !alias `code`"));
+    CHECK(linksHtml(QStringLiteral("(http://a.i2p/x)")) == QStringLiteral(
+        "(<a href=\"http://a.i2p/x\">http://a.i2p/x</a>)"));
+}
+
 int main()
 try {
     testStyles();
@@ -279,6 +290,7 @@ try {
     testCodeBlocks();
     testPlainProjection();
     testMentions();
+    testStatusLinks();
     CHECK(growthOf([](const int n) { return QStringLiteral("*a").repeated(n); }) < kLinearAllowance);
     CHECK(growthOf([](const int n) { return QStringLiteral("~~a").repeated(n); }) < kLinearAllowance);
     CHECK(growthOf([](const int n) { return QStringLiteral("https://a") + QString(n, u')'); })

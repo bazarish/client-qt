@@ -234,6 +234,7 @@ public:
         const QColor& chipColor, const QColor& codeColor, const QColor& codeTextColor,
         const QStringList& mentionNames = {}, const QColor& mentionColor = {}) const;
     Q_INVOKABLE QString markupPlain(const QString& text) const;
+    Q_INVOKABLE QString linksHtml(const QString& text) const;
     Q_INVOKABLE int emojiCount(const QString& text) const;
 
 signals:
