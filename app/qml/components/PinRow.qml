@@ -69,14 +69,13 @@ Item {
     }
     function raiseKeyboard() {
         const window = root.Window.window
-        if (root.keyboardWanted && field.activeFocus && Qt.application.state === Qt.ApplicationActive
-                && window && window.active) {
+        if (root.keyboardWanted && field.activeFocus && App.inFront && window && window.active) {
             Qt.inputMethod.show()
         }
     }
     Connections {
-        target: Qt.application
-        function onStateChanged() { root.raiseKeyboard() }
+        target: App
+        function onInFrontChanged() { root.raiseKeyboard() }
     }
     Connections {
         target: root.Window.window

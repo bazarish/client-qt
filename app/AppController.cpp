@@ -93,17 +93,18 @@ AppController::AppController(Translations& translations, Relay& relay, QObject* 
     // Coming back from the system settings is when the answer may have changed.
     connect(qApp, &QGuiApplication::applicationStateChanged, this,
         &AppController::systemPermissionsChanged);
+#ifndef Q_OS_ANDROID
+    inFront_ = QGuiApplication::applicationState() == Qt::ApplicationActive;
     connect(qApp, &QGuiApplication::applicationStateChanged, this,
-        [this](const Qt::ApplicationState state) {
-            emit commands_.windowActive(state == Qt::ApplicationActive);
-        });
+        [this](const Qt::ApplicationState state) { setInFront(state == Qt::ApplicationActive); });
+#endif
     qApp->installEventFilter(this);
 
     connect(&events_, &AppEvents::started, this, [this]() {
         attached_ = true;
         // The snapshot names the call that rang when the notice was tapped; a later one is not it.
         answerWhenRinging_ = false;
-        emit commands_.windowActive(QGuiApplication::applicationState() == Qt::ApplicationActive);
+        emit commands_.windowActive(inFront_);
         emit attachedChanged();
     });
     connect(&events_, &AppEvents::closing, this, [this]() { coreClosing_ = true; });
@@ -955,6 +956,16 @@ void AppController::fingerprintDone(const bool ok)
 void AppController::ownerDone(const bool ok)
 {
     emit ownerConfirmed(ok, {});
+}
+
+void AppController::setInFront(const bool on)
+{
+    if (inFront_ == on) {
+        return;
+    }
+    inFront_ = on;
+    emit inFrontChanged();
+    emit commands_.windowActive(on);
 }
 
 void AppController::moveToBackground() const

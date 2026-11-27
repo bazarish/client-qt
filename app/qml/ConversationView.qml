@@ -130,7 +130,7 @@ Item {
         if (!session || !visible || messages.count === 0) {
             return
         }
-        if (Qt.application.state !== Qt.ApplicationActive || App.uiLocked) {
+        if (!App.inFront || App.uiLocked) {
             return
         }
         var row = messages.indexAt(messages.width / 2, messages.contentY + messages.height - 2)
@@ -139,10 +139,8 @@ Item {
         }
         session.markReadThroughRow(row)
     }
-    Connections {
-        target: Qt.application
-        function onStateChanged() { root.markVisibleRead() }
-    }
+    readonly property bool inFront: App.inFront
+    onInFrontChanged: root.markVisibleRead()
     readonly property bool voiceInSight: {
         const bubble = messages.playingBubble
         if (!bubble || !root.visible) {

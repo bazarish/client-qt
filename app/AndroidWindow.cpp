@@ -120,6 +120,11 @@ void ownerConfirmed(JNIEnv*, jclass, jboolean ok)
     inWindowThread<AppController>(gApp, [ok](AppController& app) { app.ownerDone(ok); });
 }
 
+void resumedChanged(JNIEnv*, jclass, jboolean on)
+{
+    inWindowThread<AppController>(gApp, [on](AppController& app) { app.setInFront(on); });
+}
+
 void keyboardCovers(JNIEnv*, jclass, jint pixels)
 {
     inWindowThread<AppController>(gApp, [pixels](AppController& app) {
@@ -152,6 +157,7 @@ AndroidWindow::AndroidWindow(AppController& app, QObject* const parent)
         {"avatarPicked", "(Ljava/lang/String;)V", reinterpret_cast<void*>(avatarPicked)},
         {"fingerprintAnswered", "(Z)V", reinterpret_cast<void*>(fingerprintAnswered)},
         {"ownerConfirmed", "(Z)V", reinterpret_cast<void*>(ownerConfirmed)},
+        {"resumedChanged", "(Z)V", reinterpret_cast<void*>(resumedChanged)},
     };
     QJniEnvironment env;
     if (!env.registerNativeMethods(kWindow, natives, static_cast<int>(std::size(natives)))) {
@@ -162,6 +168,8 @@ AndroidWindow::AndroidWindow(AppController& app, QObject* const parent)
         gApp.store(&app);
         gWindow.store(this);
     }
+    QJniObject::callStaticMethod<void>(kWindow, "nativesRegistered", "()V");
+    app_.setInFront(QJniObject::callStaticMethod<jboolean>(kWindow, "resumed", "()Z"));
 
     QJniObject::callStaticMethod<void>(kWindow, "followKeyboard", "()V");
     // Android's touch-and-hold delay, which its accessibility settings change; Qt keeps 800 ms.
@@ -177,11 +185,11 @@ AndroidWindow::AndroidWindow(AppController& app, QObject* const parent)
     connect(&app_, &AppController::ringingChanged, this, &AndroidWindow::followCall);
     connect(&app_, &AppController::callLiveChanged, this, &AndroidWindow::followCall);
     const auto clearSeen = [this]() {
-        if (QGuiApplication::applicationState() == Qt::ApplicationActive && !app_.uiLocked()) {
+        if (app_.inFront() && !app_.uiLocked()) {
             QJniObject::callStaticMethod<void>(kWindow, "clearMessages", "()V");
         }
     };
-    connect(qApp, &QGuiApplication::applicationStateChanged, this, clearSeen);
+    connect(&app_, &AppController::inFrontChanged, this, clearSeen);
     connect(&app_, &AppController::uiLockChanged, this, clearSeen);
     connect(&app_, &AppController::uiLockChanged, this,
         [this]() { hideRecents(app_.uiLockEnabled()); });

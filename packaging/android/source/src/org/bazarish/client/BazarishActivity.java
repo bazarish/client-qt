@@ -31,6 +31,18 @@ public class BazarishActivity extends QtActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        Window.setResumed(true);
+    }
+
+    @Override
+    protected void onPause() {
+        Window.setResumed(false);
+        super.onPause();
+    }
+
+    @Override
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
         savedInstanceState.remove(QT_STARTED);
         super.onRestoreInstanceState(savedInstanceState);

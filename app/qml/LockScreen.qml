@@ -24,16 +24,21 @@ Popup {
     property bool fingerprintOffered: false
     property bool cameIn: true
     property bool byHand: false
+    property bool prompting: false
+    function askFingerprint() {
+        root.prompting = true
+        App.askFingerprint()
+    }
 
     function showUp() {
-        if (!root.opened || (App.mobile && Qt.application.state !== Qt.ApplicationActive)) {
+        if (!root.opened || (App.mobile && !App.inFront)) {
             return
         }
         pins.focusInput()
         if (root.cameIn) {
             root.cameIn = false
             if (root.fingerprintOffered) {
-                App.askFingerprint()
+                root.askFingerprint()
             }
         }
     }
@@ -50,13 +55,12 @@ Popup {
         shooter.active = false
     }
     Connections {
-        target: Qt.application
-        function onStateChanged() {
-            const state = Qt.application.state
-            if (state === Qt.ApplicationSuspended || state === Qt.ApplicationHidden) {
-                root.cameIn = true
-            } else if (state === Qt.ApplicationActive) {
+        target: App
+        function onInFrontChanged() {
+            if (App.inFront) {
                 root.showUp()
+            } else if (!root.prompting) {
+                root.cameIn = true
             }
         }
     }
@@ -64,6 +68,7 @@ Popup {
         target: App
         function onUiUnlockAnswered(unlocked) { pins.answered(unlocked) }
         function onFingerprintAnswered(ok) {
+            root.prompting = false
             if (!ok) {
                 pins.focusInput()
             }
@@ -169,7 +174,7 @@ Popup {
                 implicitWidth: 72
                 implicitHeight: 72
                 Accessible.name: qsTr("Unlock by fingerprint")
-                onClicked: App.askFingerprint()
+                onClicked: root.askFingerprint()
             }
         }
     }

@@ -229,6 +229,7 @@ void CoreHost::setWindowActive(const bool active)
         return;
     }
     windowActive_ = active;
+    bazarish::log::info("window: {}", active ? "active" : "inactive");
     bazarish::i2p::windowActive(active);
     emit windowActiveChanged();
     tellPresence();

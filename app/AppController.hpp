@@ -75,6 +75,7 @@ class AppController : public QObject {
     Q_PROPERTY(QString i2pdVersion READ i2pdVersion CONSTANT)
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
 
+    Q_PROPERTY(bool inFront READ inFront NOTIFY inFrontChanged)
     Q_PROPERTY(bool uiLockEnabled READ uiLockEnabled NOTIFY uiLockChanged)
     Q_PROPERTY(bool uiLocked READ uiLocked NOTIFY uiLockChanged)
     Q_PROPERTY(double uiWaitUntil READ uiWaitUntil NOTIFY uiLockChanged)
@@ -253,6 +254,8 @@ public:
     Q_INVOKABLE QString linksHtml(const QString& text) const;
     Q_INVOKABLE int emojiCount(const QString& text) const;
 
+    bool inFront() const { return inFront_; }
+    void setInFront(bool on);
     bool uiLockEnabled() const { return uiLockEnabled_; }
     bool uiLocked() const { return uiLocked_; }
     double uiWaitUntil() const { return static_cast<double>(uiWaitUntilMs_); }
@@ -331,6 +334,7 @@ signals:
     void gatewayLinkOpened(const QString& link, const QString& host);
     void linkRefused(const QString& reason);
     void uiLockChanged();
+    void inFrontChanged();
     void uiLockRequestedHere();
     void uiUnlockAnswered(bool unlocked);
     void intruderChanged();
@@ -388,6 +392,7 @@ private:
     bool pairNeedsCode_ = false;
     bool pairing_ = false;
     static constexpr double kMsPerSecond = 1000.0;
+    bool inFront_ = false;
     bool uiLockEnabled_ = false;
     bool uiLocked_ = false;
     qint64 uiWaitUntilMs_ = 0;

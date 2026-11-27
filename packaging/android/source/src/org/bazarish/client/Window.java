@@ -71,6 +71,8 @@ public final class Window {
     static WeakReference<Activity> window = new WeakReference<>(null);
     private static boolean captureAllowed = false;
     private static boolean recentsHidden = false;
+    private static volatile boolean resumed = false;
+    private static volatile boolean nativesReady = false;
     private static Integer systemStatusBar;
     private static int systemNavigationBar;
     private static int systemBarsLook;
@@ -89,6 +91,7 @@ public final class Window {
     static native void avatarPicked(String uri);
     static native void fingerprintAnswered(boolean ok);
     static native void ownerConfirmed(boolean ok);
+    static native void resumedChanged(boolean on);
 
     private Window() {}
 
@@ -205,6 +208,21 @@ public final class Window {
             return;
         }
         shown.runOnUiThread(() -> guardRecents(shown));
+    }
+
+    static void setResumed(boolean on) {
+        resumed = on;
+        if (nativesReady) {
+            resumedChanged(on);
+        }
+    }
+
+    public static void nativesRegistered() {
+        nativesReady = true;
+    }
+
+    public static boolean resumed() {
+        return resumed;
     }
 
     public static boolean fingerprintReady() {

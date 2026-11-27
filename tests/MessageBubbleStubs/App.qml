@@ -5,6 +5,7 @@ import QtQuick
 QtObject {
     property bool mobile: false
     property bool uiLocked: false
+    property bool inFront: true
     property bool lightTheme: true
     property int unreadElsewhere: 0
     function emojiCount(text) { return 0 }
