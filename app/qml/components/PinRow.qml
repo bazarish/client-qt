@@ -131,8 +131,11 @@ Item {
             | Qt.ImhNoAutoUppercase
         maximumLength: root.kCells
         validator: RegularExpressionValidator { regularExpression: /[0-9]*/ }
-        readOnly: root.waiting || root.busy
         onTextChanged: {
+            if ((root.waiting || root.pending) && text.length > 0) {
+                text = ""
+                return
+            }
             if (text.length > 0) {
                 root.failed = false
             }
