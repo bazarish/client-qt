@@ -85,6 +85,8 @@ public:
     QString transport() const;
     Q_PROPERTY(bool restartNeeded READ restartNeeded NOTIFY transportChanged)
     bool restartNeeded() const { return state_.restartNeeded; }
+    Q_PROPERTY(bool restartForProxy READ restartForProxy NOTIFY transportChanged)
+    bool restartForProxy() const { return state_.restartForProxy; }
     Q_INVOKABLE void checkAndSaveGateway(const QString& address);
     Q_INVOKABLE void skipGateway();
     Q_INVOKABLE void useEmbedded();

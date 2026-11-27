@@ -45,6 +45,7 @@ struct I2pState {
     QString gatewayAddress;
     QString gatewayHost;
     bool restartNeeded = false;
+    bool restartForProxy = false;
 
     bool operator==(const I2pState&) const = default;
 };
@@ -74,7 +75,7 @@ inline QDataStream& operator<<(QDataStream& out, const I2pState& state)
                << state.samEnabled << state.samChecking << state.samHost
                << qint32(state.samPort) << state.gatewayAsked << state.gatewayEnabled
                << state.gatewayChecking << state.gatewayAddress << state.gatewayHost
-               << state.restartNeeded;
+               << state.restartNeeded << state.restartForProxy;
 }
 
 inline QDataStream& operator>>(QDataStream& in, I2pState& state)
@@ -93,7 +94,8 @@ inline QDataStream& operator>>(QDataStream& in, I2pState& state)
         >> state.proxyChecking >> state.proxyUnreachable
         >> state.samEnabled >> state.samChecking >> state.samHost >> samPort
         >> state.gatewayAsked >> state.gatewayEnabled >> state.gatewayChecking
-        >> state.gatewayAddress >> state.gatewayHost >> state.restartNeeded;
+        >> state.gatewayAddress >> state.gatewayHost >> state.restartNeeded
+        >> state.restartForProxy;
     state.privacyLevel = privacyLevel;
     state.knownRouters = knownRouters;
     state.minKnownRouters = minKnownRouters;

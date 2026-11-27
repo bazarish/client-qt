@@ -47,6 +47,8 @@ private:
     QTimer rebuildDelay_;
     I2pState state_;
     QString transportAtStart_;
+    QString proxyHostAtStart_;
+    int proxyPortAtStart_ = 0;
     QString gatewayAtStart_;
     QHash<QString, QSet<QString>> refreshing_;
 };

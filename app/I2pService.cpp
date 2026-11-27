@@ -175,6 +175,8 @@ I2pService::I2pService(QObject* parent)
     state_.gatewayAddress = gateway.has_value() ? QString::fromStdString(gateway->link()) : QString();
     state_.gatewayHost = gateway.has_value() ? QString::fromStdString(gateway->host) : QString();
     gatewayAtStart_ = state_.gatewayAddress;
+    proxyHostAtStart_ = state_.proxyHost;
+    proxyPortAtStart_ = state_.proxyPort;
     if (!applyTransport()) {
         throw std::logic_error("a router ran before the I2P settings were read");
     }
@@ -265,8 +267,11 @@ void I2pService::noteChoiceInForce()
         transportAtStart_ = transport();
         gatewayAtStart_ = state_.gatewayAddress;
     }
+    state_.restartForProxy = transport() == QLatin1String("embedded")
+        && (state_.proxyHost != proxyHostAtStart_ || state_.proxyPort != proxyPortAtStart_);
     state_.restartNeeded = transport() != transportAtStart_
-        || (transport() == QLatin1String("gateway") && state_.gatewayAddress != gatewayAtStart_);
+        || (transport() == QLatin1String("gateway") && state_.gatewayAddress != gatewayAtStart_)
+        || state_.restartForProxy;
     if (state_.restartNeeded) {
         client::retireI2pRouter();
     }
@@ -341,9 +346,7 @@ void I2pService::saveProxy(const QString& host, const int port)
     state_.proxyPort = port;
     AppSettings::instance().setI2pProxy(state_.proxyHost.toStdString(), state_.proxyPort);
     client::setI2pSocksProxy(state_.proxyHost.toStdString(), state_.proxyPort);
-    announce();
-    inBackground([]() { client::restartI2pRouter(); });
-    refresh();
+    noteChoiceInForce();
 }
 
 void I2pService::setLoggingEnabled(bool on)

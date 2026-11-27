@@ -34,7 +34,8 @@ auto gatewayOf(const I2pState& state)
 
 auto transportFields(const I2pState& state)
 {
-    return std::tie(state.samEnabled, state.gatewayEnabled, state.restartNeeded);
+    return std::tie(state.samEnabled, state.gatewayEnabled, state.restartNeeded,
+        state.restartForProxy);
 }
 
 }  // namespace

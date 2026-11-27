@@ -378,7 +378,9 @@ ApplicationWindow {
                 wrapMode: Text.Wrap
             }
             Label {
-                text: I2p.transport === "gateway"
+                text: I2p.restartForProxy
+                    ? qsTr("The embedded router's proxy is applied at startup. Your accounts are closed; restart the application.")
+                    : I2p.transport === "gateway"
                     ? qsTr("I2P will be carried by the external gateway. The I2P backend is chosen at "
                         + "startup. Your accounts are closed; restart to apply.")
                     : (I2p.transport === "sam"

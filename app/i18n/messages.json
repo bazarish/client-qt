@@ -6046,6 +6046,12 @@
       "es": "El proxy SOCKS no responde",
       "zh": "SOCKS 代理没有响应",
       "ar": "وكيل SOCKS لا يستجيب"
+    },
+    "The embedded router's proxy is applied at startup. Your accounts are closed; restart the application.": {
+      "ru": "Прокси встроенного роутера применяется на старте. Аккаунты закрыты. Перезапустите приложение.",
+      "es": "El proxy del router integrado se aplica al arrancar. Sus cuentas están cerradas. Reinicie la aplicación.",
+      "zh": "内置路由器的代理在启动时生效。您的账号已关闭。请重新启动应用。",
+      "ar": "يُطبَّق وكيل الموجّه المدمج عند بدء التشغيل. أُغلقت حساباتك. أعد تشغيل التطبيق."
     }
   }
 }
