@@ -34,8 +34,7 @@ account's server.
 
 | Cause | Effect |
 |---|---|
-| The recipient's lease set, looked up right after the unanswered attempt or when anything arrives from that contact, was published later than the one held at the failure | the next attempt starts at once |
-| 11 minutes since the unanswered attempt (a lease's 10 minutes and 60 seconds of clock difference) | the lease set that attempt used has expired everywhere; the next attempt starts |
+| The recipient's lease set, looked up right after the unanswered attempt, every 30 s after it and when anything arrives from that contact, was published later than the one held at the failure | the next attempt starts at once |
 | The link came back, or the device moved to another network | every recipient that waits is held until this account's server answers a request, then tried again |
 | The contact announced a new address | its letters go to the new address at once |
 | The account was opened or switched on | every letter is tried |
@@ -44,8 +43,8 @@ account's server.
 The lookup drops what the outbound destination holds of the recipient's lease
 set and asks the netDb again. It runs on the router that carries the
 destination: the embedded one, or the gateway's over `lease-set-refresh`. An
-external router over SAM offers no such lookup, so there the 11 minutes and the
-link causes open the way.
+external router over SAM offers no such lookup, so there the next attempt
+starts every 30 s.
 
 ## Parameters
 
@@ -53,7 +52,7 @@ link causes open the way.
 |---|---|
 | Dial timeout per attempt | 15 s |
 | Reply grace after the envelope is written | 30 s, plus one second per 8 KiB carried |
-| Next attempt after no answer, at the latest | 660 s |
+| Lease set lookup while a recipient does not answer | every 30 s |
 | Upper bound on preparing the outbound destination | 180 s |
 | Outbound destination, per correspondent: longest life | 3600 s |
 | Outbound destination, per correspondent: closed after no delivery for | 600 s |
@@ -86,15 +85,15 @@ server admits one contact request per sending address a day and refuses the next
 
 | Protocol state | Presentation in this client |
 |---|---|
-| preparing | Hollow indicator |
-| in flight | Grey indicator; while the way to the recipient is closed the message says it waits for the recipient's server |
+| preparing | Hollow indicator; also while the way to the recipient is closed or this device has no network, and the message says what it waits for |
+| in flight | Grey indicator, while an attempt is under way |
 | stored | Amber indicator |
 | read | Green indicator |
 | failed | Red indicator, with the reason under the message and a Resend |
 | received | No indicator: the state an incoming message carries |
 
 Red means the recipient's server refused the message, or the message never
-reached the outbox. A message that only waits stays grey. A delivery is also
+reached the outbox. A message that only waits keeps the hollow indicator. A delivery is also
 listed in the background-activity panel while it is under way.
 
 Two messages carry no protocol state of their own and are shown at what they
