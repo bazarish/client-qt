@@ -729,6 +729,11 @@ void SessionController::openConversationAtMessage(const QString& peer, qint64 lo
     showWindow(store_.messagesAround(peer, localId, kPageSize), {ViewLanding::eMessage, localId});
 }
 
+void SessionController::openQuotedMessage(const qint64 localId)
+{
+    showWindow(store_.messagesAround(activePeer_, localId, kPageSize), {ViewLanding::eQuote, localId});
+}
+
 int SessionController::loadOlderMessages()
 {
     if (!hasMoreOlder_ || activePeer_.isEmpty()) {
@@ -1393,11 +1398,7 @@ QVariantMap SessionController::replyPreview(const QString& e2eId) const
     }
     info[QStringLiteral("found")] = true;
     info[QStringLiteral("localId")] = m.id;
-    QString preview = m.text;
-    if (preview.isEmpty() && !m.attName.isEmpty()) {
-        preview = QStringLiteral("\xF0\x9F\x93\x8E ") + m.attName;
-    }
-    info[QStringLiteral("text")] = preview;
+    info[QStringLiteral("text")] = chatPreviewOf({m.text, m.type, m.attName, {}});
     if (m.outgoing) {
         info[QStringLiteral("sender")] = QStringLiteral("You");
     } else if (!m.author.isEmpty()) {

@@ -241,7 +241,7 @@ Item {
     readonly property bool actionable: !delegate.isSystem && !delegate.isContactRequest
         && !!model.e2eId && model.e2eId.length > 0
     function reply() {
-        const preview = delegate.isAttachment ? (model.attName || "") : (model.text || "")
+        const preview = delegate.session.replyPreview(model.e2eId).text
         const who = model.outgoing ? "You"
             : (model.author ? model.author
                 : (delegate.session ? delegate.session.activePeerName : ""))

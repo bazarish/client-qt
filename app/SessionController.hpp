@@ -307,6 +307,7 @@ public:
     Q_INVOKABLE void openConversation(const QString& peer);
     Q_INVOKABLE void closeConversation();
     Q_INVOKABLE void openConversationAtMessage(const QString& peer, qint64 localId);
+    Q_INVOKABLE void openQuotedMessage(qint64 localId);
     Q_INVOKABLE int loadOlderMessages();
     Q_INVOKABLE int loadNewerMessages();
     Q_INVOKABLE void jumpToLatest();
