@@ -27,6 +27,8 @@ namespace {
 constexpr int kIdleSleepMs = 5;
 
 constexpr int kMillisecondsPerSecond = 1000;
+// Within the smallest output buffer, four frames on Android.
+constexpr std::size_t kPlaybackLeadFrames = 3;
 
 
 constexpr int kVoiceBitrateBps = 24000;
@@ -172,6 +174,8 @@ void VoiceNote::play(const Bytes& opus, const double speed, const qint64 fromMs)
         TimeStretch stretch(std::move(pcm), speed);
         std::vector<std::int16_t> out(static_cast<std::size_t>(kCallSamplesPerFrame));
         std::size_t playedSamples = 0;
+        std::size_t written = 0;
+        const auto startedAt = std::chrono::steady_clock::now();
         bool ended = false;
         while (playing_.load()) {
             const std::size_t produced = stretch.read(out);
@@ -186,7 +190,11 @@ void VoiceNote::play(const Bytes& opus, const double speed, const qint64 fromMs)
             playedMs_.store(std::max<qint64>(0, fromMs)
                 + static_cast<qint64>(static_cast<double>(playedSamples) * speed
                     * kMillisecondsPerSecond / kCallSampleRate));
-            std::this_thread::sleep_for(std::chrono::milliseconds(kCallFrameMs));
+            ++written;
+            if (written > kPlaybackLeadFrames) {
+                std::this_thread::sleep_until(startedAt
+                    + std::chrono::milliseconds(kCallFrameMs) * (written - kPlaybackLeadFrames));
+            }
         }
         playing_.store(false);
         if (!ended) {
