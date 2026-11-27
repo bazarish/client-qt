@@ -175,20 +175,6 @@ WindowPopup {
                         }
                     }
                     RowLayout {
-                        visible: App.mobile
-                        Layout.fillWidth: true
-                        Label {
-                            text: qsTr("Allow screen capture")
-                            color: Theme.text
-                            wrapMode: Text.Wrap
-                            Layout.fillWidth: true
-                        }
-                        Toggle {
-                            checked: App.screenCapture
-                            onToggled: App.screenCapture = checked
-                        }
-                    }
-                    RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
                             Layout.fillWidth: true
@@ -209,8 +195,23 @@ WindowPopup {
                             onToggled: App.backgroundTasksVisible = checked
                         }
                     }
+                    RowLayout {
+                        visible: App.mobile
+                        Layout.fillWidth: true
+                        Label {
+                            text: qsTr("Allow screen capture")
+                            color: Theme.text
+                            wrapMode: Text.Wrap
+                            Layout.fillWidth: true
+                        }
+                        Toggle {
+                            checked: App.screenCapture
+                            onToggled: App.screenCapture = checked
+                        }
+                    }
                     MenuButton {
                         Layout.fillWidth: true
+                        Layout.topMargin: 12
                         iconName: "lock"
                         text: qsTr("App lock")
                         onClicked: { root.close(); appLockPage.openFrom(root) }
