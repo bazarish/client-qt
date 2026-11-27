@@ -70,6 +70,7 @@ Item {
     function raiseKeyboard() {
         const window = root.Window.window
         if (root.keyboardWanted && field.activeFocus && App.inFront && window && window.active) {
+            root.keyboardWanted = false
             Qt.inputMethod.show()
         }
     }
@@ -84,9 +85,7 @@ Item {
     Connections {
         target: Qt.inputMethod
         function onVisibleChanged() {
-            if (Qt.inputMethod.visible) {
-                root.keyboardWanted = false
-            } else if (!root.pending) {
+            if (!Qt.inputMethod.visible && !root.pending) {
                 root.keyboardBack = false
             }
         }
