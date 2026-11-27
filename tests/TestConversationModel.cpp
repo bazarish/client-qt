@@ -57,6 +57,11 @@ void landingTravelsWithTheReset()
     CHECK(seenAtReset.value("centre").toBool());
     CHECK(seenAtReset.value("highlight").toLongLong() == kFound);
 
+    model.setMessages(page(), {ViewLanding::eQuote, kFound});
+    CHECK(seenAtReset.value("row").toInt() == kFound - kFirst);
+    CHECK(!seenAtReset.value("centre").toBool());
+    CHECK(seenAtReset.value("highlight").toLongLong() == kFound);
+
     model.setMessages(page(), {ViewLanding::eRow, kPastTheEnd});
     CHECK(seenAtReset.value("row").toInt() == model.rowCount() - 1);
     model.setMessages(page(), {ViewLanding::eUnread, kPastTheEnd});

@@ -106,7 +106,7 @@ Item {
         const inSight = item !== null && item.y >= messages.contentY
             && item.y + item.height <= messages.contentY + messages.height
         if (!inSight) {
-            messages.landAt(row, true, false)
+            messages.landAt(row, false, false)
         }
         messages.highlightId = localId
         highlightTimer.restart()
@@ -122,7 +122,7 @@ Item {
         if (row >= 0) {
             showMessage(row, localId)
         } else if (session) {
-            session.openConversationAtMessage(session.activePeer, localId)
+            session.openQuotedMessage(localId)
         }
     }
 

@@ -79,9 +79,9 @@ struct LiveMessageState {
 };
 
 struct ViewLanding {
-    enum Mode { eEnd, eRow, eUnread, eMessage };
+    enum Mode { eEnd, eRow, eUnread, eMessage, eQuote };
     Mode mode = eEnd;
-    // A row for eRow, a message id for eUnread and eMessage.
+    // A row for eRow, a message id for the others.
     qint64 at = 0;
 };
 

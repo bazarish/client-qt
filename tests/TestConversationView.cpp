@@ -253,6 +253,15 @@ try {
     expect(list->property("highlightId").toLongLong() == kThirdChat + kFoundRow,
         "the found message is highlighted");
 
+    open(session, QStringLiteral("c"), 0, kThirdChat, ViewLanding::eQuote,
+        kThirdChat + kFoundRow);
+    QTest::qWait(kSettleMs);
+    QQuickItem* const quoted = itemAt(list, kFoundRow);
+    const double top = list->property("contentY").toDouble();
+    expect(quoted != nullptr && std::abs(quoted->y() - top) < kPixel
+            && quoted->y() + quoted->height() <= top + list->height(),
+        "a quoted message lands whole at the top of the view");
+
     frames.clear();
     fixture.fill(1, kPageRows, kOtherAccount, ViewLanding::eEnd, 0);
     CHECK(session->setProperty("conversation", QVariant::fromValue<QObject*>(&second)));

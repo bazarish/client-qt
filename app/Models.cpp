@@ -269,16 +269,17 @@ QVariantMap ConversationModel::landing() const
     int row = -1;
     if (landing_.mode == ViewLanding::eRow && count > 0) {
         row = static_cast<int>(std::clamp<qint64>(landing_.at, 0, count - 1));
-    } else if (landing_.mode == ViewLanding::eUnread || landing_.mode == ViewLanding::eMessage) {
+    } else if (landing_.mode != ViewLanding::eEnd) {
         row = rowForId(landing_.at);
     }
     const bool found = row >= 0;
+    const bool shown = landing_.mode == ViewLanding::eMessage || landing_.mode == ViewLanding::eQuote;
     return {{QStringLiteral("row"), row},
         {QStringLiteral("centre"), found && landing_.mode == ViewLanding::eMessage},
         {QStringLiteral("unreadFrom"),
             found && landing_.mode == ViewLanding::eUnread ? landing_.at : qint64(-1)},
         {QStringLiteral("highlight"),
-            found && landing_.mode == ViewLanding::eMessage ? landing_.at : qint64(-1)}};
+            found && shown ? landing_.at : qint64(-1)}};
 }
 
 void ConversationModel::putReactions(const QString& e2eId, const RowReactions& reactions)
