@@ -175,6 +175,20 @@ WindowPopup {
                         }
                     }
                     RowLayout {
+                        visible: App.mobile
+                        Layout.fillWidth: true
+                        Label {
+                            text: qsTr("Allow screen capture")
+                            color: Theme.text
+                            wrapMode: Text.Wrap
+                            Layout.fillWidth: true
+                        }
+                        Toggle {
+                            checked: App.screenCapture
+                            onToggled: App.screenCapture = checked
+                        }
+                    }
+                    RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
                             Layout.fillWidth: true
@@ -193,20 +207,6 @@ WindowPopup {
                         Toggle {
                             checked: App.backgroundTasksVisible
                             onToggled: App.backgroundTasksVisible = checked
-                        }
-                    }
-                    RowLayout {
-                        visible: App.mobile
-                        Layout.fillWidth: true
-                        Label {
-                            text: qsTr("Allow screen capture")
-                            color: Theme.text
-                            wrapMode: Text.Wrap
-                            Layout.fillWidth: true
-                        }
-                        Toggle {
-                            checked: App.screenCapture
-                            onToggled: App.screenCapture = checked
                         }
                     }
                     MenuButton {
