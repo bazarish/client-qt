@@ -55,6 +55,16 @@ Popup {
         shooter.active = false
     }
     Connections {
+        target: root.contentItem.Window.window
+        function onActiveFocusItemChanged() {
+            const item = root.contentItem.Window.activeFocusItem
+            if (root.opened && App.inFront && item
+                    && (item === root.contentItem || item === root.contentItem.parent)) {
+                pins.focusInput()
+            }
+        }
+    }
+    Connections {
         target: App
         function onInFrontChanged() {
             if (App.inFront) {
