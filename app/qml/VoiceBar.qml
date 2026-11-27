@@ -38,6 +38,7 @@ Rectangle {
         }
         VoiceTrack {
             Layout.fillWidth: true
+            stretched: true
             session: root.session
             e2eId: root.session ? root.session.voicePlaying : ""
             durationMs: root.session ? root.session.voicePlayingDurationMs : 0

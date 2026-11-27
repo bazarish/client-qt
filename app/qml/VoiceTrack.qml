@@ -11,6 +11,7 @@ RowLayout {
     property string e2eId: ""
     property real durationMs: 0
     property string wave: ""
+    property bool stretched: false
     readonly property bool playing: !!root.session && root.e2eId.length > 0
         && root.session.voicePlaying === root.e2eId
     spacing: 8
@@ -18,27 +19,43 @@ RowLayout {
     Row {
         id: bars
         readonly property int kBars: 32
+        readonly property int kBarWidth: 2
         readonly property int kMaxHeight: 26
+        readonly property int kTopLevel: 15
+        readonly property int count: root.stretched
+            ? Math.max(kBars, Math.floor((bars.width + spacing) / (kBarWidth + spacing)))
+            : kBars
         readonly property int playedBars: {
             if (!root.playing || !(root.durationMs > 0)) {
                 return 0
             }
             const fraction = root.session.voicePositionMs / root.durationMs
-            return Math.round(Math.min(1, Math.max(0, fraction)) * kBars)
+            return Math.round(Math.min(1, Math.max(0, fraction)) * count)
+        }
+        function sample(at) {
+            return parseInt(root.wave.charAt(at), 16) / kTopLevel
+        }
+        // Stretched over more bars than the note has points, the levels between them are drawn in a line.
+        function levelAt(index) {
+            if (!root.stretched) {
+                return bars.sample(Math.floor(index * root.wave.length / count))
+            }
+            const at = index * (root.wave.length - 1) / Math.max(1, count - 1)
+            const low = Math.floor(at)
+            const high = Math.min(low + 1, root.wave.length - 1)
+            return bars.sample(low) + (bars.sample(high) - bars.sample(low)) * (at - low)
         }
         visible: root.wave.length > 0
-        Layout.preferredWidth: kBars * 3 - 1
+        Layout.fillWidth: root.stretched
+        Layout.preferredWidth: root.stretched ? 0 : kBars * (kBarWidth + spacing) - spacing
         Layout.preferredHeight: kMaxHeight
         spacing: 1
         Repeater {
-            model: bars.visible ? bars.kBars : 0
+            model: bars.visible ? bars.count : 0
             delegate: Rectangle {
                 required property int index
-                readonly property real level: {
-                    const from = Math.floor(index * root.wave.length / bars.kBars)
-                    return parseInt(root.wave.charAt(from), 16) / 15
-                }
-                width: 2
+                readonly property real level: bars.levelAt(index)
+                width: bars.kBarWidth
                 height: Math.max(2, level * bars.kMaxHeight)
                 anchors.verticalCenter: parent.verticalCenter
                 radius: 1
@@ -49,7 +66,8 @@ RowLayout {
             if (!(root.durationMs > 0)) {
                 return
             }
-            const fraction = Math.min(1, Math.max(0, x / bars.width))
+            const drawn = bars.count * (bars.kBarWidth + bars.spacing) - bars.spacing
+            const fraction = Math.min(1, Math.max(0, x / drawn))
             root.session.playVoice(root.e2eId, Math.round(fraction * root.durationMs))
         }
         TapHandler {
@@ -84,7 +102,7 @@ RowLayout {
         color: Theme.text
         font.pixelSize: Theme.fontSmall
     }
-    Item { Layout.fillWidth: true }
+    Item { visible: !root.stretched; Layout.fillWidth: true }
     Label {
         text: qsTr("%1x").arg(root.session ? root.session.voiceSpeed : 1)
         color: (root.session && root.session.voiceSpeed > 1) ? Theme.accent : Theme.textDim
