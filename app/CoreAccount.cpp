@@ -511,9 +511,10 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         });
     connect(&ingest_, &MessageIngest::messageArrived, this,
         [this](const QString& peer, const qint64 id) {
-            if (contacts_.state(peer).notifications || store_.messageById(id).mentionsMe) {
-                emit messageNotification(
-                    peer, contacts_.peerName(peer), chatPreviewOf(store_.lastMessage(peer)));
+            const StoredMessage arrived = store_.messageById(id);
+            if (contacts_.state(peer).notifications || arrived.mentionsMe) {
+                emit messageNotification(peer, contacts_.peerName(peer),
+                    chatPreviewOf({arrived.text, arrived.type, arrived.attName, arrived.author}));
             }
         });
     connect(&ingest_, &MessageIngest::reactionArrived, this,

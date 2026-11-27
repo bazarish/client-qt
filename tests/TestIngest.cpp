@@ -311,6 +311,8 @@ try {
     anchored.after = "q1";
     CHECK(took(anchored));
     CHECK(store.messageByE2e("a3", carl).orderKey == kOwnAt + 1);
+    CHECK(store.lastMessage(carl).text != QStringLiteral("late"));
+    CHECK(store.messageById(arrivedId).text == QStringLiteral("late"));
     client::IncomingMessage stranger = incoming(carl, "text", "a4", "after a stranger");
     stranger.after = "gone";
     CHECK(took(stranger));
