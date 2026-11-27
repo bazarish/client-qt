@@ -120,7 +120,7 @@ Item {
                                              + "M 9 7 H 19 M 9 12 H 19 M 9 17 H 19"
                         case "devices": return "M 3 5 H 14 V 13 H 3 Z M 6 16 H 11 M 8.5 13 V 16 "
                                              + "M 16 9 H 21 V 20 H 16 Z"
-                        case "satellite": return "M 3.5 9.5 A 10.5 10.5 0 0 0 14.5 20.5 Z "
+                        case "satellite": return "M 3.5 9.5 A 8 8 0 0 0 14.5 20.5 Z "
                                              + "M 9 15 L 14.5 9.5 M 14.5 9.5 V 9.6 "
                                              + "M 15 5 A 4 4 0 0 1 19 9 M 15 1.5 A 7.5 7.5 0 0 1 22.5 9"
                         case "broadcast": return "M 12 12 V 12.1 "
