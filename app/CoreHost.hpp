@@ -156,6 +156,7 @@ private:
     QString pendingDeleteId_;
     QString deletingId_;
     QSet<QString> pendingRemovals_;
+    QSet<QString> rekeying_;
     int closingSessions_ = 0;
     std::optional<bool> portableWanted_;
     bool exiting_ = false;

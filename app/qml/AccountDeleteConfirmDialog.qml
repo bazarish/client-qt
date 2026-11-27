@@ -9,6 +9,7 @@ Dialog {
     property string accountName: ""
     // A secondary device cannot end the account: it only forgets it.
     property bool localOnly: false
+    property bool serverless: false
     property bool primary: false
     property bool otherPrimaries: false
     signal confirmed(string id)
@@ -41,17 +42,24 @@ Dialog {
     width: Math.min(Theme.dialogWidth, parent ? parent.width - Theme.windowSideRoom : Theme.dialogWidth)
     title: qsTr("Delete account")
     footer: DialogButtons {
-        acceptText: root.localOnly ? qsTr("Remove from this device only") : qsTr("Delete everywhere")
+        acceptText: root.serverless ? qsTr("Delete")
+            : root.localOnly ? qsTr("Remove from this device only") : qsTr("Delete everywhere")
         danger: true
-        showCancel: !root.localOnly
-        cancelOnOwnLine: !root.localOnly
-        rejectBelow: root.localOnly
+        showCancel: !root.localOnly && !root.serverless
+        cancelOnOwnLine: showCancel
+        rejectBelow: !showCancel
         cancelText: qsTr("Remove from this device only")
         onCancelled: { root.close(); root.chosen(false) }
         onAccepted: root.accept()
         onRejected: root.reject()
     }
-    onAccepted: root.chosen(!root.localOnly)
+    onAccepted: {
+        if (root.serverless) {
+            root.confirmed(root.accountId)
+            return
+        }
+        root.chosen(!root.localOnly)
+    }
     background: DialogFrame { destructive: true }
     header: WindowHeader {
         title: root.title
@@ -69,7 +77,8 @@ Dialog {
         }
         Label {
             width: parent.width
-            text: root.localOnly
+            text: root.serverless ? qsTr("New account with no server")
+                : root.localOnly
                 ? qsTr("This device forgets the account. The account and its mail stay on the server.")
                 : qsTr("Permanently delete this account? ")
                     + qsTr("The account ends on the server and goes from this device. This cannot be undone.\n\nRemoving from this device only, the server forgets just this device. The server keeps receiving mail.")

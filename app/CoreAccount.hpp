@@ -65,6 +65,7 @@ public:
     bool reachable() const { return reachable_ && transport_ == i2p::TransportState::eUp; }
     QString activeFacade() const { return activeFacade_; }
     bool hasServer() const { return hasServer_; }
+    bool serverless() const { return serverKnown_ && !hasServer_; }
     client::Session::CallState callState() const { return call_.state; }
     bool callEnding() const { return callEnding_; }
     QString callPeer() const { return call_.peer; }
@@ -236,6 +237,7 @@ private:
     QString displayName_;
     QString activeFacade_;
     bool hasServer_ = false;
+    bool serverKnown_ = false;
     bool reachable_ = false;
     QString gatewayRefusal_;
     client::LinkFailure linkFailure_ = client::LinkFailure::eNone;

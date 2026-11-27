@@ -18,6 +18,8 @@ struct AccountListRow {
     bool open = false;
     bool primary = false;
     bool otherPrimaries = false;
+    bool serverless = false;
+    bool rekeying = false;
 };
 
 struct AccountRow {
@@ -38,13 +40,13 @@ struct AccountRow {
 inline QDataStream& operator<<(QDataStream& out, const AccountListRow& row)
 {
     return out << row.id << row.name << row.fingerprint << row.encrypted << row.open << row.primary
-               << row.otherPrimaries;
+               << row.otherPrimaries << row.serverless << row.rekeying;
 }
 
 inline QDataStream& operator>>(QDataStream& in, AccountListRow& row)
 {
     return in >> row.id >> row.name >> row.fingerprint >> row.encrypted >> row.open >> row.primary
-        >> row.otherPrimaries;
+        >> row.otherPrimaries >> row.serverless >> row.rekeying;
 }
 
 inline QDataStream& operator<<(QDataStream& out, const AccountRow& row)

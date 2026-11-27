@@ -1469,6 +1469,18 @@
       "zh": "正在删除账号",
       "ar": "جارٍ حذف الحساب"
     },
+    "Changing the password...": {
+      "ru": "Смена пароля...",
+      "es": "Cambiando la contraseña...",
+      "zh": "正在更改密码...",
+      "ar": "جارٍ تغيير كلمة المرور..."
+    },
+    "New account with no server": {
+      "ru": "Новый аккаунт без сервера",
+      "es": "Cuenta nueva sin servidor",
+      "zh": "没有服务器的新账号",
+      "ar": "حساب جديد بلا خادم"
+    },
     "Deleting...": {
       "ru": "Удаление...",
       "es": "Eliminando...",

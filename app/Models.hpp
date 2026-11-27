@@ -17,7 +17,7 @@ class AccountListModel : public QAbstractListModel {
 public:
     enum Roles {
         IdRole = Qt::UserRole + 1, NameRole, FingerprintRole, EncryptedRole, OpenRole, PrimaryRole,
-        OtherPrimariesRole
+        OtherPrimariesRole, ServerlessRole, RekeyingRole
     };
     using QAbstractListModel::QAbstractListModel;
 

@@ -30,6 +30,8 @@ QVariant AccountListModel::data(const QModelIndex& index, int role) const
     case OpenRole: return p.open;
     case PrimaryRole: return p.primary;
     case OtherPrimariesRole: return p.otherPrimaries;
+    case ServerlessRole: return p.serverless;
+    case RekeyingRole: return p.rekeying;
     default: return {};
     }
 }
@@ -38,7 +40,8 @@ QHash<int, QByteArray> AccountListModel::roleNames() const
 {
     return {{IdRole, "accountId"}, {NameRole, "name"}, {FingerprintRole, "fingerprint"},
         {EncryptedRole, "encrypted"}, {OpenRole, "open"}, {PrimaryRole, "primary"},
-        {OtherPrimariesRole, "otherPrimaries"}};
+        {OtherPrimariesRole, "otherPrimaries"}, {ServerlessRole, "serverless"},
+        {RekeyingRole, "rekeying"}};
 }
 
 void AccountListModel::setAccounts(QVector<AccountListRow> accounts)

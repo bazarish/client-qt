@@ -29,6 +29,7 @@ constexpr int kCoreStartMs = 30000;
 constexpr int kSettleMs = 10000;
 constexpr const char* kLockedName = "locked";
 constexpr const char* kLockedPassphrase = "correct horse";
+constexpr const char* kNewPassphrase = "battery staple";
 constexpr const char* kNotDeclined = "The call was not declined";
 
 // The core leaves with _Exit, so its socket file outlives it.
@@ -137,6 +138,9 @@ try {
         QString id;
         bool open = false;
         QString name;
+        bool serverless = false;
+        bool rekeying = false;
+        bool openWhileRekeying = false;
         QStringList ended;
         QStringList asked;
         QObject::connect(&second.events, &AppEvents::accountList,
@@ -148,6 +152,9 @@ try {
                     if (!id.isEmpty() && row.id == id) {
                         open = row.open;
                         name = row.name;
+                        serverless = row.serverless;
+                        rekeying = row.rekeying;
+                        openWhileRekeying = openWhileRekeying || (rekeying && open);
                     }
                 }
             });
@@ -155,6 +162,9 @@ try {
             [&](const QString& gone) { ended << gone; });
         QObject::connect(&second.events, &AppEvents::needPassphrase,
             [&](const QString& locked, const QString&) { asked << locked; });
+        int unlockFailures = 0;
+        QObject::connect(
+            &second.events, &AppEvents::unlockFailed, [&](const QString&) { ++unlockFailures; });
 
         emit second.commands.createAccount(
             QLatin1String(kLockedName), QLatin1String(kLockedPassphrase));
@@ -184,6 +194,21 @@ try {
         CHECK(settleUntil([&]() { return endFailures == 1 && !failures.isEmpty(); }));
         CHECK(failures.front().startsWith(QLatin1String(kNotDeclined)));
         second.relay.forget(id);
+
+        CHECK(settleUntil([&]() { return serverless; }));
+        emit second.commands.changePassphrase(id, QLatin1String(kNewPassphrase));
+        emit second.commands.openAccount(id, QLatin1String(kLockedPassphrase));
+        CHECK(settleUntil([&]() { return rekeying; }));
+        CHECK(settleUntil([&]() { return !rekeying && open; }, kCoreStartMs));
+        CHECK(!openWhileRekeying);
+
+        emit second.commands.lockAccount(id);
+        CHECK(settleUntil([&]() { return !open; }));
+        emit second.commands.openAccount(id, QLatin1String(kLockedPassphrase));
+        CHECK(settleUntil([&]() { return unlockFailures == 1; }));
+        CHECK(!open);
+        emit second.commands.openAccount(id, QLatin1String(kNewPassphrase));
+        CHECK(settleUntil([&]() { return open; }));
     }
 
     Window third;

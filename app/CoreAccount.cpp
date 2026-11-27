@@ -425,6 +425,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         [this](const QString& activeAddress, const QStringList& configured) {
             activeFacade_ = activeAddress;
             hasServer_ = !configured.isEmpty();
+            serverKnown_ = true;
             emit changed();
         });
     connect(worker_, &SessionWorker::linksRebuilding, this, [this]() {

@@ -75,8 +75,8 @@ Item {
                     width: ListView.view.width
                     height: 64
                     readonly property bool goingAway: App.deletingId === model.accountId
-                    enabled: !goingAway
-                    opacity: goingAway ? 0.5 : 1
+                    enabled: !goingAway && !model.rekeying
+                    opacity: enabled ? 1 : 0.5
                     onClicked: {
                         if (model.encrypted && !model.open) {
                             passDialog.ask(model.accountId)
@@ -108,6 +108,7 @@ Item {
                                 value: model.fingerprint
                                 replacement: goingAway
                                     ? qsTr("Deleting...")
+                                    : model.rekeying ? qsTr("Changing the password...")
                                     : (model.fingerprint.length > 0 ? "" : qsTr("locked"))
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
@@ -131,13 +132,14 @@ Item {
                             onClicked: {
                                 shown = false
                                 deleteDialog.localOnly = false
+                                deleteDialog.serverless = model.serverless
                                 deleteDialog.show(model.accountId, model.name, model.primary,
                                     model.otherPrimaries)
                             }
                         }
                         IconButton {
                             id: rowMore
-                            visible: model.encrypted && !model.open
+                            visible: (model.encrypted && !model.open) || model.serverless
                             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                             iconName: "more"
                             onClicked: rowDelete.shown = !rowDelete.shown

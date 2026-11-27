@@ -485,9 +485,11 @@ void CoreHost::refreshAccountList()
     try {
         for (const client::AccountInfo& info : manager_->list()) {
             const QString id = QString::fromStdString(info.id);
+            const CoreAccount* const account = sessionFor(id);
             rows.push_back(AccountListRow{id, QString::fromStdString(info.name),
-                QString::fromStdString(info.fingerprint), info.encrypted,
-                sessionFor(id) != nullptr, info.primary, info.otherPrimaries});
+                QString::fromStdString(info.fingerprint), info.encrypted, account != nullptr,
+                info.primary, info.otherPrimaries, account != nullptr && account->serverless(),
+                rekeying_.contains(id)});
         }
     } catch (const std::exception& error) {
         bazarish::log::warn("account list incomplete: {}", error.what());
@@ -503,6 +505,15 @@ void CoreHost::refreshAccountRows()
         const CoreAccount* const account = sessionFor(row.id);
         if (row.open != (account != nullptr)) {
             row.open = account != nullptr;
+            changed = true;
+        }
+        const bool serverless = account != nullptr && account->serverless();
+        if (row.serverless != serverless) {
+            row.serverless = serverless;
+            changed = true;
+        }
+        if (row.rekeying != rekeying_.contains(row.id)) {
+            row.rekeying = rekeying_.contains(row.id);
             changed = true;
         }
         if (account == nullptr) {
@@ -575,6 +586,9 @@ void CoreHost::setActive(const QString& id)
 void CoreHost::openSession(const QString& id, const QString& passphrase, const bool makeActive,
     const bool startOnline)
 {
+    if (rekeying_.contains(id)) {
+        return;
+    }
     if (sessionFor(id) != nullptr) {
         if (makeActive) {
             setActive(id);
@@ -755,6 +769,9 @@ void CoreHost::createAccount(const QString& name, const QString& passphrase)
 
 void CoreHost::openAccount(const QString& id, const QString& passphrase)
 {
+    if (rekeying_.contains(id)) {
+        return;
+    }
     const bool wasOff = offline_.contains(id);
     const bool bringOnline = !wasOff || (unlockingId_ == id && unlockToBringOnline_);
     unlockingId_ = id;
@@ -1164,6 +1181,7 @@ void CoreHost::changePassphrase(const QString& id, const QString& passphrase)
     const QString file = pathText(manager_->fileFor(id.toStdString()));
     log_.begin(kPassphraseOperation, QStringLiteral("account"),
         tr("Changing the database password"), tr("Waiting for this account..."));
+    rekeying_.insert(id);
     connect(account, &QObject::destroyed, this,
         [this, id, file, oldPassphrase, passphrase, makeActive, startOnline]() {
             inBackground([this, id, file, oldPassphrase, passphrase, makeActive, startOnline]() {
@@ -1183,6 +1201,7 @@ void CoreHost::changePassphrase(const QString& id, const QString& passphrase)
                             ? tr("This account is no longer password-protected")
                             : tr("Password changed");
                         log_.finish(kPassphraseOperation, changed, note);
+                        rekeying_.remove(id);
                         reopenAfterPassphrase(id, changed ? passphrase : oldPassphrase,
                             makeActive, startOnline, note, changed);
                     },
