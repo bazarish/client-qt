@@ -324,6 +324,8 @@ if(Qt6_FOUND)
             app/qml/MemberListSheet.qml
             app/qml/CallScreen.qml
             app/qml/CallBar.qml
+            app/qml/VoiceBar.qml
+            app/qml/VoiceTrack.qml
             app/qml/IncomingCallWindow.qml
             app/qml/AppSettingsPage.qml
             app/qml/SettingsPage.qml

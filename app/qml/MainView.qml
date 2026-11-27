@@ -51,26 +51,29 @@ Item {
             session: root.session
             onTapped: settings.open()
         }
-    }
-    CallBar {
-        id: callBar
-        anchors.top: strips.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
-        session: root.session
-        minimized: root.callMinimized
-        onExpandRequested: {
-            if (App.callSession === root.session) {
-                root.callMinimized = false
-                callScreen.open()
-            } else {
-                App.switchTo(App.callSession.accountId)
+        CallBar {
+            id: callBar
+            width: strips.width
+            session: root.session
+            minimized: root.callMinimized
+            onExpandRequested: {
+                if (App.callSession === root.session) {
+                    root.callMinimized = false
+                    callScreen.open()
+                } else {
+                    App.switchTo(App.callSession.accountId)
+                }
             }
+        }
+        VoiceBar {
+            width: strips.width
+            session: root.session
+            noteInSight: !!root.conversation && root.conversation.voiceInSight
         }
     }
     Loader {
         id: pageLoader
-        anchors.top: callBar.visible ? callBar.bottom : strips.bottom
+        anchors.top: strips.bottom
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom

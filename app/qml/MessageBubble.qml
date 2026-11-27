@@ -71,6 +71,21 @@ Item {
     readonly property bool isVoice: model.type === "audio"
     readonly property bool voicePlaying: delegate.isVoice && delegate.session
         && delegate.session.voicePlaying === model.e2eId
+    // The list holds the bubble of the playing note, so a player bar can stand in once it scrolls away.
+    readonly property bool showsPlayingVoice: delegate.voicePlaying && !delegate.pooled
+    onShowsPlayingVoiceChanged: delegate.claimPlayer()
+    Component.onCompleted: delegate.claimPlayer()
+    function claimPlayer() {
+        const view = delegate.ListView.view
+        if (!view) {
+            return
+        }
+        if (delegate.showsPlayingVoice) {
+            view.playingBubble = delegate
+        } else if (view.playingBubble === delegate) {
+            view.playingBubble = null
+        }
+    }
     readonly property string pictureUrl: (delegate.isPicture && model.hasPicture)
         ? "image://picture/" + model.e2eId + "?v=" + model.pictureVersion : ""
     readonly property bool pictureBroken: delegate.isPicture && !model.hasPicture
@@ -842,96 +857,12 @@ Item {
                     tint: Theme.accent
                     onClicked: delegate.session.playVoice(model.e2eId)
                 }
-
-                Row {
-                    id: wave
-                    readonly property string hex: model.attWave || ""
-                    readonly property int kBars: 32
-                    readonly property int kMaxHeight: 26
-                    readonly property int playedBars: {
-                        if (!delegate.voicePlaying || !(model.attDurationMs > 0)) {
-                            return 0
-                        }
-                        const fraction = delegate.session.voicePositionMs / model.attDurationMs
-                        return Math.round(Math.min(1, Math.max(0, fraction)) * kBars)
-                    }
-                    visible: hex.length > 0
-                    Layout.preferredWidth: kBars * 3 - 1
-                    Layout.preferredHeight: kMaxHeight
-                    spacing: 1
-                    Repeater {
-                        model: wave.visible ? wave.kBars : 0
-                        delegate: Rectangle {
-                            required property int index
-                            readonly property real level: {
-                                const from = Math.floor(index * wave.hex.length / wave.kBars)
-                                return parseInt(wave.hex.charAt(from), 16) / 15
-                            }
-                            width: 2
-                            height: Math.max(2, level * wave.kMaxHeight)
-                            anchors.verticalCenter: parent.verticalCenter
-                            radius: 1
-                            color: index < wave.playedBars ? Theme.green : Theme.textDim
-                        }
-                    }
-                    function seekTo(x) {
-                        if (!(model.attDurationMs > 0)) {
-                            return
-                        }
-                        const fraction = Math.min(1, Math.max(0, x / wave.width))
-                        delegate.session.playVoice(model.e2eId,
-                            Math.round(fraction * model.attDurationMs))
-                    }
-                    TapHandler {
-                        onTapped: function(point) { wave.seekTo(point.position.x) }
-                    }
-                    DragHandler {
-                        id: waveDrag
-                        property real lastX: 0
-                        target: null
-                        yAxis.enabled: false
-                        onCentroidChanged: {
-                            if (active) {
-                                lastX = centroid.position.x
-                            }
-                        }
-                        onActiveChanged: {
-                            if (!active) {
-                                wave.seekTo(lastX)
-                            }
-                        }
-                    }
-                    HoverHandler { cursorShape: Qt.PointingHandCursor }
-                }
-
-                Label {
-                    text: {
-                        const durationMs = model.attDurationMs || 0
-                        const speed = delegate.session ? delegate.session.voiceSpeed : 1
-                        const leftMs = delegate.voicePlaying
-                            ? Math.max(0, (durationMs - delegate.session.voicePositionMs) / speed)
-                            : durationMs
-                        return Format.minutesSeconds(Math.round(leftMs / 1000))
-                    }
-                    color: Theme.text
-                    font.pixelSize: Theme.fontSmall
-                }
-                Item { Layout.fillWidth: true }
-                Label {
-                    id: speedChip
-                    text: qsTr("%1x").arg(delegate.session ? delegate.session.voiceSpeed : 1)
-                    color: (delegate.session && delegate.session.voiceSpeed > 1)
-                        ? Theme.accent : Theme.textDim
-                    font.pixelSize: Theme.fontSmall
-                    Layout.preferredWidth: Math.ceil(speedWidth.advanceWidth)
-                    horizontalAlignment: Text.AlignRight
-                    TextMetrics {
-                        id: speedWidth
-                        font.pixelSize: Theme.fontSmall
-                        text: qsTr("1.5x")
-                    }
-                    TapHandler { onTapped: delegate.session.cycleVoiceSpeed() }
-                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                VoiceTrack {
+                    Layout.fillWidth: true
+                    session: delegate.session
+                    e2eId: model.e2eId
+                    durationMs: model.attDurationMs || 0
+                    wave: model.attWave || ""
                 }
             }
 

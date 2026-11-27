@@ -36,8 +36,8 @@ constexpr int kLongEvery = 3;
 constexpr int kLongWords = 30;
 
 const QStringList kRealFiles = {QStringLiteral("ConversationView.qml"),
-    QStringLiteral("MessageBubble.qml"), QStringLiteral("Format.js"), QStringLiteral("Placement.js"),
-    QStringLiteral("Theme.qml")};
+    QStringLiteral("MessageBubble.qml"), QStringLiteral("VoiceTrack.qml"), QStringLiteral("Format.js"),
+    QStringLiteral("Placement.js"), QStringLiteral("Theme.qml")};
 const QStringList kRealComponents = {QStringLiteral("Label"), QStringLiteral("Icon"),
     QStringLiteral("IconButton"), QStringLiteral("MenuButton"), QStringLiteral("IconLabel"),
     QStringLiteral("ContextMenu"), QStringLiteral("ContextMenuItem"),

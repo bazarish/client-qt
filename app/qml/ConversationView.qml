@@ -143,6 +143,14 @@ Item {
         target: Qt.application
         function onStateChanged() { root.markVisibleRead() }
     }
+    readonly property bool voiceInSight: {
+        const bubble = messages.playingBubble
+        if (!bubble || !root.visible) {
+            return false
+        }
+        return bubble.y + bubble.height > messages.contentY
+            && bubble.y < messages.contentY + messages.height
+    }
     readonly property bool uiLocked: App.uiLocked
     onUiLockedChanged: root.markVisibleRead()
 
@@ -590,6 +598,7 @@ Item {
             ListView {
                 id: messages
                 property TextEdit selectingText: null
+                property Item playingBubble: null
                 ScrollBoost {
                     id: wheel
                     flickable: messages

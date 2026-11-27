@@ -216,10 +216,7 @@ void SessionController::cycleVoiceSpeed()
     voiceSpeedStep_ = (voiceSpeedStep_ + 1) % static_cast<int>(kVoiceSpeeds.size());
     emit voiceChanged();
     if (!voicePlaying_.isEmpty()) {
-        const QString playing = voicePlaying_;
-        const qint64 at = voice_->playbackPositionMs();
-        stopVoice();
-        playVoice(playing, at);
+        playVoice(voicePlaying_, voice_->playbackPositionMs());
     }
 }
 
@@ -231,6 +228,12 @@ void SessionController::playVoice(const QString& e2eId, const qint64 fromMs)
     }
     stopVoiceTake();
     voiceNote();
+    if (voicePlaying_ != e2eId) {
+        const StoredMessage note = store_.messageByE2e(e2eId, activePeer_);
+        voicePlayingPeer_ = activePeer_;
+        voicePlayingDurationMs_ = note.attDurationMs;
+        voicePlayingWave_ = note.attWave;
+    }
     voicePlaying_ = e2eId;
     voiceSeekMs_ = std::max<qint64>(0, fromMs);
     voicePositionMs_ = voiceSeekMs_;
