@@ -1,0 +1,169 @@
+// Bazarish project (c) 2026
+import QtQuick
+import QtQuick.Controls
+import Bazarish
+
+Item {
+    id: root
+    property bool waiting: false
+    property string actionName: ""
+    property bool failed: false
+    property bool pending: false
+    property var answer: null
+    property real phase: 0
+    readonly property bool busy: root.pending || wave.running
+    signal submitted(string pin)
+    signal settled(bool ok)
+
+    readonly property int kCells: App.uiPinMaxDigits
+    readonly property int kGap: 8
+    readonly property int kMaxCell: 52
+    readonly property int kLift: 10
+    readonly property int kStepMs: 45
+    readonly property int kRiseMs: 120
+    readonly property int kFailMs: 2000
+    readonly property int kDotSize: 10
+    readonly property int kEdge: 2
+    readonly property real kWaitingOpacity: 0.4
+    readonly property int waveMs: (root.kCells - 1) * root.kStepMs + 2 * root.kRiseMs
+    readonly property int kArrowSize: 22
+    readonly property int cell: Math.max(0, Math.min(root.kMaxCell,
+        Math.floor((root.width - root.kCells * root.kGap) / (root.kCells + 1))))
+
+    implicitWidth: (root.kCells + 1) * root.kMaxCell + root.kCells * root.kGap
+    implicitHeight: root.cell + root.kLift
+
+    function focusInput() {
+        field.forceActiveFocus()
+        Qt.inputMethod.show()
+    }
+    function clear() {
+        field.text = ""
+        root.failed = false
+    }
+    function submit() {
+        if (field.text.length === 0 || root.waiting || root.busy) {
+            return
+        }
+        root.pending = true
+        root.failed = false
+        wave.restart()
+        root.submitted(field.text)
+    }
+    function answered(ok) {
+        root.answer = ok
+        root.settle()
+    }
+    function settle() {
+        if (wave.running || root.answer === null) {
+            return
+        }
+        const ok = root.answer
+        root.answer = null
+        root.pending = false
+        field.text = ""
+        if (!ok) {
+            root.failed = true
+            failTimer.restart()
+        }
+        root.settled(ok)
+    }
+    function liftOf(index) {
+        const t = root.phase * root.waveMs - index * root.kStepMs
+        if (t <= 0 || t >= 2 * root.kRiseMs) {
+            return 0
+        }
+        return root.kLift * Math.sin(Math.PI * t / (2 * root.kRiseMs))
+    }
+
+    NumberAnimation {
+        id: wave
+        target: root
+        property: "phase"
+        from: 0
+        to: 1
+        duration: root.waveMs
+        onFinished: root.settle()
+    }
+    Timer { id: failTimer; interval: root.kFailMs; onTriggered: root.failed = false }
+
+    TextInput {
+        id: field
+        width: 1
+        height: 1
+        opacity: 0
+        echoMode: TextInput.Password
+        inputMethodHints: Qt.ImhDigitsOnly | Qt.ImhNoPredictiveText | Qt.ImhSensitiveData
+            | Qt.ImhNoAutoUppercase
+        maximumLength: root.kCells
+        validator: RegularExpressionValidator { regularExpression: /[0-9]*/ }
+        readOnly: root.waiting || root.busy
+        onTextChanged: {
+            if (text.length > 0) {
+                root.failed = false
+            }
+            if (text.length === root.kCells) {
+                root.submit()
+            }
+        }
+        onAccepted: root.submit()
+    }
+
+    Row {
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        spacing: root.kGap
+        opacity: root.waiting ? root.kWaitingOpacity : 1
+
+        Repeater {
+            model: root.kCells
+            Rectangle {
+                required property int index
+                width: root.cell
+                height: root.cell
+                transform: Translate { y: -root.liftOf(index) }
+                radius: Theme.radiusSmall
+                color: Theme.surface
+                border.width: root.kEdge
+                border.color: root.failed ? Theme.danger
+                    : (field.activeFocus && index === field.text.length ? Theme.accent : Theme.border2)
+                Rectangle {
+                    anchors.centerIn: parent
+                    visible: index < field.text.length
+                    width: root.kDotSize
+                    height: width
+                    radius: width / 2
+                    color: Theme.text
+                }
+            }
+        }
+
+        Rectangle {
+            id: go
+            readonly property bool ready: field.text.length > 0 && !root.waiting && !root.busy
+            width: root.cell
+            height: root.cell
+            radius: Theme.radiusSmall
+            color: goTap.pressed ? Theme.accentDown : Theme.accent
+            opacity: go.ready ? 1 : root.kWaitingOpacity
+            Accessible.role: Accessible.Button
+            Accessible.name: root.actionName
+            Icon {
+                anchors.centerIn: parent
+                name: "arrowRight"
+                color: Theme.accentText
+                size: root.kArrowSize
+            }
+            TapHandler {
+                id: goTap
+                enabled: go.ready
+                onTapped: root.submit()
+            }
+        }
+    }
+
+    TapHandler {
+        enabled: !root.waiting
+        onTapped: root.focusInput()
+    }
+}

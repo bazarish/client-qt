@@ -9,6 +9,7 @@
 #include "OperationLog.hpp"
 #include "Ringtone.hpp"
 #include "CoreSocket.hpp"
+#include "UiLock.hpp"
 #include "Wire.hpp"
 
 #include <bazarish/SecretBytes.hpp>
@@ -18,6 +19,7 @@
 #include <QObject>
 #include <QSet>
 #include <QString>
+#include <QTimer>
 #include <QVector>
 
 #include <atomic>
@@ -58,6 +60,7 @@ public:
     bool callTalking() const { return callTalking_; }
     bool speakerOn() const { return speakerOn_; }
     bool windowActive() const { return windowActive_; }
+    bool uiLocked() const { return uiLock_.locked(); }
     bool callScreenShown() const { return callScreenShown_; }
     void declineRinging();
     void markChatRead(const QString& accountId, const QString& peer);
@@ -140,6 +143,22 @@ private:
     void setCamera(const QString& id);
     void setScreenCapture(bool on);
     void chooseAudio(const QString& input, const QString& output);
+    bool hidesAllText() const;
+    void announceUiLock();
+    void announceIntruder();
+    void armAutoLock();
+    void lockUi();
+    void unlockUi(const QString& pin);
+    void unlockUiByOwner();
+    void afterUnlock();
+    void enableUiLock(const QString& pin);
+    void disableUiLock();
+    void setUiAutoLock(int minutes);
+    void setUiLockFingerprint(bool on);
+    void setUiLockHidesAll(bool on);
+    void setUiLockPhoto(bool on);
+    void keepIntruderPhoto(const QByteArray& jpeg);
+    void intruderSeen();
 
     AppCommands commands_;
     AppEvents events_;
@@ -157,6 +176,9 @@ private:
     QString deletingId_;
     QSet<QString> pendingRemovals_;
     QSet<QString> rekeying_;
+    UiLock uiLock_;
+    IntruderNote intruder_;
+    QTimer autoLock_;
     int closingSessions_ = 0;
     std::optional<bool> portableWanted_;
     bool exiting_ = false;

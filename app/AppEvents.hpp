@@ -67,6 +67,8 @@ inline QDataStream& operator>>(QDataStream& in, AccountRow& row)
 }
 
 inline constexpr Latch kAppLatches[] = {
+    {"uiLock"},
+    {"intruder"},
     {"settings"},
     {"accountList"},
     {"accounts"},
@@ -105,6 +107,11 @@ signals:
     void pairingFinished(bool ok);
     void settings(bool notifications, bool notificationText, bool systemNotifications,
         bool backgroundTasks);
+    void uiLock(bool enabled, bool locked, qint64 waitUntilMs, int autoLockMinutes,
+        bool fingerprint, bool hidesAll, bool photo);
+    void uiUnlockAnswer(bool unlocked);
+    void intruderPhotoWanted();
+    void intruder(int count, qint64 lastSeconds, const QByteArray& photo);
     void ringing(const QString& account, const QString& peer, const QString& fingerprint,
         const QString& accountName);
     void ringLevel(double level);

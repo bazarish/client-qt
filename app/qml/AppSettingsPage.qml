@@ -515,6 +515,18 @@ WindowPopup {
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: Theme.contentInset
+                    MenuButton {
+                        Layout.fillWidth: true
+                        iconName: "lock"
+                        text: qsTr("App lock")
+                        onClicked: { root.close(); appLockPage.openFrom(root) }
+                    }
+                }
+                Hairline { }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: Theme.contentInset
                     spacing: 10
 
                     RowLayout {

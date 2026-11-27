@@ -14,9 +14,12 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.verify.domain.DomainVerificationManager;
 import android.content.pm.verify.domain.DomainVerificationUserState;
+import android.hardware.biometrics.BiometricManager;
+import android.hardware.biometrics.BiometricPrompt;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.CancellationSignal;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
@@ -37,6 +40,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 public final class Window {
     private static final int ASK_NOTIFICATIONS = 1;
@@ -56,12 +61,16 @@ public final class Window {
 
     private static volatile int gestureLeft = 0;
     private static volatile int gestureRight = 0;
+    private static final int FINGERPRINT = BiometricManager.Authenticators.BIOMETRIC_STRONG;
+    private static final int OWNER = BiometricManager.Authenticators.BIOMETRIC_STRONG
+        | BiometricManager.Authenticators.DEVICE_CREDENTIAL;
     private static final int LIGHT_BARS = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
         | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
 
     static Context app;
     static WeakReference<Activity> window = new WeakReference<>(null);
     private static boolean captureAllowed = false;
+    private static boolean recentsHidden = false;
     private static Integer systemStatusBar;
     private static int systemNavigationBar;
     private static int systemBarsLook;
@@ -78,6 +87,8 @@ public final class Window {
     static native void keyboardCovers(int pixels);
     static native void picturesPicked(String[] uris);
     static native void avatarPicked(String uri);
+    static native void fingerprintAnswered(boolean ok);
+    static native void ownerConfirmed(boolean ok);
 
     private Window() {}
 
@@ -179,6 +190,81 @@ public final class Window {
         } else {
             shown.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         }
+    }
+
+    // While the app lock is on, the recent-apps preview would show what the lock covers.
+    static void guardRecents(Activity shown) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            shown.setRecentsScreenshotEnabled(!recentsHidden);
+        }
+    }
+
+    public static void hideRecents(boolean on) {
+        recentsHidden = on;
+        Activity shown = window.get();
+        if (shown == null) {
+            return;
+        }
+        shown.runOnUiThread(() -> guardRecents(shown));
+    }
+
+    public static boolean fingerprintReady() {
+        return app.getSystemService(BiometricManager.class).canAuthenticate(FINGERPRINT)
+            == BiometricManager.BIOMETRIC_SUCCESS;
+    }
+
+    // A failed finger keeps the prompt up; only success, an error or the negative button end it.
+    private static BiometricPrompt.AuthenticationCallback answering(Consumer<Boolean> answer) {
+        return new BiometricPrompt.AuthenticationCallback() {
+            @Override
+            public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) {
+                answer.accept(true);
+            }
+
+            @Override
+            public void onAuthenticationError(int code, CharSequence message) {
+                answer.accept(false);
+            }
+        };
+    }
+
+    private static Consumer<Boolean> once(Consumer<Boolean> answer) {
+        AtomicBoolean given = new AtomicBoolean(false);
+        return ok -> {
+            if (given.compareAndSet(false, true)) {
+                answer.accept(ok);
+            }
+        };
+    }
+
+    public static void askFingerprint(String title, String usePassword) {
+        Activity shown = window.get();
+        if (shown == null) {
+            fingerprintAnswered(false);
+            return;
+        }
+        Consumer<Boolean> answer = once(Window::fingerprintAnswered);
+        shown.runOnUiThread(() -> new BiometricPrompt.Builder(shown)
+            .setTitle(title)
+            .setAllowedAuthenticators(FINGERPRINT)
+            .setNegativeButton(usePassword, shown.getMainExecutor(), (dialog, which) -> answer.accept(false))
+            .build()
+            .authenticate(new CancellationSignal(), shown.getMainExecutor(), answering(answer)));
+    }
+
+    public static boolean confirmOwner(String title) {
+        Activity shown = window.get();
+        if (shown == null || app.getSystemService(BiometricManager.class).canAuthenticate(OWNER)
+                != BiometricManager.BIOMETRIC_SUCCESS) {
+            return false;
+        }
+        Consumer<Boolean> answer = once(Window::ownerConfirmed);
+        shown.runOnUiThread(() -> new BiometricPrompt.Builder(shown)
+            .setTitle(title)
+            .setAllowedAuthenticators(OWNER)
+            .build()
+            .authenticate(new CancellationSignal(), shown.getMainExecutor(), answering(answer)));
+        return true;
     }
 
     public static void allowScreenCapture(boolean on) {

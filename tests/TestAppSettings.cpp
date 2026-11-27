@@ -12,6 +12,8 @@
 #include <vector>
 
 constexpr std::size_t kOversizedNoteBytes = 128 * 1024;
+constexpr const char* kPin = "2580";
+constexpr int kAutoLockMinutes = 10;
 
 namespace fs = std::filesystem;
 using bazarish::app::AppSettings;
@@ -21,6 +23,19 @@ try {
     if (argc > 1) {
         const std::string mode = argv[1];
         const AppSettings& loaded = AppSettings::instance();
+        if (mode == "expect-lock") {
+            CHECK(loaded.unreadable().empty());
+            CHECK(loaded.uiLockPin().has_value());
+            CHECK(bazarish::app::uiLockPinMatches(*loaded.uiLockPin(), kPin));
+            CHECK(loaded.uiAutoLockMinutes() == kAutoLockMinutes);
+            CHECK(loaded.uiLockHidesAll());
+            CHECK(!loaded.uiLockPhoto());
+            return 0;
+        }
+        if (mode == "expect-unreadable") {
+            CHECK(!loaded.unreadable().empty());
+            return 0;
+        }
         if (mode == "expect-active") {
             CHECK(loaded.activeAccount() == "alice");
             CHECK(loaded.backgroundTasks());
@@ -92,6 +107,32 @@ try {
         const std::string command = "\"" + self + "\" " + mode;
         return std::system(command.c_str()) == 0;
     };
+
+    CHECK(!settings.uiLockPin().has_value());
+    CHECK(settings.uiLockFingerprint() && settings.uiLockPhoto() && !settings.uiLockHidesAll());
+    CHECK_THROWS(settings.setUiAutoLockMinutes(5));
+    settings.setUiLockPin(bazarish::app::uiLockPinOf(kPin));
+    settings.setUiAutoLockMinutes(kAutoLockMinutes);
+    settings.setUiLockHidesAll(true);
+    settings.setUiLockPhoto(false);
+    CHECK(readsAs("expect-lock"));
+    settings.setUiLockPin(std::nullopt);
+    {
+        std::ifstream in(file);
+        nlohmann::json written;
+        in >> written;
+        CHECK(!written.at("lock").contains("pin"));
+        CHECK(written.at("lock").at("autoLockMinutes") == kAutoLockMinutes);
+    }
+    for (const nlohmann::json& lock : {
+             nlohmann::json{{"pin", {{"salt", "AAAA"}, {"hash", "AAAA"}}}},
+             nlohmann::json{{"autoLockMinutes", 5}},
+         }) {
+        std::ofstream out(file, std::ios::trunc);
+        out << nlohmann::json{{"lock", lock}}.dump();
+        out.close();
+        CHECK(readsAs("expect-unreadable"));
+    }
 
     const nlohmann::json document = {{"activeAccount", "alice"}, {"backgroundTasks", true}};
     {

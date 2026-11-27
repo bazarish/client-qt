@@ -36,6 +36,10 @@ public:
     static void dismissKeyguard();
     static void paintSystemBars(bool light, const QColor& color);
     static void allowScreenCapture(bool on);
+    static void hideRecents(bool on);
+    static bool fingerprintReady();
+    static void askFingerprint(const QString& title, const QString& usePassword);
+    static bool confirmOwner(const QString& title);
     static int gestureEdgeLeft();
     static int gestureEdgeRight();
 

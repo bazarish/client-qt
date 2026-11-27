@@ -79,6 +79,10 @@ ApplicationWindow {
         }
     }
     function goBack() {
+        if (App.uiLocked) {
+            App.moveToBackground()
+            return
+        }
         if (App.closeTopPopup(window)) {
             return
         }
@@ -115,6 +119,12 @@ ApplicationWindow {
     }
 
     IncomingCallWindow { mainWindowActive: window.active }
+    AppLockPage { id: appLockPage }
+    LockScreen { id: lockScreen }
+    IntruderDialog {
+        z: Theme.lockLayer - 1
+        visible: App.intruderCount > 0 && !App.uiLocked && !lockScreen.visible
+    }
 
     StackView {
         id: stack

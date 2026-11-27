@@ -36,6 +36,7 @@ Popup {
 
     modal: true
     focus: true
+    z: Theme.callLayer
     onOpened: Qt.inputMethod.hide()
     onOpenedChanged: App.setCallScreenShown(opened)
     Component.onDestruction: App.setCallScreenShown(false)
@@ -295,6 +296,7 @@ Popup {
 
             Popup {
                 id: devicePicker
+                z: Theme.callLayer
                 readonly property int kGap: 10
                 property var inputs: []
                 property var outputs: []

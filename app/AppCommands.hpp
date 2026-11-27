@@ -27,6 +27,17 @@ signals:
     void forgetAccountLocally(const QString& id);
     void lockAccount(const QString& id);
     void changePassphrase(const QString& id, const QString& passphrase);
+    void lockUi();
+    void unlockUi(const QString& pin);
+    void unlockUiByOwner();
+    void enableUiLock(const QString& pin);
+    void disableUiLock();
+    void setUiAutoLock(int minutes);
+    void setUiLockFingerprint(bool on);
+    void setUiLockHidesAll(bool on);
+    void setUiLockPhoto(bool on);
+    void keepIntruderPhoto(const QByteArray& jpeg);
+    void intruderSeen();
     void cancelUnlock();
     void setNotificationsEnabled(bool on);
     void setNotificationText(bool on);

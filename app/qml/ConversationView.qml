@@ -130,7 +130,7 @@ Item {
         if (!session || !visible || messages.count === 0) {
             return
         }
-        if (Qt.application.state !== Qt.ApplicationActive) {
+        if (Qt.application.state !== Qt.ApplicationActive || App.uiLocked) {
             return
         }
         var row = messages.indexAt(messages.width / 2, messages.contentY + messages.height - 2)
@@ -143,6 +143,8 @@ Item {
         target: Qt.application
         function onStateChanged() { root.markVisibleRead() }
     }
+    readonly property bool uiLocked: App.uiLocked
+    onUiLockedChanged: root.markVisibleRead()
 
     property string retryPeer: ""
     Connections {

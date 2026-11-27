@@ -5830,6 +5830,150 @@
       "es": "Dispositivos revocados",
       "zh": "已吊销的设备",
       "ar": "الأجهزة الملغاة"
+    },
+    "App lock": {
+      "ru": "Блокирование приложения",
+      "es": "Bloqueo de la aplicación",
+      "zh": "应用锁定",
+      "ar": "قفل التطبيق"
+    },
+    "Lock the app": {
+      "ru": "Заблокировать приложение",
+      "es": "Bloquear la aplicación",
+      "zh": "锁定应用",
+      "ar": "اقفل التطبيق"
+    },
+    "Unlock the app": {
+      "ru": "Разблокировать приложение",
+      "es": "Desbloquear la aplicación",
+      "zh": "解锁应用",
+      "ar": "افتح قفل التطبيق"
+    },
+    "Unlock by fingerprint": {
+      "ru": "Разблокировка отпечатком",
+      "es": "Desbloqueo con huella",
+      "zh": "指纹解锁",
+      "ar": "فتح القفل بالبصمة"
+    },
+    "Take a photo": {
+      "ru": "Делать фото",
+      "es": "Tomar una foto",
+      "zh": "拍照",
+      "ar": "التقاط صورة"
+    },
+    "After the third attempt with a wrong PIN, take a photo with the front camera": {
+      "ru": "После третьей попытки входа с неправильным пин-кодом делать фотографию с фронтальной камеры",
+      "es": "Tras el tercer intento con un PIN incorrecto, tomar una foto con la cámara frontal",
+      "zh": "第三次输入错误的 PIN 后，用前置摄像头拍照",
+      "ar": "بعد المحاولة الثالثة برمز PIN خاطئ، التقاط صورة بالكاميرا الأمامية"
+    },
+    "Automatic lock": {
+      "ru": "Автоматическая блокировка",
+      "es": "Bloqueo automático",
+      "zh": "自动锁定",
+      "ar": "القفل التلقائي"
+    },
+    "Lock the app after its window stays inactive for the set time": {
+      "ru": "Автоматически блокировать интерфейс после неактивности окна приложения в течение заданного времени",
+      "es": "Bloquear la interfaz cuando la ventana de la aplicación lleva inactiva el tiempo indicado",
+      "zh": "应用窗口在设定时间内不活动后自动锁定界面",
+      "ar": "قفل الواجهة تلقائيًا بعد بقاء نافذة التطبيق غير نشطة للمدة المحددة"
+    },
+    "Hide all notification text": {
+      "ru": "Скрывать весь текст уведомлений",
+      "es": "Ocultar todo el texto de las notificaciones",
+      "zh": "隐藏通知的全部文字",
+      "ar": "إخفاء كل نص الإشعارات"
+    },
+    "While the app is locked, a notification says only that a message came": {
+      "ru": "Пока приложение заблокировано, уведомление сообщает только о новом сообщении",
+      "es": "Mientras la aplicación está bloqueada, la notificación solo avisa de un mensaje nuevo",
+      "zh": "应用锁定期间，通知只提示有新消息",
+      "ar": "أثناء قفل التطبيق، يكتفي الإشعار بالإبلاغ عن رسالة جديدة"
+    },
+    "Set a password": {
+      "ru": "Задайте пароль",
+      "es": "Establezca una contraseña",
+      "zh": "设置密码",
+      "ar": "عيّن كلمة مرور"
+    },
+    "From 1 to 6 digits": {
+      "ru": "От 1 до 6 цифр",
+      "es": "De 1 a 6 dígitos",
+      "zh": "1 到 6 位数字",
+      "ar": "من 1 إلى 6 أرقام"
+    },
+    "Repeat the password": {
+      "ru": "Повторите пароль",
+      "es": "Repita la contraseña",
+      "zh": "再次输入密码",
+      "ar": "أعد إدخال كلمة المرور"
+    },
+    "The passwords differ": {
+      "ru": "Пароли не совпадают",
+      "es": "Las contraseñas no coinciden",
+      "zh": "两次输入的密码不一致",
+      "ar": "كلمتا المرور غير متطابقتين"
+    },
+    "Unauthorized access": {
+      "ru": "Несанкционированный доступ",
+      "es": "Acceso no autorizado",
+      "zh": "未经授权的访问",
+      "ar": "وصول غير مصرح به"
+    },
+    "Wrong PIN entries: %1, the last one %2": {
+      "ru": "Неверных вводов пин-кода: %1, последний %2",
+      "es": "Entradas de PIN incorrectas: %1, la última %2",
+      "zh": "PIN 输入错误 %1 次，最近一次 %2",
+      "ar": "إدخالات رمز PIN الخاطئة: ⁦%1⁩، آخرها ⁦%2⁩"
+    },
+    "Got it": {
+      "ru": "Понял",
+      "es": "Entendido",
+      "zh": "知道了",
+      "ar": "حسنًا"
+    },
+    "Unlock Bazarish": {
+      "ru": "Разблокировка Bazarish",
+      "es": "Desbloquear Bazarish",
+      "zh": "解锁 Bazarish",
+      "ar": "فتح قفل Bazarish"
+    },
+    "Enter the password": {
+      "ru": "Ввести пароль",
+      "es": "Introducir la contraseña",
+      "zh": "输入密码",
+      "ar": "إدخال كلمة المرور"
+    },
+    "Confirm it is you": {
+      "ru": "Подтвердите, что это вы",
+      "es": "Confirme que es usted",
+      "zh": "请确认是您本人",
+      "ar": "أكّد أنك أنت"
+    },
+    "The phone needs a screen lock": {
+      "ru": "На телефоне нужна блокировка экрана",
+      "es": "El teléfono necesita un bloqueo de pantalla",
+      "zh": "手机需要设置屏幕锁定",
+      "ar": "يحتاج الهاتف إلى قفل للشاشة"
+    },
+    "1 minute": {
+      "ru": "1 минута",
+      "es": "1 minuto",
+      "zh": "1 分钟",
+      "ar": "دقيقة واحدة"
+    },
+    "%1 minutes": {
+      "ru": "%1 минут",
+      "es": "%1 minutos",
+      "zh": "%1 分钟",
+      "ar": "⁦%1⁩ دقيقة"
+    },
+    "%1 hours": {
+      "ru": "%1 часа",
+      "es": "%1 horas",
+      "zh": "%1 小时",
+      "ar": "⁦%1⁩ ساعات"
     }
   }
 }

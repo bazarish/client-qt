@@ -1,7 +1,10 @@
 // Bazarish project (c) 2026
 #pragma once
 
+#include "UiLock.hpp"
+
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -74,6 +77,17 @@ public:
     int i2pProxyPort() const;
     void setI2pProxy(const std::string& host, int port);
 
+    const std::optional<UiLockPin>& uiLockPin() const { return uiLockPin_; }
+    void setUiLockPin(std::optional<UiLockPin> pin);
+    int uiAutoLockMinutes() const { return uiAutoLockMinutes_; }
+    void setUiAutoLockMinutes(int minutes);
+    bool uiLockFingerprint() const { return uiLockFingerprint_; }
+    void setUiLockFingerprint(bool on);
+    bool uiLockHidesAll() const { return uiLockHidesAll_; }
+    void setUiLockHidesAll(bool on);
+    bool uiLockPhoto() const { return uiLockPhoto_; }
+    void setUiLockPhoto(bool on);
+
 private:
     AppSettings();
 
@@ -104,6 +118,11 @@ private:
     bool samEnabled_ = false;
     std::string samHost_;
     int samPort_ = 0;
+    std::optional<UiLockPin> uiLockPin_;
+    int uiAutoLockMinutes_ = 0;
+    bool uiLockFingerprint_ = true;
+    bool uiLockHidesAll_ = false;
+    bool uiLockPhoto_ = true;
 };
 
 }  // namespace bazarish::app

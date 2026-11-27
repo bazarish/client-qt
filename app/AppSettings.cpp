@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <ios>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -113,6 +114,26 @@ void AppSettings::load()
             i2pProxyHost_.clear();
             i2pProxyPort_ = 0;
         }
+        const nlohmann::json lock = document.value("lock", nlohmann::json::object());
+        if (lock.contains("pin")) {
+            const nlohmann::json& pin = lock.at("pin");
+            UiLockPin read{fromBase64(pin.at("salt").get<std::string>()),
+                fromBase64(pin.at("hash").get<std::string>())};
+            if (!isUiLockPinRecord(read)) {
+                unreadable_ = "the app lock PIN is malformed";
+                return;
+            }
+            uiLockPin_ = std::move(read);
+        }
+        uiAutoLockMinutes_ = lock.value("autoLockMinutes", 0);
+        if (!isUiAutoLockChoice(uiAutoLockMinutes_)) {
+            unreadable_ = "the app lock names an automatic lock of "
+                + std::to_string(uiAutoLockMinutes_) + " minutes";
+            return;
+        }
+        uiLockFingerprint_ = lock.value("fingerprint", true);
+        uiLockHidesAll_ = lock.value("hideAllText", false);
+        uiLockPhoto_ = lock.value("photo", true);
     } catch (const std::exception& error) {
         unreadable_ = error.what();
     }
@@ -138,6 +159,15 @@ void AppSettings::save() const
     i2p["sam"] = {{"enabled", samEnabled_}, {"host", samHost_}, {"port", samPort_}};
     i2p["gateway"] = {{"asked", gatewayAsked_}, {"enabled", gatewayEnabled_},
         {"address", gatewayAddress_}};
+    nlohmann::json lock = {
+        {"autoLockMinutes", uiAutoLockMinutes_},
+        {"fingerprint", uiLockFingerprint_},
+        {"hideAllText", uiLockHidesAll_},
+        {"photo", uiLockPhoto_},
+    };
+    if (uiLockPin_.has_value()) {
+        lock["pin"] = {{"salt", toBase64(uiLockPin_->salt)}, {"hash", toBase64(uiLockPin_->hash)}};
+    }
     const nlohmann::json document = {
         {"activeAccount", activeAccount_},
         {"language", language_},
@@ -151,6 +181,7 @@ void AppSettings::save() const
         {"backgroundTasks", backgroundTasks_},
         {"audio", {{"input", audioInput_}, {"output", audioOutput_}}},
         {"i2p", i2p},
+        {"lock", lock},
     };
     try {
         bazarish::writePrivateFile(path_, document.dump(2) + "\n");
@@ -383,6 +414,51 @@ void AppSettings::setI2pProxy(const std::string& host, const int port)
     }
     i2pProxyHost_ = wantedHost;
     i2pProxyPort_ = wantedPort;
+    save();
+}
+
+void AppSettings::setUiLockPin(std::optional<UiLockPin> pin)
+{
+    uiLockPin_ = std::move(pin);
+    save();
+}
+
+void AppSettings::setUiAutoLockMinutes(const int minutes)
+{
+    if (!isUiAutoLockChoice(minutes)) {
+        throw std::invalid_argument("no automatic lock after " + std::to_string(minutes) + " minutes");
+    }
+    if (uiAutoLockMinutes_ == minutes) {
+        return;
+    }
+    uiAutoLockMinutes_ = minutes;
+    save();
+}
+
+void AppSettings::setUiLockFingerprint(const bool on)
+{
+    if (uiLockFingerprint_ == on) {
+        return;
+    }
+    uiLockFingerprint_ = on;
+    save();
+}
+
+void AppSettings::setUiLockHidesAll(const bool on)
+{
+    if (uiLockHidesAll_ == on) {
+        return;
+    }
+    uiLockHidesAll_ = on;
+    save();
+}
+
+void AppSettings::setUiLockPhoto(const bool on)
+{
+    if (uiLockPhoto_ == on) {
+        return;
+    }
+    uiLockPhoto_ = on;
     save();
 }
 

@@ -47,6 +47,8 @@ if(Qt6_FOUND)
         app/SingleInstance.cpp
         app/SingleInstance.hpp
         app/AppSettings.cpp
+        app/UiLock.cpp
+        app/UiLock.hpp
         app/I2pEvents.hpp
         app/AccountCommands.hpp
         app/AccountEvents.hpp
@@ -326,6 +328,10 @@ if(Qt6_FOUND)
             app/qml/AppSettingsPage.qml
             app/qml/SettingsPage.qml
             app/qml/AccountIdentifiersPage.qml
+            app/qml/AppLockPage.qml
+            app/qml/IntruderDialog.qml
+            app/qml/LockScreen.qml
+            app/qml/PinSetDialog.qml
             app/qml/RouterStatusPage.qml
             app/qml/DestinationSheet.qml
             app/qml/ConnectionLogPage.qml
@@ -354,6 +360,8 @@ if(Qt6_FOUND)
             app/qml/components/ContextMenu.qml
             app/qml/components/Fingerprint.qml
             app/qml/components/MiddleElided.qml
+            app/qml/components/LockButton.qml
+            app/qml/components/PinRow.qml
             app/qml/components/FormatChip.qml
             app/qml/components/SelectionTools.qml
             app/qml/components/TextSelection.qml
@@ -398,7 +406,7 @@ endif()
 
 enable_testing()
 
-add_executable(TestAppSettings tests/TestAppSettings.cpp app/AppSettings.cpp)
+add_executable(TestAppSettings tests/TestAppSettings.cpp app/AppSettings.cpp app/UiLock.cpp)
 target_include_directories(TestAppSettings PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
 target_link_libraries(TestAppSettings PRIVATE bazarish_test_util bazarish_client)
 target_compile_options(TestAppSettings PRIVATE -Wall -Wextra)
@@ -610,6 +618,12 @@ if(Qt6_FOUND)
     target_compile_options(TestChatPreview PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestChatPreview COMMAND TestChatPreview)
 
+    add_executable(TestUiLock tests/TestUiLock.cpp app/UiLock.cpp)
+    target_include_directories(TestUiLock PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestUiLock PRIVATE bazarish_test_util bazarish_client)
+    target_compile_options(TestUiLock PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestUiLock COMMAND TestUiLock)
+
     add_executable(TestLinkFailureText tests/TestLinkFailureText.cpp app/LinkFailureText.cpp)
     target_include_directories(TestLinkFailureText PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
     target_link_libraries(TestLinkFailureText PRIVATE bazarish_test_util bazarish_client Qt6::Core)
@@ -681,7 +695,7 @@ if(Qt6_FOUND)
     add_test(NAME TestTransportChoice COMMAND TestTransportChoice)
 
     add_executable(TestSocketChannel tests/TestSocketChannel.cpp app/CoreSocket.cpp app/Wire.cpp
-        app/AppSettings.cpp)
+        app/AppSettings.cpp app/UiLock.cpp)
     target_include_directories(TestSocketChannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
     target_link_libraries(TestSocketChannel PRIVATE bazarish_test_util bazarish_client Qt6::Core Qt6::Network)
     target_compile_options(TestSocketChannel PRIVATE -Wall -Wextra -Werror)
@@ -692,7 +706,7 @@ if(Qt6_FOUND)
     target_link_libraries(bazarish-core-harness PRIVATE bazarish_app_core)
 
     add_executable(TestTwoProcess tests/TestTwoProcess.cpp app/CoreSocket.cpp app/Wire.cpp
-        app/AppSettings.cpp app/AppCommands.hpp app/AppEvents.hpp app/AccountCommands.hpp
+        app/AppSettings.cpp app/UiLock.cpp app/AppCommands.hpp app/AppEvents.hpp app/AccountCommands.hpp
         app/AccountEvents.hpp app/I2pEvents.hpp)
     target_include_directories(TestTwoProcess PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
     target_link_libraries(TestTwoProcess PRIVATE bazarish_test_util bazarish_client Qt6::Core Qt6::Network)

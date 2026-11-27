@@ -11,6 +11,7 @@
 #include "Picture.hpp"
 #include "PictureStore.hpp"
 #include "PathText.hpp"
+#include "PhotoShot.hpp"
 #include "PopupStack.hpp"
 #include "SelectionHold.hpp"
 #include "SessionShared.hpp"
@@ -46,6 +47,9 @@ namespace bazarish::app {
 
 namespace {
 
+const QString kIntruderPhotoKey = QStringLiteral("app-lock-intruder");
+constexpr int kMinutesPerHour = 60;
+
 const QString kAppScope = QStringLiteral("app");
 // The core judges input over minutes; one report in this span is all it needs.
 constexpr qint64 kInputReportEveryMs = 10 * 1000;
@@ -74,6 +78,7 @@ AppController::AppController(Translations& translations, Relay& relay, QObject* 
 {
 #ifdef Q_OS_ANDROID
     AndroidWindow::allowScreenCapture(screenCapture_);
+    AndroidWindow::hideRecents(AppSettings::instance().uiLockPin().has_value());
 #endif
     connect(&translations, &Translations::languageChanged, this, [this, &translations]() {
         emit commands_.setLanguage(translations.language());
@@ -148,6 +153,29 @@ AppController::AppController(Translations& translations, Relay& relay, QObject* 
             emit pairingChanged();
         });
     connect(&events_, &AppEvents::pairingFinished, this, &AppController::pairingFinished);
+    connect(&events_, &AppEvents::uiLock, this,
+        [this](const bool enabled, const bool locked, const qint64 waitUntilMs,
+            const int autoLockMinutes, const bool fingerprint, const bool hidesAll,
+            const bool photo) {
+            uiLockEnabled_ = enabled;
+            uiLocked_ = locked;
+            uiWaitUntilMs_ = waitUntilMs;
+            uiAutoLockMinutes_ = autoLockMinutes;
+            uiLockFingerprint_ = fingerprint;
+            uiLockHidesAll_ = hidesAll;
+            uiLockPhoto_ = photo;
+            emit uiLockChanged();
+        });
+    connect(&events_, &AppEvents::uiUnlockAnswer, this, &AppController::uiUnlockAnswered);
+    connect(&events_, &AppEvents::intruderPhotoWanted, this, &AppController::intruderPhotoWanted);
+    connect(&events_, &AppEvents::intruder, this,
+        [this](const int count, const qint64 lastSeconds, const QByteArray& photo) {
+            intruderCount_ = count;
+            intruderLastSeconds_ = lastSeconds;
+            PictureStore::instance().remove(kIntruderPhotoKey);
+            intruderHasPhoto_ = !photo.isEmpty() && PictureStore::instance().put(kIntruderPhotoKey, photo);
+            emit intruderChanged();
+        });
     connect(&events_, &AppEvents::settings, this,
         [this](const bool notifications, const bool notificationText,
             const bool systemNotifications, const bool backgroundTasks) {
@@ -797,6 +825,129 @@ void AppController::paintSystemBars(const QColor& color) const
 #else
     Q_UNUSED(color);
 #endif
+}
+
+QVariantList AppController::uiAutoLockChoices()
+{
+    QVariantList choices;
+    for (const int minutes : kUiAutoLockChoices) {
+        choices.push_back(minutes);
+    }
+    return choices;
+}
+
+QString AppController::autoLockLabel(const int minutes) const
+{
+    if (minutes == 0) {
+        return tr("Off");
+    }
+    if (minutes < kMinutesPerHour) {
+        return minutes == 1 ? tr("1 minute") : tr("%1 minutes").arg(minutes);
+    }
+    const int hours = minutes / kMinutesPerHour;
+    return hours == 1 ? tr("1 hour") : tr("%1 hours").arg(hours);
+}
+
+QString AppController::intruderPhoto() const
+{
+    return intruderHasPhoto_ ? QStringLiteral("image://picture/") + kIntruderPhotoKey : QString();
+}
+
+void AppController::lockUi()
+{
+    emit uiLockRequestedHere();
+    emit commands_.lockUi();
+}
+
+void AppController::unlockUi(const QString& pin)
+{
+    emit commands_.unlockUi(pin);
+}
+
+void AppController::enableUiLock(const QString& pin)
+{
+    emit commands_.enableUiLock(pin);
+}
+
+void AppController::disableUiLock()
+{
+    emit commands_.disableUiLock();
+}
+
+void AppController::setUiAutoLock(const int minutes)
+{
+    emit commands_.setUiAutoLock(minutes);
+}
+
+void AppController::setUiLockFingerprint(const bool on)
+{
+    emit commands_.setUiLockFingerprint(on);
+}
+
+void AppController::setUiLockHidesAll(const bool on)
+{
+    emit commands_.setUiLockHidesAll(on);
+}
+
+void AppController::setUiLockPhoto(const bool on)
+{
+    emit commands_.setUiLockPhoto(on);
+}
+
+void AppController::keepIntruderPhoto(QObject* const shot)
+{
+    const auto* const photo = qobject_cast<const PhotoShot*>(shot);
+    if (photo == nullptr || photo->picture().isEmpty()) {
+        bazarish::log::warn("app lock: the front camera gave no photograph");
+        return;
+    }
+    emit commands_.keepIntruderPhoto(photo->picture().bytes);
+}
+
+void AppController::intruderSeen()
+{
+    emit commands_.intruderSeen();
+}
+
+bool AppController::fingerprintReady() const
+{
+#ifdef Q_OS_ANDROID
+    return AndroidWindow::fingerprintReady();
+#else
+    return false;
+#endif
+}
+
+void AppController::askFingerprint()
+{
+#ifdef Q_OS_ANDROID
+    AndroidWindow::askFingerprint(tr("Unlock Bazarish"), tr("Enter the password"));
+#endif
+}
+
+void AppController::confirmOwner()
+{
+#ifdef Q_OS_ANDROID
+    if (!AndroidWindow::confirmOwner(tr("Confirm it is you"))) {
+        emit ownerConfirmed(false, tr("The phone needs a screen lock"));
+    }
+#else
+    QMetaObject::invokeMethod(
+        this, [this]() { emit ownerConfirmed(true, {}); }, Qt::QueuedConnection);
+#endif
+}
+
+void AppController::fingerprintDone(const bool ok)
+{
+    if (ok) {
+        emit commands_.unlockUiByOwner();
+    }
+    emit fingerprintAnswered(ok);
+}
+
+void AppController::ownerDone(const bool ok)
+{
+    emit ownerConfirmed(ok, {});
 }
 
 void AppController::moveToBackground() const

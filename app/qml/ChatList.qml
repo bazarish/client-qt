@@ -104,6 +104,7 @@ Item {
                     TapHandler { onTapped: root.accountsRequested() }
                 }
                 Item { Layout.fillWidth: true }
+                LockButton { }
                 IconButton {
                     visible: !root.narrow
                     iconName: "gear"

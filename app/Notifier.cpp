@@ -40,7 +40,7 @@ void Notifier::announce(const QString& accountId, const QString& peer, const QSt
     if (!core_.notificationsEnabled() || !core_.ringingPeer().isEmpty()) {
         return;
     }
-    if (core_.windowActive()) {
+    if (core_.windowActive() && !core_.uiLocked()) {
         if (!reaction) {
             emit arrivedInSight();
         }

@@ -10,7 +10,9 @@
 #include "TestUtil.hpp"
 
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QElapsedTimer>
+#include <QFileInfo>
 #include <QLocalServer>
 #include <QProcess>
 #include <QStringList>
@@ -31,6 +33,9 @@ constexpr const char* kLockedName = "locked";
 constexpr const char* kLockedPassphrase = "correct horse";
 constexpr const char* kNewPassphrase = "battery staple";
 constexpr const char* kNotDeclined = "The call was not declined";
+constexpr const char* kUiPin = "2580";
+constexpr const char* kWrongPin = "1111";
+constexpr int kPauseLimitMs = 15000;
 
 // The core leaves with _Exit, so its socket file outlives it.
 struct LeftSocket {
@@ -211,9 +216,76 @@ try {
         CHECK(settleUntil([&]() { return open; }));
     }
 
+    {
+        bool enabled = false;
+        bool locked = false;
+        qint64 waitUntilMs = 0;
+        QList<bool> answers;
+        int photoWanted = 0;
+        int intruders = -1;
+        QByteArray photo;
+        QObject::connect(&second.events, &AppEvents::uiLock,
+            [&](const bool on, const bool shut, const qint64 until, int, bool, bool, bool) {
+                enabled = on;
+                locked = shut;
+                waitUntilMs = until;
+            });
+        QObject::connect(
+            &second.events, &AppEvents::uiUnlockAnswer, [&](const bool ok) { answers << ok; });
+        QObject::connect(
+            &second.events, &AppEvents::intruderPhotoWanted, [&]() { ++photoWanted; });
+        QObject::connect(&second.events, &AppEvents::intruder,
+            [&](const int count, qint64, const QByteArray& jpeg) {
+                intruders = count;
+                photo = jpeg;
+            });
+        const auto pauseOver = [&]() {
+            return settleUntil(
+                [&]() { return QDateTime::currentMSecsSinceEpoch() >= waitUntilMs; }, kPauseLimitMs);
+        };
+        const QString note = home.filePath(QStringLiteral("data/intruder.json"));
+
+        emit second.commands.enableUiLock(QLatin1String(kUiPin));
+        CHECK(settleUntil([&]() { return enabled && !locked; }));
+        emit second.commands.lockUi();
+        CHECK(settleUntil([&]() { return locked; }));
+
+        emit second.commands.unlockUi(QLatin1String(kWrongPin));
+        CHECK(settleUntil([&]() { return answers.size() == 1; }));
+        CHECK(!answers.back() && waitUntilMs == 0);
+        emit second.commands.unlockUi(QLatin1String(kWrongPin));
+        CHECK(settleUntil([&]() { return answers.size() == 2 && waitUntilMs > 0; }));
+        emit second.commands.unlockUi(QLatin1String(kUiPin));
+        CHECK(settleUntil([&]() { return answers.size() == 3; }));
+        CHECK(!answers.back() && locked && photoWanted == 0);
+        CHECK(pauseOver());
+        emit second.commands.unlockUi(QLatin1String(kWrongPin));
+        CHECK(settleUntil([&]() { return answers.size() == 4 && photoWanted == 1; }));
+        CHECK(intruders == 3 && photo.isEmpty() && QFileInfo::exists(note));
+        emit second.commands.keepIntruderPhoto(QByteArray("\xff\xd8\xff"));
+        CHECK(settleUntil([&]() { return !photo.isEmpty(); }));
+        emit second.commands.intruderSeen();
+        CHECK(pauseOver());
+        emit second.commands.unlockUi(QLatin1String(kUiPin));
+        CHECK(settleUntil([&]() { return answers.size() == 5 && !locked; }));
+        CHECK(answers.back() && intruders == 3 && !photo.isEmpty());
+        emit second.commands.intruderSeen();
+        CHECK(settleUntil([&]() { return intruders == 0 && photo.isEmpty(); }));
+        CHECK(!QFileInfo::exists(note));
+
+        emit second.commands.disableUiLock();
+        CHECK(settleUntil([&]() { return !enabled; }));
+        emit second.commands.enableUiLock(QLatin1String(kUiPin));
+        CHECK(settleUntil([&]() { return enabled && !locked; }));
+    }
+
     Window third;
+    bool thirdLocked = false;
+    QObject::connect(&third.events, &AppEvents::uiLock,
+        [&](bool, const bool shut, qint64, int, bool, bool, bool) { thirdLocked = shut; });
     third.connectTo(path);
     CHECK(settleUntil([&]() { return third.started == 1 && second.lost; }));
+    CHECK(thirdLocked);
 
     emit third.commands.quit();
     CHECK(settleUntil([&]() { return core.state() == QProcess::NotRunning; }));

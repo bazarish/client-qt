@@ -5,6 +5,7 @@
 #include "AppEvents.hpp"
 #include "Models.hpp"
 #include "SessionController.hpp"
+#include "UiLock.hpp"
 
 #include "AccountKey.hpp"
 
@@ -19,6 +20,7 @@
 #include <QPointer>
 #include <QString>
 #include <QStringList>
+#include <QVariantList>
 #include <QVector>
 
 #include <filesystem>
@@ -72,6 +74,19 @@ class AppController : public QObject {
     Q_PROPERTY(qreal keyboardInset READ keyboardInset NOTIFY keyboardInsetChanged)
     Q_PROPERTY(QString i2pdVersion READ i2pdVersion CONSTANT)
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
+
+    Q_PROPERTY(bool uiLockEnabled READ uiLockEnabled NOTIFY uiLockChanged)
+    Q_PROPERTY(bool uiLocked READ uiLocked NOTIFY uiLockChanged)
+    Q_PROPERTY(double uiWaitUntil READ uiWaitUntil NOTIFY uiLockChanged)
+    Q_PROPERTY(int uiAutoLockMinutes READ uiAutoLockMinutes NOTIFY uiLockChanged)
+    Q_PROPERTY(bool uiLockFingerprint READ uiLockFingerprint NOTIFY uiLockChanged)
+    Q_PROPERTY(bool uiLockHidesAll READ uiLockHidesAll NOTIFY uiLockChanged)
+    Q_PROPERTY(bool uiLockPhoto READ uiLockPhoto NOTIFY uiLockChanged)
+    Q_PROPERTY(QVariantList uiAutoLockChoices READ uiAutoLockChoices CONSTANT)
+    Q_PROPERTY(int uiPinMaxDigits READ uiPinMaxDigits CONSTANT)
+    Q_PROPERTY(int intruderCount READ intruderCount NOTIFY intruderChanged)
+    Q_PROPERTY(double intruderLastMs READ intruderLastMs NOTIFY intruderChanged)
+    Q_PROPERTY(QString intruderPhoto READ intruderPhoto NOTIFY intruderChanged)
 
     Q_PROPERTY(QString ringingPeer READ ringingPeer NOTIFY ringingChanged)
     Q_PROPERTY(QString ringingPeerFingerprint READ ringingPeerFingerprint NOTIFY ringingChanged)
@@ -237,6 +252,35 @@ public:
     Q_INVOKABLE QString linksHtml(const QString& text) const;
     Q_INVOKABLE int emojiCount(const QString& text) const;
 
+    bool uiLockEnabled() const { return uiLockEnabled_; }
+    bool uiLocked() const { return uiLocked_; }
+    double uiWaitUntil() const { return static_cast<double>(uiWaitUntilMs_); }
+    int uiAutoLockMinutes() const { return uiAutoLockMinutes_; }
+    bool uiLockFingerprint() const { return uiLockFingerprint_; }
+    bool uiLockHidesAll() const { return uiLockHidesAll_; }
+    bool uiLockPhoto() const { return uiLockPhoto_; }
+    static QVariantList uiAutoLockChoices();
+    static int uiPinMaxDigits() { return static_cast<int>(kUiLockPinMaxDigits); }
+    int intruderCount() const { return intruderCount_; }
+    double intruderLastMs() const { return static_cast<double>(intruderLastSeconds_) * kMsPerSecond; }
+    QString intruderPhoto() const;
+    Q_INVOKABLE QString autoLockLabel(int minutes) const;
+    Q_INVOKABLE void lockUi();
+    Q_INVOKABLE void unlockUi(const QString& pin);
+    Q_INVOKABLE void enableUiLock(const QString& pin);
+    Q_INVOKABLE void disableUiLock();
+    Q_INVOKABLE void setUiAutoLock(int minutes);
+    Q_INVOKABLE void setUiLockFingerprint(bool on);
+    Q_INVOKABLE void setUiLockHidesAll(bool on);
+    Q_INVOKABLE void setUiLockPhoto(bool on);
+    Q_INVOKABLE void keepIntruderPhoto(QObject* shot);
+    Q_INVOKABLE void intruderSeen();
+    Q_INVOKABLE bool fingerprintReady() const;
+    Q_INVOKABLE void askFingerprint();
+    Q_INVOKABLE void confirmOwner();
+    void fingerprintDone(bool ok);
+    void ownerDone(bool ok);
+
 signals:
     void attachedChanged();
     void operationsChanged();
@@ -284,6 +328,13 @@ signals:
     void pairLinkOpened(const QString& link);
     void gatewayLinkOpened(const QString& link, const QString& host);
     void linkRefused(const QString& reason);
+    void uiLockChanged();
+    void uiLockRequestedHere();
+    void uiUnlockAnswered(bool unlocked);
+    void intruderChanged();
+    void intruderPhotoWanted();
+    void fingerprintAnswered(bool ok);
+    void ownerConfirmed(bool ok, const QString& problem);
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
@@ -334,6 +385,17 @@ private:
     double pairProgress_ = kProgressUnknown;
     bool pairNeedsCode_ = false;
     bool pairing_ = false;
+    static constexpr double kMsPerSecond = 1000.0;
+    bool uiLockEnabled_ = false;
+    bool uiLocked_ = false;
+    qint64 uiWaitUntilMs_ = 0;
+    int uiAutoLockMinutes_ = 0;
+    bool uiLockFingerprint_ = true;
+    bool uiLockHidesAll_ = false;
+    bool uiLockPhoto_ = true;
+    int intruderCount_ = 0;
+    qint64 intruderLastSeconds_ = 0;
+    bool intruderHasPhoto_ = false;
 };
 
 }  // namespace bazarish::app

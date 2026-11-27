@@ -110,6 +110,16 @@ void avatarPicked(JNIEnv*, jclass, jstring uri)
     });
 }
 
+void fingerprintAnswered(JNIEnv*, jclass, jboolean ok)
+{
+    inWindowThread<AppController>(gApp, [ok](AppController& app) { app.fingerprintDone(ok); });
+}
+
+void ownerConfirmed(JNIEnv*, jclass, jboolean ok)
+{
+    inWindowThread<AppController>(gApp, [ok](AppController& app) { app.ownerDone(ok); });
+}
+
 void keyboardCovers(JNIEnv*, jclass, jint pixels)
 {
     inWindowThread<AppController>(gApp, [pixels](AppController& app) {
@@ -140,6 +150,8 @@ AndroidWindow::AndroidWindow(AppController& app, QObject* const parent)
         {"keyboardCovers", "(I)V", reinterpret_cast<void*>(keyboardCovers)},
         {"picturesPicked", "([Ljava/lang/String;)V", reinterpret_cast<void*>(picturesPicked)},
         {"avatarPicked", "(Ljava/lang/String;)V", reinterpret_cast<void*>(avatarPicked)},
+        {"fingerprintAnswered", "(Z)V", reinterpret_cast<void*>(fingerprintAnswered)},
+        {"ownerConfirmed", "(Z)V", reinterpret_cast<void*>(ownerConfirmed)},
     };
     QJniEnvironment env;
     if (!env.registerNativeMethods(kWindow, natives, static_cast<int>(std::size(natives)))) {
@@ -164,12 +176,15 @@ AndroidWindow::AndroidWindow(AppController& app, QObject* const parent)
 
     connect(&app_, &AppController::ringingChanged, this, &AndroidWindow::followCall);
     connect(&app_, &AppController::callLiveChanged, this, &AndroidWindow::followCall);
-    connect(qApp, &QGuiApplication::applicationStateChanged, this,
-        [](const Qt::ApplicationState state) {
-            if (state == Qt::ApplicationActive) {
-                QJniObject::callStaticMethod<void>(kWindow, "clearMessages", "()V");
-            }
-        });
+    const auto clearSeen = [this]() {
+        if (QGuiApplication::applicationState() == Qt::ApplicationActive && !app_.uiLocked()) {
+            QJniObject::callStaticMethod<void>(kWindow, "clearMessages", "()V");
+        }
+    };
+    connect(qApp, &QGuiApplication::applicationStateChanged, this, clearSeen);
+    connect(&app_, &AppController::uiLockChanged, this, clearSeen);
+    connect(&app_, &AppController::uiLockChanged, this,
+        [this]() { hideRecents(app_.uiLockEnabled()); });
 }
 
 AndroidWindow::~AndroidWindow()
@@ -294,6 +309,29 @@ void AndroidWindow::paintSystemBars(const bool light, const QColor& color)
 void AndroidWindow::allowScreenCapture(const bool on)
 {
     QJniObject::callStaticMethod<void>(kWindow, "allowScreenCapture", "(Z)V", jboolean(on));
+}
+
+void AndroidWindow::hideRecents(const bool on)
+{
+    QJniObject::callStaticMethod<void>(kWindow, "hideRecents", "(Z)V", jboolean(on));
+}
+
+bool AndroidWindow::fingerprintReady()
+{
+    return QJniObject::callStaticMethod<jboolean>(kWindow, "fingerprintReady", "()Z");
+}
+
+void AndroidWindow::askFingerprint(const QString& title, const QString& usePassword)
+{
+    QJniObject::callStaticMethod<void>(kWindow, "askFingerprint",
+        "(Ljava/lang/String;Ljava/lang/String;)V", QJniObject::fromString(title).object<jstring>(),
+        QJniObject::fromString(usePassword).object<jstring>());
+}
+
+bool AndroidWindow::confirmOwner(const QString& title)
+{
+    return QJniObject::callStaticMethod<jboolean>(kWindow, "confirmOwner",
+        "(Ljava/lang/String;)Z", QJniObject::fromString(title).object<jstring>());
 }
 
 int AndroidWindow::gestureEdgeLeft()

@@ -27,10 +27,12 @@
 #include <bazarish/Log.hpp>
 #pragma pop_macro("emit")
 
+#include <QDateTime>
 #include <QMetaType>
 #include <QStringList>
 
 #include <algorithm>
+#include <chrono>
 #include <exception>
 #include <filesystem>
 #include <fstream>
@@ -41,6 +43,8 @@
 namespace bazarish::app {
 
 namespace {
+
+constexpr qint64 kClockGrainMs = 1;
 
 const QString kAppScope = QStringLiteral("app");
 const QString kRestoreOperation = QStringLiteral("restore");
@@ -124,7 +128,11 @@ QString keptAccountName(const QVector<AccountListRow>& rows, const QString& id)
 CoreHost::CoreHost(QObject* const parent)
     : QObject(parent)
     , manager_(std::make_unique<client::AccountManager>(accountsRoot()))
+    , uiLock_(AppSettings::instance().uiLockPin())
+    , intruder_(appRoot())
 {
+    autoLock_.setSingleShot(true);
+    connect(&autoLock_, &QTimer::timeout, this, &CoreHost::lockUi);
     manager_->discardInterruptedImports();
     connect(&ringtone_, &Ringtone::levelChanged, &events_, &AppEvents::ringLevel);
     connect(&i2p_, &I2pService::tunnelsNeedRebuild, this, &CoreHost::rebuildI2pLinks);
@@ -147,6 +155,17 @@ CoreHost::CoreHost(QObject* const parent)
     connect(&commands_, &AppCommands::lockAccount, this, &CoreHost::lockAccount);
     connect(&commands_, &AppCommands::changePassphrase, this, &CoreHost::changePassphrase);
     connect(&commands_, &AppCommands::cancelUnlock, this, &CoreHost::cancelUnlock);
+    connect(&commands_, &AppCommands::lockUi, this, &CoreHost::lockUi);
+    connect(&commands_, &AppCommands::unlockUi, this, &CoreHost::unlockUi);
+    connect(&commands_, &AppCommands::unlockUiByOwner, this, &CoreHost::unlockUiByOwner);
+    connect(&commands_, &AppCommands::enableUiLock, this, &CoreHost::enableUiLock);
+    connect(&commands_, &AppCommands::disableUiLock, this, &CoreHost::disableUiLock);
+    connect(&commands_, &AppCommands::setUiAutoLock, this, &CoreHost::setUiAutoLock);
+    connect(&commands_, &AppCommands::setUiLockFingerprint, this, &CoreHost::setUiLockFingerprint);
+    connect(&commands_, &AppCommands::setUiLockHidesAll, this, &CoreHost::setUiLockHidesAll);
+    connect(&commands_, &AppCommands::setUiLockPhoto, this, &CoreHost::setUiLockPhoto);
+    connect(&commands_, &AppCommands::keepIntruderPhoto, this, &CoreHost::keepIntruderPhoto);
+    connect(&commands_, &AppCommands::intruderSeen, this, &CoreHost::intruderSeen);
     connect(&commands_, &AppCommands::setNotificationsEnabled, this,
         &CoreHost::setNotificationsEnabled);
     connect(&commands_, &AppCommands::setNotificationText, this, &CoreHost::setNotificationText);
@@ -195,6 +214,8 @@ void CoreHost::attachWindow(ChannelEnd& channel)
 void CoreHost::detachWindow()
 {
     relay_.detach();
+    // On Android the next window is the app started again, and a start asks for the PIN.
+    lockUi();
     setWindowActive(false);
     setCallScreenShown(false);
 }
@@ -208,6 +229,154 @@ void CoreHost::setWindowActive(const bool active)
     bazarish::i2p::windowActive(active);
     emit windowActiveChanged();
     tellPresence();
+    armAutoLock();
+}
+
+bool CoreHost::hidesAllText() const
+{
+    return uiLock_.locked() && AppSettings::instance().uiLockHidesAll();
+}
+
+void CoreHost::announceUiLock()
+{
+    qint64 waitUntilMs = 0;
+    if (const std::optional<UiLock::Clock::time_point> until = uiLock_.waitUntil()) {
+        const auto left = std::chrono::ceil<std::chrono::milliseconds>(*until - UiLock::Clock::now());
+        // The wall clock reads in whole milliseconds, dropping the part of one already gone.
+        waitUntilMs = QDateTime::currentMSecsSinceEpoch() + std::max<qint64>(left.count(), 0)
+            + kClockGrainMs;
+    }
+    const AppSettings& settings = AppSettings::instance();
+    emit events_.uiLock(uiLock_.enabled(), uiLock_.locked(), waitUntilMs,
+        settings.uiAutoLockMinutes(), settings.uiLockFingerprint(), settings.uiLockHidesAll(),
+        settings.uiLockPhoto());
+}
+
+void CoreHost::announceIntruder()
+{
+    const Bytes& photo = intruder_.photo();
+    emit events_.intruder(intruder_.count(), intruder_.lastSeconds(),
+        QByteArray(reinterpret_cast<const char*>(photo.data()), static_cast<qsizetype>(photo.size())));
+}
+
+void CoreHost::armAutoLock()
+{
+    autoLock_.stop();
+    const int minutes = AppSettings::instance().uiAutoLockMinutes();
+    if (!windowActive_ && uiLock_.enabled() && !uiLock_.locked() && minutes > 0) {
+        autoLock_.start(std::chrono::minutes(minutes));
+    }
+}
+
+void CoreHost::lockUi()
+{
+    if (!uiLock_.enabled() || uiLock_.locked()) {
+        return;
+    }
+    uiLock_.lock();
+    autoLock_.stop();
+    announceUiLock();
+    tellPresence();
+}
+
+void CoreHost::unlockUi(const QString& pin)
+{
+    const UiLock::Answer answer = uiLock_.tryPin(pin.toStdString(), UiLock::Clock::now());
+    if (answer == UiLock::Answer::eUnlocked) {
+        afterUnlock();
+        emit events_.uiUnlockAnswer(true);
+        return;
+    }
+    if (answer == UiLock::Answer::eRefused) {
+        const bool started
+            = intruder_.noteFailure(uiLock_.failures(), QDateTime::currentSecsSinceEpoch());
+        if (!intruder_.empty()) {
+            announceIntruder();
+        }
+        if (started && AppSettings::instance().uiLockPhoto()) {
+            emit events_.intruderPhotoWanted();
+        }
+    }
+    announceUiLock();
+    emit events_.uiUnlockAnswer(false);
+}
+
+void CoreHost::unlockUiByOwner()
+{
+    if (!uiLock_.locked()) {
+        return;
+    }
+    uiLock_.unlockByOwner();
+    afterUnlock();
+}
+
+void CoreHost::afterUnlock()
+{
+    announceUiLock();
+    tellPresence();
+    armAutoLock();
+}
+
+void CoreHost::enableUiLock(const QString& pin)
+{
+    UiLockPin made = uiLockPinOf(pin.toStdString());
+    AppSettings::instance().setUiLockPin(made);
+    uiLock_.enable(std::move(made));
+    announceUiLock();
+    armAutoLock();
+}
+
+void CoreHost::disableUiLock()
+{
+    if (uiLock_.locked()) {
+        return;
+    }
+    uiLock_.disable();
+    AppSettings::instance().setUiLockPin(std::nullopt);
+    intruder_.clear();
+    announceIntruder();
+    announceUiLock();
+    armAutoLock();
+}
+
+void CoreHost::setUiAutoLock(const int minutes)
+{
+    AppSettings::instance().setUiAutoLockMinutes(minutes);
+    announceUiLock();
+    armAutoLock();
+}
+
+void CoreHost::setUiLockFingerprint(const bool on)
+{
+    AppSettings::instance().setUiLockFingerprint(on);
+    announceUiLock();
+}
+
+void CoreHost::setUiLockHidesAll(const bool on)
+{
+    AppSettings::instance().setUiLockHidesAll(on);
+    announceUiLock();
+}
+
+void CoreHost::setUiLockPhoto(const bool on)
+{
+    AppSettings::instance().setUiLockPhoto(on);
+    announceUiLock();
+}
+
+void CoreHost::keepIntruderPhoto(const QByteArray& jpeg)
+{
+    intruder_.keepPhoto(Bytes(jpeg.cbegin(), jpeg.cend()));
+    announceIntruder();
+}
+
+void CoreHost::intruderSeen()
+{
+    if (uiLock_.locked()) {
+        return;
+    }
+    intruder_.clear();
+    announceIntruder();
 }
 
 void CoreHost::setWindowShown(const bool shown)
@@ -224,7 +393,8 @@ void CoreHost::tellPresence()
     const bool away = !windowShown_ || !screenOn_;
     for (CoreAccount* const account : sessions_) {
         account->setPresenceAway(away);
-        account->setPresenceFocused(windowActive_ && account->accountId() == activeId_);
+        account->setPresenceFocused(
+            windowActive_ && !uiLock_.locked() && account->accountId() == activeId_);
     }
 }
 
@@ -292,6 +462,9 @@ void CoreHost::start()
         bazarish::log::warn("no network information backend: a new network goes unnoticed");
     }
 #endif
+    intruder_.load();
+    announceUiLock();
+    announceIntruder();
     i2p_.announce();
     notifications_ = AppSettings::instance().notifications();
     notificationText_ = AppSettings::instance().notificationText();
@@ -638,6 +811,10 @@ void CoreHost::openSession(const QString& id, const QString& passphrase, const b
         });
     connect(account, &CoreAccount::messageNotification, this,
         [this, account](const QString& peer, const QString& fromName, const QString& preview) {
+            if (hidesAllText()) {
+                emit notificationRequested(account->accountId(), peer, tr("New message"), {});
+                return;
+            }
             QString body;
             if (notificationText_ && !preview.isEmpty()) {
                 body = shortened(preview, kNotificationTextChars);
@@ -650,6 +827,11 @@ void CoreHost::openSession(const QString& id, const QString& passphrase, const b
     connect(account, &CoreAccount::reactionNotification, this,
         [this, account](const QString& peer, const QString& fromName, const QString& emoji,
             const QString& targetPreview) {
+            if (hidesAllText()) {
+                emit reactionNotificationRequested(
+                    account->accountId(), peer, tr("New reaction"), {});
+                return;
+            }
             QString body;
             if (!notificationText_) {
                 body = sessions_.size() > 1 ? tr("New reaction for %1").arg(accountName(account))

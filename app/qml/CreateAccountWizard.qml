@@ -23,11 +23,17 @@ Item {
     }
 
     IconButton {
+        id: gearButton
         iconName: "gear"
         anchors.top: parent.top
         anchors.right: parent.right
         anchors.margins: 12
         onClicked: appSettings.open()
+    }
+    LockButton {
+        anchors.top: parent.top
+        anchors.right: gearButton.left
+        anchors.topMargin: 12
     }
     RouterStatusPage { id: routerStatus }
     function offerGateway(link) { appSettings.offerGateway(link) }

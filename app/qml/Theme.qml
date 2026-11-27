@@ -68,6 +68,8 @@ QtObject {
     readonly property int spacing: 12
     readonly property int radius: 10
     readonly property int radiusSmall: 6
+    readonly property int lockLayer: 2000
+    readonly property int callLayer: 2100
     readonly property int rowInset: 6
     readonly property int popupGap: 6
     readonly property int avatar: 44
