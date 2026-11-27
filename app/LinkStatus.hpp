@@ -17,6 +17,7 @@ QML_ELEMENT
 enum Value {
     None = static_cast<int>(client::LinkFailure::eNone),
     NoNetwork = static_cast<int>(client::LinkFailure::eNoNetwork),
+    ProxyUnreachable = static_cast<int>(client::LinkFailure::eProxyUnreachable),
     I2pUnreachable = static_cast<int>(client::LinkFailure::eI2pUnreachable),
     GatewayUnreachable = static_cast<int>(client::LinkFailure::eGatewayUnreachable),
     GatewayRefused = static_cast<int>(client::LinkFailure::eGatewayRefused),

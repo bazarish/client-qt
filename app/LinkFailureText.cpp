@@ -106,6 +106,8 @@ QString linkFailureText(const int failure, const FarSide side)
         return {};
     case client::LinkFailure::eNoNetwork:
         return QObject::tr("No network");
+    case client::LinkFailure::eProxyUnreachable:
+        return QObject::tr("The SOCKS proxy does not answer");
     case client::LinkFailure::eI2pUnreachable:
         return QObject::tr("No connection to the I2P network");
     case client::LinkFailure::eGatewayUnreachable:

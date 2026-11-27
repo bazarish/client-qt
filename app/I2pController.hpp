@@ -27,6 +27,7 @@ class I2pController : public QObject {
     Q_PROPERTY(int outboundTunnels READ outboundTunnels NOTIFY statusChanged)
     Q_PROPERTY(QStringList transports READ transports NOTIFY statusChanged)
     Q_PROPERTY(bool transportsUnread READ transportsUnread NOTIFY statusChanged)
+    Q_PROPERTY(bool proxyUnreachable READ proxyUnreachable NOTIFY statusChanged)
     Q_PROPERTY(QVariantList destinations READ destinations NOTIFY statusChanged)
     Q_PROPERTY(QString proxyHost READ proxyHost NOTIFY proxyChanged)
     Q_PROPERTY(int proxyPort READ proxyPort NOTIFY proxyChanged)
@@ -60,6 +61,7 @@ public:
     QString proxyHost() const { return state_.proxyHost; }
     int proxyPort() const { return state_.proxyPort; }
     bool proxyChecking() const { return state_.proxyChecking; }
+    bool proxyUnreachable() const { return state_.proxyUnreachable; }
     Q_INVOKABLE void checkAndSaveProxy(const QString& host, int port);
     bool samEnabled() const { return state_.samEnabled; }
     bool samChecking() const { return state_.samChecking; }

@@ -71,6 +71,8 @@ WindowPopup {
                         visible: !I2p.running && !I2p.gatewayEnabled
                         text: I2p.samEnabled
                             ? qsTr("No router answering at the address below")
+                            : I2p.proxyUnreachable
+                            ? qsTr("The SOCKS proxy does not answer")
                             : I2p.knownRouters < I2p.minKnownRouters
                             ? qsTr("No network database yet")
                             : qsTr("Not running")

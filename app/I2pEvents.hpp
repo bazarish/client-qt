@@ -34,6 +34,7 @@ struct I2pState {
     QString proxyHost;
     int proxyPort = 0;
     bool proxyChecking = false;
+    bool proxyUnreachable = false;
     bool samEnabled = false;
     bool samChecking = false;
     QString samHost;
@@ -69,6 +70,7 @@ inline QDataStream& operator<<(QDataStream& out, const I2pState& state)
                << qint32(state.outboundTunnels) << state.transports << state.transportsUnread
                << state.destinations
                << state.proxyHost << qint32(state.proxyPort) << state.proxyChecking
+               << state.proxyUnreachable
                << state.samEnabled << state.samChecking << state.samHost
                << qint32(state.samPort) << state.gatewayAsked << state.gatewayEnabled
                << state.gatewayChecking << state.gatewayAddress << state.gatewayHost
@@ -88,7 +90,7 @@ inline QDataStream& operator>>(QDataStream& in, I2pState& state)
     in >> state.loggingEnabled >> privacyLevel >> state.running >> state.ready >> knownRouters
         >> minKnownRouters >> floodfills >> inboundTunnels >> outboundTunnels >> state.transports
         >> state.transportsUnread >> state.destinations >> state.proxyHost >> proxyPort
-        >> state.proxyChecking
+        >> state.proxyChecking >> state.proxyUnreachable
         >> state.samEnabled >> state.samChecking >> state.samHost >> samPort
         >> state.gatewayAsked >> state.gatewayEnabled >> state.gatewayChecking
         >> state.gatewayAddress >> state.gatewayHost >> state.restartNeeded;

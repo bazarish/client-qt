@@ -504,6 +504,7 @@ void I2pService::refresh()
     now.transports = transports;
     now.transportsUnread = transportsUnread;
     now.destinations = destinations;
+    now.proxyUnreachable = ownEngine && !running && client::i2pProxyUnreachable();
     if (now == state_) {
         return;
     }

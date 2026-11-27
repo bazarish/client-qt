@@ -6040,6 +6040,12 @@
       "es": "comando",
       "zh": "命令",
       "ar": "أمر"
+    },
+    "The SOCKS proxy does not answer": {
+      "ru": "Прокси SOCKS не отвечает",
+      "es": "El proxy SOCKS no responde",
+      "zh": "SOCKS 代理没有响应",
+      "ar": "وكيل SOCKS لا يستجيب"
     }
   }
 }
