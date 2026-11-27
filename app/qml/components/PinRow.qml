@@ -34,24 +34,42 @@ Item {
     implicitHeight: root.cell + root.kLift
 
     property bool keyboardWanted: false
-    // A system prompt that has just closed leaves the app inactive, and a keyboard asked for then never comes.
+    // Android drops a keyboard asked for before the window holds the input focus, as at a start or after a system prompt.
     function focusInput() {
         field.forceActiveFocus()
         root.keyboardWanted = true
         Qt.callLater(root.raiseKeyboard)
     }
     function raiseKeyboard() {
-        if (!root.keyboardWanted || Qt.application.state !== Qt.ApplicationActive) {
-            return
-        }
-        root.keyboardWanted = false
-        if (field.activeFocus) {
+        const window = root.Window.window
+        if (root.keyboardWanted && field.activeFocus && Qt.application.state === Qt.ApplicationActive
+                && window && window.active) {
             Qt.inputMethod.show()
         }
     }
     Connections {
         target: Qt.application
         function onStateChanged() { root.raiseKeyboard() }
+    }
+    Connections {
+        target: root.Window.window
+        function onActiveChanged() { root.raiseKeyboard() }
+    }
+    Connections {
+        target: Qt.inputMethod
+        function onVisibleChanged() {
+            if (Qt.inputMethod.visible) {
+                root.keyboardWanted = false
+            }
+        }
+    }
+    Connections {
+        target: field
+        function onActiveFocusChanged() {
+            if (!field.activeFocus) {
+                root.keyboardWanted = false
+            }
+        }
     }
     function clear() {
         field.text = ""

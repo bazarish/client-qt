@@ -6010,6 +6010,36 @@
       "es": "Entradas de PIN incorrectas: %1, la última %2. La foto se tomó %3.",
       "zh": "PIN 输入错误 %1 次，最近一次 %2。照片拍摄于 %3。",
       "ar": "إدخالات رمز PIN الخاطئة: ⁦%1⁩، آخرها ⁦%2⁩. التُقطت الصورة ⁦%3⁩."
+    },
+    "bold": {
+      "ru": "жирный",
+      "es": "negrita",
+      "zh": "粗体",
+      "ar": "عريض"
+    },
+    "italic": {
+      "ru": "курсив",
+      "es": "cursiva",
+      "zh": "斜体",
+      "ar": "مائل"
+    },
+    "strikethrough": {
+      "ru": "зачёркнутый",
+      "es": "tachado",
+      "zh": "删除线",
+      "ar": "يتوسطه خط"
+    },
+    "code": {
+      "ru": "код",
+      "es": "código",
+      "zh": "代码",
+      "ar": "شيفرة"
+    },
+    "command": {
+      "ru": "команда",
+      "es": "comando",
+      "zh": "命令",
+      "ar": "أمر"
     }
   }
 }

@@ -116,9 +116,10 @@ Popup {
                 anchors.fill: parent
                 CaptureSession {
                     camera: Camera {
-                        active: true
+                        id: camera
                         cameraDevice: root.frontCamera
                         onErrorOccurred: root.stopCamera()
+                        Component.onCompleted: camera.active = true
                     }
                     videoOutput: view
                 }

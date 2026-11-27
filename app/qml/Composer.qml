@@ -27,11 +27,11 @@ Rectangle {
     // The Basic style's text area padding, kept so the field looks the same.
     readonly property int kFieldPadding: 6
     readonly property var kForms: [
-        { glyph: "**", name: "bold", open: "**", close: "**" },
-        { glyph: "*", name: "italic", open: "*", close: "*" },
-        { glyph: "~~", name: "strike", open: "~~", close: "~~" },
-        { glyph: "```", name: "block", open: "```", close: "```" },
-        { glyph: "!!", name: "command", open: "!!", close: "!!" }
+        { name: qsTr("bold"), open: "**", close: "**" },
+        { name: qsTr("italic"), open: "*", close: "*" },
+        { name: qsTr("strikethrough"), open: "~~", close: "~~" },
+        { name: qsTr("code"), open: "```", close: "```" },
+        { name: qsTr("command"), open: "!!", close: "!!" }
     ]
 
     function sendPictures(sources) {

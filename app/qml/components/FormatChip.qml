@@ -15,20 +15,10 @@ Button {
         color: chip.hovered || chip.down ? Theme.surfaceAlt : "transparent"
         border.color: Theme.border
     }
-    contentItem: Row {
-        spacing: 4
-        Label {
-            text: chip.form.glyph
-            color: Theme.accent
-            font.pixelSize: Theme.fontSmall
-            font.family: "monospace"
-            anchors.verticalCenter: parent.verticalCenter
-        }
-        Label {
-            text: chip.form.name
-            color: Theme.textDim
-            font.pixelSize: Theme.fontSmall
-            anchors.verticalCenter: parent.verticalCenter
-        }
+    contentItem: Label {
+        text: chip.form.name
+        color: Theme.textDim
+        font.pixelSize: Theme.fontSmall
+        verticalAlignment: Text.AlignVCenter
     }
 }
