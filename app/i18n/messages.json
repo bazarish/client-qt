@@ -5998,6 +5998,18 @@
       "es": "sin servidor",
       "zh": "无服务器",
       "ar": "بلا خادم"
+    },
+    "The interface lock is an extra privacy option for cases when your device may fall into unwanted hands in everyday situations. It protects against being seen and does not replace the encryption of the account database on disk.": {
+      "ru": "Блокирование интерфейса является дополнительной опцией приватности для случаев, когда ваше устройство может попасть в нежелательные руки в бытовых условиях. Это защита от визуального контакта, которая не заменяет шифрование базы данных аккаунта на диске.",
+      "es": "El bloqueo de la interfaz es una opción de privacidad adicional para los casos en que su dispositivo pueda caer en manos no deseadas en el día a día. Protege de miradas ajenas y no sustituye el cifrado de la base de datos de la cuenta en el disco.",
+      "zh": "界面锁定是一项额外的隐私选项，适用于设备在日常生活中可能落入他人之手的情况。它防止他人看到内容，但不能替代磁盘上账号数据库的加密。",
+      "ar": "قفل الواجهة خيار خصوصية إضافي للحالات التي قد يقع فيها جهازك في أيدٍ غير مرغوب فيها في الحياة اليومية. إنه حماية من الاطلاع البصري ولا يغني عن تشفير قاعدة بيانات الحساب على القرص."
+    },
+    "Wrong PIN entries: %1, the last one %2. The photo was taken %3.": {
+      "ru": "Неверных вводов пин-кода: %1, последний %2. Фото было сделано %3.",
+      "es": "Entradas de PIN incorrectas: %1, la última %2. La foto se tomó %3.",
+      "zh": "PIN 输入错误 %1 次，最近一次 %2。照片拍摄于 %3。",
+      "ar": "إدخالات رمز PIN الخاطئة: ⁦%1⁩، آخرها ⁦%2⁩. التُقطت الصورة ⁦%3⁩."
     }
   }
 }

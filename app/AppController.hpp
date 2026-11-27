@@ -87,6 +87,7 @@ class AppController : public QObject {
     Q_PROPERTY(int intruderCount READ intruderCount NOTIFY intruderChanged)
     Q_PROPERTY(double intruderLastMs READ intruderLastMs NOTIFY intruderChanged)
     Q_PROPERTY(QString intruderPhoto READ intruderPhoto NOTIFY intruderChanged)
+    Q_PROPERTY(double intruderPhotoMs READ intruderPhotoMs NOTIFY intruderChanged)
 
     Q_PROPERTY(QString ringingPeer READ ringingPeer NOTIFY ringingChanged)
     Q_PROPERTY(QString ringingPeerFingerprint READ ringingPeerFingerprint NOTIFY ringingChanged)
@@ -264,6 +265,7 @@ public:
     int intruderCount() const { return intruderCount_; }
     double intruderLastMs() const { return static_cast<double>(intruderLastSeconds_) * kMsPerSecond; }
     QString intruderPhoto() const;
+    double intruderPhotoMs() const { return static_cast<double>(intruderPhotoSeconds_) * kMsPerSecond; }
     Q_INVOKABLE QString autoLockLabel(int seconds) const;
     Q_INVOKABLE void lockUi();
     Q_INVOKABLE void unlockUi(const QString& pin);
@@ -395,6 +397,7 @@ private:
     bool uiLockPhoto_ = true;
     int intruderCount_ = 0;
     qint64 intruderLastSeconds_ = 0;
+    qint64 intruderPhotoSeconds_ = 0;
     bool intruderHasPhoto_ = false;
 };
 

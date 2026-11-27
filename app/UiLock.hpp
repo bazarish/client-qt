@@ -60,12 +60,12 @@ public:
     int count() const { return count_; }
     std::int64_t lastSeconds() const { return lastSeconds_; }
     const Bytes& photo() const { return photo_; }
+    std::int64_t photoSeconds() const { return photoSeconds_; }
     bool empty() const { return count_ == 0; }
 
     void load();
-    // True when this failure starts the note, which is when a photograph is wanted.
     bool noteFailure(int failuresInRow, std::int64_t atSeconds);
-    void keepPhoto(Bytes jpeg);
+    void keepPhoto(Bytes jpeg, std::int64_t atSeconds);
     void clear();
 
 private:
@@ -77,6 +77,7 @@ private:
     int count_ = 0;
     std::int64_t lastSeconds_ = 0;
     Bytes photo_;
+    std::int64_t photoSeconds_ = 0;
 };
 
 }  // namespace bazarish::app

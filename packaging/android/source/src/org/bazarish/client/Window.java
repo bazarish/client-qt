@@ -192,7 +192,6 @@ public final class Window {
         }
     }
 
-    // While the app lock is on, the recent-apps preview would show what the lock covers.
     static void guardRecents(Activity shown) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             shown.setRecentsScreenshotEnabled(!recentsHidden);
@@ -213,7 +212,6 @@ public final class Window {
             == BiometricManager.BIOMETRIC_SUCCESS;
     }
 
-    // A failed finger keeps the prompt up; only success, an error or the negative button end it.
     private static BiometricPrompt.AuthenticationCallback answering(Consumer<Boolean> answer) {
         return new BiometricPrompt.AuthenticationCallback() {
             @Override

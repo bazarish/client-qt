@@ -112,7 +112,7 @@ signals:
         bool fingerprint, bool hidesAll, bool photo);
     void uiUnlockAnswer(bool unlocked);
     void intruderPhotoWanted();
-    void intruder(int count, qint64 lastSeconds, const QByteArray& photo);
+    void intruder(int count, qint64 lastSeconds, const QByteArray& photo, qint64 photoSeconds);
     void ringing(const QString& account, const QString& peer, const QString& fingerprint,
         const QString& accountName);
     void ringLevel(double level);

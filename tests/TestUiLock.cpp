@@ -73,15 +73,15 @@ try {
         IntruderNote note(folder.path());
         note.load();
         CHECK(note.empty());
-        note.keepPhoto({0xff, 0xd8});
+        note.keepPhoto({0xff, 0xd8}, kFirstMiss);
         CHECK(note.photo().empty());
         CHECK(!note.noteFailure(1, kFirstMiss));
         CHECK(!note.noteFailure(2, kFirstMiss));
         CHECK(note.empty());
         CHECK(note.noteFailure(3, kFirstMiss));
         CHECK(note.count() == 3);
-        note.keepPhoto({0xff, 0xd8, 0xff});
-        note.keepPhoto({0x00});
+        note.keepPhoto({0xff, 0xd8, 0xff}, kFirstMiss + 5);
+        note.keepPhoto({0x00}, kFirstMiss + 9);
         CHECK(!note.noteFailure(1, kFirstMiss + 60));
         CHECK(note.count() == 4 && note.lastSeconds() == kFirstMiss + 60);
     }
@@ -90,6 +90,7 @@ try {
         again.load();
         CHECK(again.count() == 4 && again.lastSeconds() == kFirstMiss + 60);
         CHECK((again.photo() == bazarish::Bytes{0xff, 0xd8, 0xff}));
+        CHECK(again.photoSeconds() == kFirstMiss + 5);
         again.clear();
     }
     CHECK(std::filesystem::is_empty(folder.path()));

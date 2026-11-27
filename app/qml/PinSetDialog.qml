@@ -11,7 +11,10 @@ Dialog {
     property bool differed: false
     signal chosen(string pin)
 
-    anchors.centerIn: Overlay.overlay
+    parent: Overlay.overlay
+    x: parent ? (parent.width - width) / 2 : 0
+    readonly property real room: parent ? parent.height - App.keyboardInset : 0
+    y: Math.min(Math.max(Theme.spacing, (root.room - height) / 2), root.room - height)
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape

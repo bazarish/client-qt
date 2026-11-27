@@ -170,6 +170,7 @@ void IntruderNote::load()
     count_ = 0;
     lastSeconds_ = 0;
     photo_.clear();
+    photoSeconds_ = 0;
     if (!fs::exists(recordFile())) {
         removeIfThere(photoFile());
         return;
@@ -183,6 +184,10 @@ void IntruderNote::load()
     count_ = count;
     lastSeconds_ = last;
     if (fs::exists(photoFile())) {
+        photoSeconds_ = record.at("photoAt").get<std::int64_t>();
+        if (photoSeconds_ <= 0) {
+            throw std::runtime_error(recordFile().string() + " names no time for the photo");
+        }
         photo_ = readFileBytes(photoFile());
     }
 }
@@ -199,11 +204,13 @@ bool IntruderNote::noteFailure(const int failuresInRow, const std::int64_t atSec
     return starts;
 }
 
-void IntruderNote::keepPhoto(Bytes jpeg)
+void IntruderNote::keepPhoto(Bytes jpeg, const std::int64_t atSeconds)
 {
     if (empty() || !photo_.empty() || jpeg.empty()) {
         return;
     }
+    photoSeconds_ = atSeconds;
+    save();
     writeFileAtomic(photoFile(),
         std::string_view(reinterpret_cast<const char*>(jpeg.data()), jpeg.size()), kOwnerOnly);
     photo_ = std::move(jpeg);
@@ -216,11 +223,16 @@ void IntruderNote::clear()
     count_ = 0;
     lastSeconds_ = 0;
     photo_.clear();
+    photoSeconds_ = 0;
 }
 
 void IntruderNote::save() const
 {
-    writePrivateFile(recordFile(), nlohmann::json{{"count", count_}, {"last", lastSeconds_}}.dump());
+    nlohmann::json record{{"count", count_}, {"last", lastSeconds_}};
+    if (photoSeconds_ > 0) {
+        record["photoAt"] = photoSeconds_;
+    }
+    writePrivateFile(recordFile(), record.dump());
 }
 
 }  // namespace bazarish::app

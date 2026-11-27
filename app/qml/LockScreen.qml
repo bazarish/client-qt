@@ -37,34 +37,26 @@ Popup {
         onTriggered: root.now = Date.now()
     }
 
-    function offer() {
-        if (root.fingerprintOffered) {
-            App.askFingerprint()
-        } else {
-            pins.focusInput()
-        }
-    }
-    // Only coming to the lock from outside asks for the finger: a closed prompt must not reopen it.
-    function maybeOffer() {
-        if (!root.opened || Qt.application.state !== Qt.ApplicationActive || !root.cameIn) {
+    function showUp() {
+        if (!root.opened || (App.mobile && Qt.application.state !== Qt.ApplicationActive)) {
             return
         }
-        root.cameIn = false
-        root.offer()
+        pins.focusInput()
+        if (root.cameIn) {
+            root.cameIn = false
+            if (root.fingerprintOffered) {
+                App.askFingerprint()
+            }
+        }
     }
     onOpened: {
         root.now = Date.now()
         root.fingerprintOffered = App.mobile && App.uiLockFingerprint && App.fingerprintReady()
-        if (!App.mobile) {
-            pins.focusInput()
-            return
-        }
         if (root.byHand) {
             root.byHand = false
             root.cameIn = false
-            return
         }
-        root.maybeOffer()
+        root.showUp()
     }
     onClosed: {
         root.cameIn = false
@@ -77,7 +69,7 @@ Popup {
             if (state === Qt.ApplicationSuspended || state === Qt.ApplicationHidden) {
                 root.cameIn = true
             } else if (state === Qt.ApplicationActive) {
-                root.maybeOffer()
+                root.showUp()
             }
         }
     }
@@ -103,7 +95,6 @@ Popup {
         }
         return null
     }
-    // The camera's own signals end it, so the loader lets go once they have returned.
     function stopCamera() {
         Qt.callLater(() => { shooter.active = false })
     }
@@ -145,21 +136,32 @@ Popup {
                 }
                 onFailed: root.stopCamera()
             }
-            // A camera's first frames come before its exposure settles.
             Timer { id: settle; interval: root.kCameraSettleMs; onTriggered: shot.take() }
         }
     }
 
     contentItem: Item {
+        Item {
+            id: room
+            anchors.fill: parent
+            anchors.bottomMargin: App.keyboardInset
+        }
         ColumnLayout {
-            anchors.centerIn: parent
+            id: column
+            readonly property int kLogoHeight: 44
+            readonly property bool roomy: room.height >= column.kLogoHeight + column.spacing
+                + pins.implicitHeight + (root.fingerprintOffered ? column.spacing + fingerprint.implicitHeight : 0)
+                + 2 * Theme.spacing
+            x: (parent.width - width) / 2
+            y: Math.min((room.height - height) / 2, room.height - height)
             width: Math.min(parent.width - 2 * Theme.spacing, 460)
             spacing: 28
 
             Image {
+                visible: column.roomy
                 source: Theme.light ? "qrc:/icon/logo-onlight.svg" : "qrc:/icon/logo.svg"
                 Layout.alignment: Qt.AlignHCenter
-                Layout.preferredHeight: 44
+                Layout.preferredHeight: column.kLogoHeight
                 Layout.preferredWidth: 230
                 fillMode: Image.PreserveAspectFit
                 sourceSize.height: 96
@@ -174,6 +176,7 @@ Popup {
                 onSubmitted: (pin) => App.unlockUi(pin)
             }
             IconButton {
+                id: fingerprint
                 visible: root.fingerprintOffered
                 Layout.alignment: Qt.AlignHCenter
                 iconName: "fingerprint"

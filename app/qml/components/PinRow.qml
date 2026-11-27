@@ -19,8 +19,8 @@ Item {
     readonly property int kGap: 8
     readonly property int kMaxCell: 52
     readonly property int kLift: 10
-    readonly property int kStepMs: 45
-    readonly property int kRiseMs: 120
+    readonly property int kStepMs: 30
+    readonly property int kRiseMs: 80
     readonly property int kFailMs: 2000
     readonly property int kDotSize: 10
     readonly property int kEdge: 2
@@ -33,9 +33,25 @@ Item {
     implicitWidth: (root.kCells + 1) * root.kMaxCell + root.kCells * root.kGap
     implicitHeight: root.cell + root.kLift
 
+    property bool keyboardWanted: false
+    // A system prompt that has just closed leaves the app inactive, and a keyboard asked for then never comes.
     function focusInput() {
         field.forceActiveFocus()
-        Qt.inputMethod.show()
+        root.keyboardWanted = true
+        Qt.callLater(root.raiseKeyboard)
+    }
+    function raiseKeyboard() {
+        if (!root.keyboardWanted || Qt.application.state !== Qt.ApplicationActive) {
+            return
+        }
+        root.keyboardWanted = false
+        if (field.activeFocus) {
+            Qt.inputMethod.show()
+        }
+    }
+    Connections {
+        target: Qt.application
+        function onStateChanged() { root.raiseKeyboard() }
     }
     function clear() {
         field.text = ""

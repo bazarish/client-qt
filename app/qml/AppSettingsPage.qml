@@ -209,6 +209,12 @@ WindowPopup {
                             onToggled: App.screenCapture = checked
                         }
                     }
+                    MenuButton {
+                        Layout.fillWidth: true
+                        iconName: "lock"
+                        text: qsTr("App lock")
+                        onClicked: { root.close(); appLockPage.openFrom(root) }
+                    }
                 }
                 Hairline { }
 
@@ -510,18 +516,7 @@ WindowPopup {
                         onClicked: { root.close(); root.showRouterStatus() }
                     }
                 }
-                Hairline { }
 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.margins: Theme.contentInset
-                    MenuButton {
-                        Layout.fillWidth: true
-                        iconName: "lock"
-                        text: qsTr("App lock")
-                        onClicked: { root.close(); appLockPage.openFrom(root) }
-                    }
-                }
                 Hairline { }
 
                 ColumnLayout {

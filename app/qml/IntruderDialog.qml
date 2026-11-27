@@ -37,8 +37,12 @@ Dialog {
             Layout.leftMargin: 16
             Layout.rightMargin: 16
             Layout.topMargin: 4
-            text: qsTr("Wrong PIN entries: %1, the last one %2")
-                .arg(App.intruderCount).arg(root.moment(App.intruderLastMs))
+            text: App.intruderPhoto.length > 0
+                ? qsTr("Wrong PIN entries: %1, the last one %2. The photo was taken %3.")
+                    .arg(App.intruderCount).arg(root.moment(App.intruderLastMs))
+                    .arg(root.moment(App.intruderPhotoMs))
+                : qsTr("Wrong PIN entries: %1, the last one %2")
+                    .arg(App.intruderCount).arg(root.moment(App.intruderLastMs))
             color: Theme.text
             wrapMode: Text.Wrap
         }

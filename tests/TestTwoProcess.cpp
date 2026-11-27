@@ -235,7 +235,7 @@ try {
         QObject::connect(
             &second.events, &AppEvents::intruderPhotoWanted, [&]() { ++photoWanted; });
         QObject::connect(&second.events, &AppEvents::intruder,
-            [&](const int count, qint64, const QByteArray& jpeg) {
+            [&](const int count, qint64, const QByteArray& jpeg, qint64) {
                 intruders = count;
                 photo = jpeg;
             });

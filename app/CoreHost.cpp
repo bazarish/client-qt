@@ -256,7 +256,8 @@ void CoreHost::announceIntruder()
 {
     const Bytes& photo = intruder_.photo();
     emit events_.intruder(intruder_.count(), intruder_.lastSeconds(),
-        QByteArray(reinterpret_cast<const char*>(photo.data()), static_cast<qsizetype>(photo.size())));
+        QByteArray(reinterpret_cast<const char*>(photo.data()), static_cast<qsizetype>(photo.size())),
+        intruder_.photoSeconds());
 }
 
 void CoreHost::armAutoLock()
@@ -366,7 +367,7 @@ void CoreHost::setUiLockPhoto(const bool on)
 
 void CoreHost::keepIntruderPhoto(const QByteArray& jpeg)
 {
-    intruder_.keepPhoto(Bytes(jpeg.cbegin(), jpeg.cend()));
+    intruder_.keepPhoto(Bytes(jpeg.cbegin(), jpeg.cend()), QDateTime::currentSecsSinceEpoch());
     announceIntruder();
 }
 

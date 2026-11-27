@@ -71,7 +71,6 @@ Item {
     readonly property bool isVoice: model.type === "audio"
     readonly property bool voicePlaying: delegate.isVoice && delegate.session
         && delegate.session.voicePlaying === model.e2eId
-    // The list holds the bubble of the playing note, so a player bar can stand in once it scrolls away.
     readonly property bool showsPlayingVoice: delegate.voicePlaying && !delegate.pooled
     onShowsPlayingVoiceChanged: delegate.claimPlayer()
     Component.onCompleted: delegate.claimPlayer()

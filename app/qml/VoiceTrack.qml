@@ -35,7 +35,6 @@ RowLayout {
         function sample(at) {
             return parseInt(root.wave.charAt(at), 16) / kTopLevel
         }
-        // Stretched over more bars than the note has points, the levels between them are drawn in a line.
         function levelAt(index) {
             if (!root.stretched) {
                 return bars.sample(Math.floor(index * root.wave.length / count))

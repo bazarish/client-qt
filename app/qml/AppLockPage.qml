@@ -85,6 +85,13 @@ WindowPopup {
                 Layout.margins: Theme.contentInset
                 spacing: 14
 
+                Label {
+                    text: qsTr("The interface lock is an extra privacy option for cases when your device may fall into unwanted hands in everyday situations. It protects against being seen and does not replace the encryption of the account database on disk.")
+                    color: Theme.textDim
+                    font.pixelSize: Theme.fontSmall
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
                 RowLayout {
                     Layout.fillWidth: true
                     Label {

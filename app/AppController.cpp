@@ -170,9 +170,11 @@ AppController::AppController(Translations& translations, Relay& relay, QObject* 
     connect(&events_, &AppEvents::uiUnlockAnswer, this, &AppController::uiUnlockAnswered);
     connect(&events_, &AppEvents::intruderPhotoWanted, this, &AppController::intruderPhotoWanted);
     connect(&events_, &AppEvents::intruder, this,
-        [this](const int count, const qint64 lastSeconds, const QByteArray& photo) {
+        [this](const int count, const qint64 lastSeconds, const QByteArray& photo,
+            const qint64 photoSeconds) {
             intruderCount_ = count;
             intruderLastSeconds_ = lastSeconds;
+            intruderPhotoSeconds_ = photoSeconds;
             PictureStore::instance().remove(kIntruderPhotoKey);
             intruderHasPhoto_ = !photo.isEmpty() && PictureStore::instance().put(kIntruderPhotoKey, photo);
             emit intruderChanged();
