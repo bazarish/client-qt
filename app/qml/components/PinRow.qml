@@ -8,7 +8,6 @@ Item {
     property double waitUntil: 0
     property real waitLeft: 0
     readonly property bool waiting: waitRun.running
-    property bool keyboardBack: false
     property string actionName: ""
     property bool failed: false
     property bool pending: false
@@ -47,7 +46,7 @@ Item {
         }
     }
     onWaitingChanged: {
-        if (!root.waiting && !root.pending && root.keyboardBack) {
+        if (!root.waiting && !root.pending) {
             root.focusInput()
         }
     }
@@ -62,7 +61,6 @@ Item {
     property bool keyboardWanted: false
     // Android drops a keyboard asked for before the window holds the input focus, as at a start or after a system prompt.
     function focusInput() {
-        root.keyboardBack = true
         field.forceActiveFocus()
         root.keyboardWanted = true
         Qt.callLater(root.raiseKeyboard)
@@ -83,14 +81,6 @@ Item {
         function onActiveChanged() { root.raiseKeyboard() }
     }
     Connections {
-        target: Qt.inputMethod
-        function onVisibleChanged() {
-            if (!Qt.inputMethod.visible && !root.pending) {
-                root.keyboardBack = false
-            }
-        }
-    }
-    Connections {
         target: field
         function onActiveFocusChanged() {
             const window = root.Window.window
@@ -109,7 +99,6 @@ Item {
         if (field.text.length === 0 || root.waiting || root.busy) {
             return
         }
-        root.keyboardBack = Qt.inputMethod.visible
         root.pending = true
         root.failed = false
         wave.restart()
@@ -130,7 +119,7 @@ Item {
         if (!ok) {
             root.failed = true
             failTimer.restart()
-            if (!root.waiting && root.keyboardBack) {
+            if (!root.waiting) {
                 root.focusInput()
             }
         }
