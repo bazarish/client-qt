@@ -325,6 +325,7 @@ if(Qt6_FOUND)
             app/qml/IncomingCallWindow.qml
             app/qml/AppSettingsPage.qml
             app/qml/SettingsPage.qml
+            app/qml/AccountIdentifiersPage.qml
             app/qml/RouterStatusPage.qml
             app/qml/DestinationSheet.qml
             app/qml/ConnectionLogPage.qml

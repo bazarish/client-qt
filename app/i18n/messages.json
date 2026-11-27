@@ -5782,6 +5782,42 @@
       "es": "Mostrar menos",
       "zh": "收起",
       "ar": "عرض أقل"
+    },
+    "Account identifiers": {
+      "ru": "Идентификаторы аккаунта",
+      "es": "Identificadores de la cuenta",
+      "zh": "账户标识",
+      "ar": "معرّفات الحساب"
+    },
+    "Contact card": {
+      "ru": "Карточка контакта",
+      "es": "Tarjeta de contacto",
+      "zh": "联系人名片",
+      "ar": "بطاقة جهة الاتصال"
+    },
+    "Not published yet": {
+      "ru": "Ещё не опубликована",
+      "es": "Aún no publicada",
+      "zh": "尚未发布",
+      "ar": "لم تُنشر بعد"
+    },
+    "Mail keys": {
+      "ru": "Ключи почты",
+      "es": "Claves de correo",
+      "zh": "邮件密钥",
+      "ar": "مفاتيح البريد"
+    },
+    "Epoch %1 until %2": {
+      "ru": "Эпоха %1 до %2",
+      "es": "Época %1 hasta %2",
+      "zh": "第 %1 期，至 %2",
+      "ar": "الحقبة %1 حتى %2"
+    },
+    "Revoked devices": {
+      "ru": "Отозванные устройства",
+      "es": "Dispositivos revocados",
+      "zh": "已吊销的设备",
+      "ar": "الأجهزة الملغاة"
     }
   }
 }

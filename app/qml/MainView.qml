@@ -237,6 +237,7 @@ Item {
     }
     RouterStatusPage { id: routerStatus }
     StoragePage { id: storagePage }
+    AccountIdentifiersPage { id: identifiersPage }
     function offerGateway(link) { appSettings.offerGateway(link) }
     AppSettingsPage {
         id: appSettings
@@ -253,6 +254,7 @@ Item {
         onShowSignWithKey: signWithKeySheet.openFrom(settings)
         onShowStorage: storagePage.openFrom(settings)
         onShowConnectionLog: connectionLog.openFrom(settings)
+        onShowIdentifiers: identifiersPage.openFrom(settings)
     }
 
     Connections {

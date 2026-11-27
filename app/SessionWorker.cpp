@@ -1020,13 +1020,30 @@ void SessionWorker::emitDeviceState()
         = QDateTime::currentSecsSinceEpoch() + session_->ownEpochReserveSeconds();
     const bool reserveLow = session_->ownEpochReserveLow();
     const bool revoked = session_->deviceRevoked();
-    const QVariantList told{
-        deviceId, primary, own, reserveUntil / bazarish::kSecondsPerDay, reserveLow, revoked};
+    QVariantMap card;
+    if (const std::optional<bazarish::ContactCard> published = session_->publishedCard()) {
+        QVariantList epochs;
+        for (const bazarish::EpochPublic& epoch : published->epochs) {
+            epochs.append(QVariantMap{
+                {QStringLiteral("n"), static_cast<qint64>(epoch.n)},
+                {QStringLiteral("until"), static_cast<qint64>(bazarish::epochEnd(epoch.n))},
+            });
+        }
+        card = QVariantMap{
+            {QStringLiteral("issuedAt"), static_cast<qint64>(published->issuedAt)},
+            {QStringLiteral("address"), QString::fromStdString(published->dest)},
+            {QStringLiteral("epochs"), epochs},
+            {QStringLiteral("revocation"), static_cast<qint64>(published->revocation.number)},
+            {QStringLiteral("revoked"), static_cast<qint64>(published->revocation.revoked.size())},
+        };
+    }
+    const QVariantList told{deviceId, primary, own, card, reserveUntil / bazarish::kSecondsPerDay,
+        reserveLow, revoked};
     if (told == toldDeviceState_) {
         return;
     }
     toldDeviceState_ = told;
-    emit deviceState(deviceId, primary, own, reserveUntil, reserveLow, revoked);
+    emit deviceState(deviceId, primary, own, card, reserveUntil, reserveLow, revoked);
 }
 
 void SessionWorker::armDayTimer()
@@ -1395,6 +1412,7 @@ void SessionWorker::maintain()
     if (aliasAt.has_value() && nowMillis() >= *aliasAt) {
         startAliasErrand(/*byHand=*/false);
     }
+    emitDeviceState();
     armSchedule();
 }
 
@@ -2374,6 +2392,7 @@ void SessionWorker::refreshI2pStatus()
     }
     emitInvite();
     emitI2pKeyState();
+    emitDeviceState();
     const bool hasKey = session_->hasI2pDestination();
     WorkerOp op(*this, QStringLiteral("i2p-status"), QStringLiteral("status"),
         tr("Checking your destination"), tr("Asking your server..."));

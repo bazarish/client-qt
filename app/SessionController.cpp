@@ -2003,13 +2003,14 @@ QVariantList SessionController::devicesToReview() const
 }
 
 void SessionController::onDeviceState(const QString& deviceId, const bool primary,
-    const QVariantList& ownDevices, const qint64 epochReserveUntil, const bool epochReserveLow,
-    const bool revoked)
+    const QVariantList& ownDevices, const QVariantMap& card, const qint64 epochReserveUntil,
+    const bool epochReserveLow, const bool revoked)
 {
     deviceRevoked_ = revoked;
     deviceId_ = deviceId;
     primaryDevice_ = primary;
     ownDevices_ = ownDevices;
+    publishedCard_ = card;
     epochReserveUntil_ = epochReserveUntil;
     epochReserveLow_ = epochReserveLow;
     emit deviceStateChanged();

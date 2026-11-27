@@ -46,6 +46,7 @@ class SessionController : public QObject {
     Q_PROPERTY(bool primaryDevice READ primaryDevice NOTIFY deviceStateChanged)
     Q_PROPERTY(bool deviceRevoked READ deviceRevoked NOTIFY deviceStateChanged)
     Q_PROPERTY(qint64 epochReserveUntil READ epochReserveUntil NOTIFY deviceStateChanged)
+    Q_PROPERTY(QVariantMap publishedCard READ publishedCard NOTIFY deviceStateChanged)
     Q_PROPERTY(bool epochReserveLow READ epochReserveLow NOTIFY deviceStateChanged)
     Q_PROPERTY(int contactDevicesRevision READ contactDevicesRevision NOTIFY contactDevicesChanged)
     Q_PROPERTY(bool voiceRecording READ voiceRecording NOTIFY voiceChanged)
@@ -178,6 +179,7 @@ public:
     bool primaryDevice() const { return primaryDevice_; }
     bool deviceRevoked() const { return deviceRevoked_; }
     qint64 epochReserveUntil() const { return epochReserveUntil_; }
+    QVariantMap publishedCard() const { return publishedCard_; }
     bool epochReserveLow() const { return epochReserveLow_; }
     int contactDevicesRevision() const { return contactDevicesRevision_; }
     bool voiceRecording() const { return voiceRecording_; }
@@ -585,7 +587,7 @@ private slots:
     void onMailboxUsage(qulonglong usedBytes, qulonglong quotaBytes);
     void onI2pKeyState(bool hasKey, const QString& address);
     void onDeviceState(const QString& deviceId, bool primary, const QVariantList& ownDevices,
-        qint64 epochReserveUntil, bool epochReserveLow, bool revoked);
+        const QVariantMap& card, qint64 epochReserveUntil, bool epochReserveLow, bool revoked);
     void onContactDevices(const QString& peer, const QVariantList& devices);
     void onVoiceLoaded(const QString& e2eId, const QByteArray& bytes);
     void requestPicturesFor(const QList<StoredMessage>& messages);
@@ -741,6 +743,7 @@ private:
     bool primaryDevice_ = false;
     bool deviceRevoked_ = false;
     qint64 epochReserveUntil_ = 0;
+    QVariantMap publishedCard_;
     bool epochReserveLow_ = false;
     QHash<QString, QVariantList> contactDevices_;
     int contactDevicesRevision_ = 0;

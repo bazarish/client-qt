@@ -163,6 +163,7 @@ signals:
     void overviewFailed();
     void mailboxUsage(qulonglong usedBytes, qulonglong quotaBytes);
     void deviceState(const QString& deviceId, bool primary, const QVariantList& ownDevices,
+        const QVariantMap& card,
         qint64 epochReserveUntil, bool epochReserveLow, bool revoked);
     void contactDevices(const QString& peer, const QVariantList& devices);
     void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,
