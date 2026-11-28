@@ -162,11 +162,18 @@ Item {
         echoMode: TextInput.Password
         inputMethodHints: Qt.ImhDigitsOnly | Qt.ImhNoPredictiveText | Qt.ImhSensitiveData
             | Qt.ImhNoAutoUppercase
-        // On Android every other enter key type hides the keyboard before the key reaches the field.
+        // On Android every other enter key type hides the keyboard; this one types a line break instead.
         EnterKey.type: Qt.EnterKeyReturn
-        maximumLength: root.kCells
-        validator: RegularExpressionValidator { regularExpression: /[0-9]*/ }
+        maximumLength: root.kCells + 1
+        validator: RegularExpressionValidator {
+            regularExpression: new RegExp("[0-9]{0," + root.kCells + "}\\n?")
+        }
         onTextChanged: {
+            if (text.endsWith("\n")) {
+                text = text.slice(0, -1)
+                root.submit()
+                return
+            }
             if ((root.waiting || root.pending) && text.length > 0) {
                 text = ""
                 return
