@@ -1218,6 +1218,7 @@ Item {
                 font.pixelSize: delegate.kErrorPixelSize
                 maximumLineCount: delegate.kErrorLines
                 elide: Text.ElideRight
+                horizontalAlignment: Text.AlignRight
             }
 
             RowLayout {
@@ -1233,6 +1234,7 @@ Item {
                     font.pixelSize: delegate.kErrorPixelSize
                     maximumLineCount: delegate.kErrorLines
                     elide: Text.ElideRight
+                    horizontalAlignment: Text.AlignRight
                 }
                 Item {
                     id: resendLink
