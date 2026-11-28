@@ -14,11 +14,12 @@ Popup {
     parent: Overlay.overlay
     modal: true
     focus: true
+    bottomMargin: activeFocus ? App.keyboardInset : 0
+    readonly property real room: parent ? parent.height - popup.bottomMargin : 0
     x: parent ? (parent.width - width) / 2 : 0
     y: Theme.windowTopRoom / 2
     width: Math.min(Theme.windowWidth, parent ? parent.width - Theme.windowSideRoom : Theme.windowWidth)
-    height: parent ? parent.height - Theme.windowTopRoom - (activeFocus ? App.keyboardInset : 0)
-        : implicitHeight
+    height: parent ? popup.room - Theme.windowTopRoom : implicitHeight
     padding: 0
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     background: DialogFrame { }
