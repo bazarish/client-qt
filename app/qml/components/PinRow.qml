@@ -162,6 +162,8 @@ Item {
         echoMode: TextInput.Password
         inputMethodHints: Qt.ImhDigitsOnly | Qt.ImhNoPredictiveText | Qt.ImhSensitiveData
             | Qt.ImhNoAutoUppercase
+        // On Android every other enter key type hides the keyboard before the key reaches the field.
+        EnterKey.type: Qt.EnterKeyReturn
         maximumLength: root.kCells
         validator: RegularExpressionValidator { regularExpression: /[0-9]*/ }
         onTextChanged: {
