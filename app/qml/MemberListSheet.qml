@@ -84,19 +84,31 @@ WindowPopup {
                     root.close()
                     root.mentionRequested(memberRow.modelData)
                 }
-                TapHandler {
-                    acceptedButtons: Qt.LeftButton
-                    onTapped: if (App.mobile) { memberRow.mention() }
-                    onDoubleTapped: if (!App.mobile) { memberRow.mention() }
-                    onLongPressed: if (!memberRow.own) { memberMenu.popup() }
+                function openMenu() {
+                    if (memberRow.own) {
+                        return
+                    }
+                    App.holdFeedback()
+                    memberMenu.popup()
+                }
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.leftMargin: Theme.rowInset
+                    anchors.rightMargin: Theme.rowInset
+                    radius: Theme.radiusSmall
+                    color: memberMenu.visible ? Theme.selected : "transparent"
                 }
                 TapHandler {
-                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                    acceptedButtons: Qt.RightButton
-                    onTapped: if (!memberRow.own) { memberMenu.popup() }
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onTapped: memberRow.openMenu()
                 }
                 ContextMenu {
                     id: memberMenu
+                    ContextMenuItem {
+                        text: qsTr("Mention")
+                        iconName: "reply"
+                        onTriggered: memberRow.mention()
+                    }
                     ContextMenuItem {
                         text: qsTr("Request contact")
                         iconName: "person"

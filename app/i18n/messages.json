@@ -4397,6 +4397,12 @@
       "zh": "仅你可见",
       "ar": "لك وحدك"
     },
+    "Mention": {
+      "ru": "Упомянуть",
+      "es": "Mencionar",
+      "zh": "提及",
+      "ar": "إشارة"
+    },
     "Request contact": {
       "ru": "Запросить контакт",
       "es": "Pedir contacto",
