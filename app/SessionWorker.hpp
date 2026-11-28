@@ -16,6 +16,7 @@
 #include <QVariantMap>
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstdint>
 #include <deque>
@@ -276,6 +277,9 @@ private:
     QVariantList toldDeviceState_;
     void armDayTimer();
     QTimer* dayTimer_ = nullptr;
+    QTimer* connectRetry_ = nullptr;
+    std::function<void()> retryConnect_;
+    std::optional<std::chrono::steady_clock::time_point> lookupGiveUpAt_;
     void emitCallState();
     void reconcileCallTimer();
     struct ToldCall {

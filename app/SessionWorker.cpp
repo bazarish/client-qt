@@ -206,6 +206,9 @@ constexpr qint64 kTransientRenewLeadSeconds = 5 * 24 * 3600;
 constexpr qint64 kTransientJitterSeconds = 6 * 3600;
 
 constexpr int kCallWatchIntervalMs = 100;
+// A router that has just started cannot find the server yet; it is asked again quietly.
+constexpr std::chrono::seconds kAddressLookupRetry{5};
+constexpr std::chrono::minutes kAddressLookupPatience{3};
 
 QVariantMap wireLine(const bazarish::client::WireEvent& event)
 {
@@ -1211,6 +1214,30 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
                     : tr("Connecting to the server"));
         session_->registerAccount();
     } catch (const std::exception& e) {
+        const std::optional<bazarish::client::FailureCause> cause = bazarish::client::carriedCause(e);
+        if (cause.has_value() && cause->link == bazarish::client::LinkFailure::eAddressNotFound) {
+            const auto now = std::chrono::steady_clock::now();
+            if (!lookupGiveUpAt_.has_value()) {
+                lookupGiveUpAt_ = now + kAddressLookupPatience;
+            }
+            if (now < *lookupGiveUpAt_) {
+                bazarish::client::setConnectProgressSink(progressAccount, {});
+                emit connectProgress(
+                    bazarish::client::connectPercent(bazarish::client::ConnectMilestone::eServerLookup),
+                    milestoneText(bazarish::client::ConnectMilestone::eServerLookup));
+                retryConnect_ = [this, facades, serverFp, reseedUrls]() {
+                    connectAndRegister(facades, serverFp, reseedUrls);
+                };
+                if (connectRetry_ == nullptr) {
+                    connectRetry_ = new QTimer(this);
+                    connectRetry_->setSingleShot(true);
+                    connect(connectRetry_, &QTimer::timeout, this, [this]() { retryConnect_(); });
+                }
+                connectRetry_->start(kAddressLookupRetry);
+                return;
+            }
+        }
+        lookupGiveUpAt_.reset();
         startReceiving();
         bazarish::client::setConnectProgressSink(progressAccount, {});
         bazarish::log::warn("connecting failed: {}", e.what());
@@ -1219,6 +1246,7 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
         emit actionFailed(reason);
         return;
     }
+    lookupGiveUpAt_.reset();
     emit connectProgress(100, tr("Connected"));
     bazarish::client::setConnectProgressSink(progressAccount, {});
     emit connectionChanged(true, "active");
@@ -2250,6 +2278,9 @@ void SessionWorker::shutdown()
     }
     if (dayTimer_ != nullptr) {
         dayTimer_->stop();
+    }
+    if (connectRetry_ != nullptr) {
+        connectRetry_->stop();
     }
     if (session_) {
         session_->onCourierNews({});
