@@ -59,6 +59,7 @@ public final class Shade {
     private static final int RING_REQUEST = 2;
     private static final long WAKE_MILLIS = 3000;
     private static MediaPlayer ring = null;
+    private static AudioFocus ringFocus = null;
     private static Vibrator buzzing = null;
     private static final long RING_PULSE_MILLIS = 800;
     private static final long RING_PAUSE_MILLIS = 800;
@@ -308,9 +309,10 @@ public final class Shade {
     }
 
     public static void startRinging() {
-        if (ring != null || systemRing != null) {
+        if (ringFocus != null) {
             return;
         }
+        ringFocus = AudioFocus.forRinging(app);
         if (systemSounds) {
             ringWithPhoneRingtone();
             return;
@@ -451,6 +453,10 @@ public final class Shade {
         if (buzzing != null) {
             buzzing.cancel();
             buzzing = null;
+        }
+        if (ringFocus != null) {
+            ringFocus.release();
+            ringFocus = null;
         }
     }
 

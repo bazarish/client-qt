@@ -30,6 +30,7 @@ public final class CallAudio {
     private static boolean speaker = false;
     private static PowerManager.WakeLock nearEar = null;
     private static WifiManager.WifiLock radioAwake = null;
+    private static AudioFocus callFocus = null;
 
     private CallAudio() {}
 
@@ -38,6 +39,7 @@ public final class CallAudio {
         AudioManager manager = Shade.app.getSystemService(AudioManager.class);
         if (users++ == 0) {
             manager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+            callFocus = AudioFocus.forCall(Shade.app);
         }
         route(manager);
     }
@@ -46,6 +48,8 @@ public final class CallAudio {
         if (--users > 0) {
             return;
         }
+        callFocus.release();
+        callFocus = null;
         AudioManager manager = Shade.app.getSystemService(AudioManager.class);
         manager.clearCommunicationDevice();
         manager.setMode(AudioManager.MODE_NORMAL);
@@ -158,6 +162,7 @@ public final class CallAudio {
 
     public static final class Capture {
         private volatile AudioRecord record;
+        private final AudioFocus focus;
 
         public Capture(int sampleRate, int frameBytes, boolean forCall) {
             int least = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_MONO,
@@ -172,6 +177,7 @@ public final class CallAudio {
                 opened.release();
                 throw new IllegalStateException("the microphone did not open");
             }
+            focus = forCall ? null : AudioFocus.forVoiceRecording(Window.app);
             opened.startRecording();
             record = opened;
         }
@@ -191,6 +197,9 @@ public final class CallAudio {
             if (capturing != null) {
                 capturing.stop();
                 capturing.release();
+                if (focus != null) {
+                    focus.release();
+                }
             }
         }
     }

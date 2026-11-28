@@ -33,6 +33,7 @@ public final class VoicePlayback implements SensorEventListener {
     private final SensorManager sensors;
     private final Sensor proximity;
     private final PowerManager.WakeLock darkAtEar;
+    private final AudioFocus focus;
     private AudioTrack track;
     private boolean atEar = false;
 
@@ -45,6 +46,7 @@ public final class VoicePlayback implements SensorEventListener {
         darkAtEar = Window.app.getSystemService(PowerManager.class)
             .newWakeLock(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, "bazarish:voice");
         track = open(AudioAttributes.USAGE_MEDIA);
+        focus = AudioFocus.forVoicePlayback(Window.app);
         if (proximity != null
             && !sensors.registerListener(this, proximity, SensorManager.SENSOR_DELAY_NORMAL)) {
             Log.w(TAG, "the proximity sensor is not granted: voice notes stay on the speaker");
@@ -109,6 +111,7 @@ public final class VoicePlayback implements SensorEventListener {
         track.stop();
         track.release();
         track = null;
+        focus.release();
         if (atEar) {
             atEar = false;
             darkAtEar.release(PowerManager.RELEASE_FLAG_WAIT_FOR_NO_PROXIMITY);
