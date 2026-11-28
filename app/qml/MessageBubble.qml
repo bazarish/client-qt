@@ -847,9 +847,11 @@ Item {
                 spacing: 8
 
                 IconButton {
-                    iconName: delegate.voicePlaying ? "close" : "play"
+                    readonly property bool paused: delegate.voicePlaying && delegate.session.voicePaused
+                    iconName: delegate.voicePlaying && !paused ? "close" : "play"
                     tint: Theme.accent
-                    onClicked: delegate.session.playVoice(model.e2eId)
+                    onClicked: paused ? delegate.session.toggleVoicePause()
+                        : delegate.session.playVoice(model.e2eId)
                 }
                 VoiceTrack {
                     id: voiceTrack

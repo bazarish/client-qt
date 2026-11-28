@@ -35,6 +35,16 @@ Rectangle {
             fingerprint: root.session ? root.session.voicePlayingPeer : ""
             size: root.kAvatarSize
             Layout.alignment: Qt.AlignVCenter
+            Accessible.role: Accessible.Button
+            Accessible.name: qsTr("Show the voice message in its chat")
+            HoverHandler { cursorShape: Qt.PointingHandCursor }
+            TapHandler { onTapped: root.session.openPlayingVoice() }
+        }
+        IconButton {
+            readonly property bool paused: !!root.session && root.session.voicePaused
+            iconName: paused ? "play" : "stop"
+            Accessible.name: paused ? qsTr("Resume playback") : qsTr("Pause playback")
+            onClicked: root.session.toggleVoicePause()
         }
         VoiceTrack {
             Layout.fillWidth: true

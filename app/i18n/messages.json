@@ -5951,6 +5951,24 @@
       "zh": "%1 小时",
       "ar": "⁦%1⁩ ساعات"
     },
+    "Show the voice message in its chat": {
+      "ru": "Показать голосовое сообщение в чате",
+      "es": "Mostrar el mensaje de voz en su chat",
+      "zh": "在聊天中显示语音消息",
+      "ar": "إظهار الرسالة الصوتية في محادثتها"
+    },
+    "Resume playback": {
+      "ru": "Продолжить воспроизведение",
+      "es": "Reanudar la reproducción",
+      "zh": "继续播放",
+      "ar": "استئناف التشغيل"
+    },
+    "Pause playback": {
+      "ru": "Приостановить воспроизведение",
+      "es": "Pausar la reproducción",
+      "zh": "暂停播放",
+      "ar": "إيقاف التشغيل مؤقتًا"
+    },
     "Stop playback": {
       "ru": "Остановить воспроизведение",
       "es": "Detener la reproducción",

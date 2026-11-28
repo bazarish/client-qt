@@ -64,6 +64,7 @@ class SessionController : public QObject {
     Q_PROPERTY(QString voicePlayingPeer READ voicePlayingPeer NOTIFY voiceChanged)
     Q_PROPERTY(qint64 voicePlayingDurationMs READ voicePlayingDurationMs NOTIFY voiceChanged)
     Q_PROPERTY(QString voicePlayingWave READ voicePlayingWave NOTIFY voiceChanged)
+    Q_PROPERTY(bool voicePaused READ voicePaused NOTIFY voiceChanged)
     Q_PROPERTY(bool awaitingApproval READ awaitingApproval NOTIFY approvalChanged)
     Q_PROPERTY(bool accountHeld READ accountHeld NOTIFY approvalChanged)
     Q_PROPERTY(QString approvalNote READ approvalNote NOTIFY approvalChanged)
@@ -200,6 +201,7 @@ public:
     QString voicePlayingPeer() const { return voicePlayingPeer_; }
     qint64 voicePlayingDurationMs() const { return voicePlayingDurationMs_; }
     QString voicePlayingWave() const { return voicePlayingWave_; }
+    bool voicePaused() const { return voicePaused_; }
     bool awaitingApproval() const { return awaitingApproval_; }
     bool accountHeld() const { return accountHeld_; }
     QString approvalNote() const { return approvalNote_; }
@@ -350,6 +352,8 @@ public:
     Q_INVOKABLE void discardVoiceTake();
     Q_INVOKABLE void playVoice(const QString& e2eId, qint64 fromMs = -1);
     Q_INVOKABLE void stopVoice();
+    Q_INVOKABLE void toggleVoicePause();
+    Q_INVOKABLE void openPlayingVoice();
     Q_INVOKABLE void cycleVoiceSpeed();
     Q_INVOKABLE QUrl defaultPictureSaveUrl(const QString& e2eId, const QString& name) const;
     Q_INVOKABLE QString peerName(const QString& id) const;
@@ -722,6 +726,7 @@ private:
     QString voicePlayingPeer_;
     qint64 voicePlayingDurationMs_ = 0;
     QString voicePlayingWave_;
+    bool voicePaused_ = false;
     QTimer playbackTimer_;
     bool connecting_ = false;
     QString connectPhase_;

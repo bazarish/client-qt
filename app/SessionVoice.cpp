@@ -228,6 +228,7 @@ void SessionController::playVoice(const QString& e2eId, const qint64 fromMs)
     }
     stopVoiceTake();
     voiceNote();
+    voicePaused_ = false;
     if (voicePlaying_ != e2eId) {
         const StoredMessage note = store_.messageByE2e(e2eId, activePeer_);
         voicePlayingPeer_ = activePeer_;
@@ -250,7 +251,32 @@ void SessionController::stopVoice()
     playbackTimer_.stop();
     voicePositionMs_ = 0;
     voicePlaying_.clear();
+    voicePaused_ = false;
     emit voiceChanged();
+}
+
+void SessionController::toggleVoicePause()
+{
+    if (voicePlaying_.isEmpty()) {
+        return;
+    }
+    if (voicePaused_) {
+        playVoice(voicePlaying_, voicePositionMs_);
+        return;
+    }
+    voicePositionMs_ = voice_->playbackPositionMs();
+    voice_->stop();
+    playbackTimer_.stop();
+    voicePaused_ = true;
+    emit voiceChanged();
+}
+
+void SessionController::openPlayingVoice()
+{
+    const qint64 localId = store_.messageByE2e(voicePlaying_, voicePlayingPeer_).id;
+    if (localId != 0) {
+        openConversationAtMessage(voicePlayingPeer_, localId);
+    }
 }
 
 void SessionController::onVoiceLoaded(const QString& e2eId, const QByteArray& bytes)
