@@ -27,8 +27,8 @@ Rectangle {
     // The Basic style's text area padding, kept so the field looks the same.
     readonly property int kFieldPadding: 6
     readonly property var kForms: [
-        { name: qsTr("bold"), open: "**", close: "**" },
-        { name: qsTr("italic"), open: "*", close: "*" },
+        { name: qsTr("bold"), open: "**", close: "**", key: Qt.Key_B },
+        { name: qsTr("italic"), open: "*", close: "*", key: Qt.Key_I },
         { name: qsTr("strikethrough"), open: "~~", close: "~~" },
         { name: qsTr("code"), open: "```", close: "```" },
         { name: qsTr("command"), open: "!!", close: "!!" }
@@ -456,6 +456,15 @@ Rectangle {
                                 || event.key === Qt.Key_Paste
                             if (paste && App.clipboardHasImage()) {
                                 root.sendClipboardPicture()
+                                event.accepted = true
+                                return
+                            }
+                            if (event.modifiers !== Qt.ControlModifier) {
+                                return
+                            }
+                            const form = root.kForms.find((candidate) => candidate.key === event.key)
+                            if (form !== undefined) {
+                                root.wrapSelection(form.open, form.close)
                                 event.accepted = true
                             }
                         }

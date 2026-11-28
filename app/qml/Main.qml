@@ -71,6 +71,13 @@ ApplicationWindow {
         WheelHandler { onWheel: (event) => event.accepted = true }
     }
 
+    Shortcut {
+        sequence: "Ctrl+Q"
+        enabled: !App.mobile
+        context: Qt.ApplicationShortcut
+        onActivated: window.close()
+    }
+
     // Android turns an unhandled back press into closing the window, which would end the app.
     onClosing: function(close) {
         if (App.mobile) {
