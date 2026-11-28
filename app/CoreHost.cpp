@@ -770,6 +770,10 @@ void CoreHost::openSession(const QString& id, const QString& passphrase, const b
     if (rekeying_.contains(id)) {
         return;
     }
+    if (closing_.contains(id)) {
+        emit events_.accountOpenFailed(tr("This account is closing"));
+        return;
+    }
     if (sessionFor(id) != nullptr) {
         if (makeActive) {
             setActive(id);
@@ -902,6 +906,7 @@ void CoreHost::removeSession(CoreAccount* const account)
     relay_.forget(id);
     emit events_.sessionEnded(id);
     ++closingSessions_;
+    closing_.insert(id);
     connect(&account->events(), &AccountEvents::closed, this, [this, account, id]() {
         account->deleteLater();
         --closingSessions_;
@@ -912,17 +917,23 @@ void CoreHost::removeSession(CoreAccount* const account)
 
 void CoreHost::onSessionClosed(const QString& id)
 {
+    closing_.remove(id);
     client::accountkey::forget(manager_->fileFor(id.toStdString()));
     if (portableWanted_.has_value() && closingSessions_ == 0) {
         const bool on = *portableWanted_;
         portableWanted_.reset();
         movePortable(on);
     }
+    std::function<void()> open = openAfterClose_.take(id);
     if (pendingRemovals_.remove(id)) {
         removeAccountFiles(id);
+        open = nullptr;
     }
     if (deletingId_ == id) {
         setDeleting({});
+    }
+    if (open) {
+        open();
     }
 }
 
@@ -960,6 +971,10 @@ void CoreHost::createAccount(const QString& name, const QString& passphrase)
 void CoreHost::openAccount(const QString& id, const QString& passphrase)
 {
     if (rekeying_.contains(id)) {
+        return;
+    }
+    if (closing_.contains(id)) {
+        openAfterClose_.insert(id, [this, id, passphrase]() { openAccount(id, passphrase); });
         return;
     }
     const bool wasOff = offline_.contains(id);

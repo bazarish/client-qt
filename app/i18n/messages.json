@@ -2729,6 +2729,12 @@
       "zh": "仍要从本设备移除",
       "ar": "أزِله من هذا الجهاز على أي حال"
     },
+    "Remove from this device": {
+      "ru": "Удалить с этого устройства",
+      "es": "Quitar de este dispositivo",
+      "zh": "从此设备移除",
+      "ar": "إزالة من هذا الجهاز"
+    },
     "Remove from this device only": {
       "ru": "Удалить только с этого устройства",
       "es": "Quitar solo de este dispositivo",
@@ -3532,6 +3538,12 @@
       "es": "Esta cuenta ya no está protegida con contraseña",
       "zh": "这个账号不再受密码保护",
       "ar": "لم يعد هذا الحساب محميًا بكلمة مرور"
+    },
+    "This account is closing": {
+      "ru": "Аккаунт закрывается",
+      "es": "La cuenta se está cerrando",
+      "zh": "该账号正在关闭",
+      "ar": "لا يزال الحساب قيد الإغلاق"
     },
     "This account is not open": {
       "ru": "Этот аккаунт не открыт",

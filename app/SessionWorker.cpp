@@ -986,7 +986,7 @@ void SessionWorker::openAccount(
 
 void SessionWorker::deviceRevoked()
 {
-    if (!session_) {
+    if (!session_ || session_->deviceRevoked()) {
         return;
     }
     session_->noteDeviceRevoked();
@@ -2735,6 +2735,10 @@ void SessionWorker::leaveAccount()
         emit accountLeft(false, tr("This account is not open"));
         return;
     }
+    if (session_->deviceRevoked()) {
+        emit accountLeft(true, {});
+        return;
+    }
     WorkerOp op(*this, QStringLiteral("account-leave"), QStringLiteral("status"),
         tr("Removing from this device"), tr("Telling your server..."));
     try {
@@ -2767,6 +2771,10 @@ void SessionWorker::closeAccountOnServer()
 {
     if (!session_) {
         emit accountClosed(false, tr("This account is not open"));
+        return;
+    }
+    if (session_->deviceRevoked()) {
+        emit accountClosed(true, {});
         return;
     }
     WorkerOp op(*this, QStringLiteral("account-close"), QStringLiteral("status"),

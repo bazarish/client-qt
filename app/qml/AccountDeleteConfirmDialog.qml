@@ -12,6 +12,7 @@ Dialog {
     property bool serverless: false
     property bool primary: false
     property bool otherPrimaries: false
+    property bool revoked: false
     signal confirmed(string id)
     signal localOnlyRequested(string id)
 
@@ -43,9 +44,10 @@ Dialog {
     title: qsTr("Delete account")
     footer: DialogButtons {
         acceptText: root.serverless ? qsTr("Delete")
+            : root.revoked ? qsTr("Remove from this device")
             : root.localOnly ? qsTr("Remove from this device only") : qsTr("Delete everywhere")
         danger: true
-        showCancel: !root.localOnly && !root.serverless
+        showCancel: !root.localOnly && !root.serverless && !root.revoked
         cancelOnOwnLine: showCancel
         rejectBelow: !showCancel
         cancelText: qsTr("Remove from this device only")
@@ -54,6 +56,10 @@ Dialog {
         onRejected: root.reject()
     }
     onAccepted: {
+        if (root.revoked) {
+            root.localOnlyRequested(root.accountId)
+            return
+        }
         if (root.serverless) {
             root.confirmed(root.accountId)
             return
@@ -78,6 +84,7 @@ Dialog {
         Label {
             width: parent.width
             text: root.serverless ? qsTr("New account with no server")
+                : root.revoked ? qsTr("Device key revoked")
                 : root.localOnly
                 ? qsTr("This device forgets the account. The account and its mail stay on the server.")
                 : qsTr("Permanently delete this account? ")

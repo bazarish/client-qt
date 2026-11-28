@@ -14,6 +14,7 @@
 
 #include <bazarish/SecretBytes.hpp>
 
+#include <QHash>
 #include <QList>
 #include <QLocalServer>
 #include <QObject>
@@ -23,6 +24,7 @@
 #include <QVector>
 
 #include <atomic>
+#include <functional>
 #include <memory>
 #include <optional>
 
@@ -176,6 +178,8 @@ private:
     QString deletingId_;
     QSet<QString> pendingRemovals_;
     QSet<QString> rekeying_;
+    QSet<QString> closing_;
+    QHash<QString, std::function<void()>> openAfterClose_;
     UiLock uiLock_;
     IntruderNote intruder_;
     QTimer autoLock_;

@@ -596,6 +596,7 @@ WindowPopup {
                             danger: true
                             onClicked: {
                                 deleteDialog.localOnly = !root.session.primaryDevice
+                                deleteDialog.revoked = root.session.deviceRevoked
                                 deleteDialog.show(root.session.accountId, root.session.displayName,
                                     root.session.primaryDevice, root.session.ownDevices.some(
                                         (device) => device.primary && !device.current && !device.revoked))
