@@ -5861,11 +5861,11 @@
       "zh": "隐藏通知的全部文字",
       "ar": "إخفاء كل نص الإشعارات"
     },
-    "While the app is locked, a notification says only that a message came": {
-      "ru": "Пока приложение заблокировано, уведомление сообщает только о новом сообщении",
-      "es": "Mientras la aplicación está bloqueada, la notificación solo avisa de un mensaje nuevo",
-      "zh": "应用锁定期间，通知只提示有新消息",
-      "ar": "أثناء قفل التطبيق، يكتفي الإشعار بالإبلاغ عن رسالة جديدة"
+    "While the app is locked, a notification pops up with no text or name": {
+      "ru": "Пока приложение заблокировано, уведомление всплывает без текста и имени",
+      "es": "Mientras la aplicación está bloqueada, la notificación aparece sin texto ni nombre",
+      "zh": "应用锁定期间，通知弹出时不显示内容和名称",
+      "ar": "أثناء قفل التطبيق، يظهر الإشعار بلا نص ولا اسم"
     },
     "Set a password": {
       "ru": "Задайте пароль",

@@ -201,7 +201,7 @@ WindowPopup {
                             Layout.fillWidth: true
                         }
                         Label {
-                            text: qsTr("While the app is locked, a notification says only that a message came")
+                            text: qsTr("While the app is locked, a notification pops up with no text or name")
                             color: Theme.textDim; font.pixelSize: Theme.fontSmall
                             wrapMode: Text.Wrap; Layout.fillWidth: true
                         }
