@@ -241,6 +241,44 @@ Item {
     RouterStatusPage { id: routerStatus }
     StoragePage { id: storagePage }
     AccountIdentifiersPage { id: identifiersPage }
+    function openNeighbourChat(step) {
+        const peer = root.session.neighbourChat(step)
+        if (peer.length > 0) {
+            root.session.openConversation(peer)
+        }
+    }
+    Shortcut {
+        sequences: ["Ctrl+Tab", "Alt+Down"]
+        enabled: !App.mobile && root.session !== null
+        onActivated: root.openNeighbourChat(1)
+    }
+    Shortcut {
+        sequences: ["Ctrl+Shift+Tab", "Ctrl+Backtab", "Alt+Up"]
+        enabled: !App.mobile && root.session !== null
+        onActivated: root.openNeighbourChat(-1)
+    }
+    Shortcut {
+        sequences: [StandardKey.Preferences, "Ctrl+,"]
+        enabled: !App.mobile
+        onActivated: appSettings.open()
+    }
+    Shortcut {
+        sequence: "Ctrl+Shift+M"
+        enabled: !App.mobile
+        onActivated: App.notificationsEnabled = !App.notificationsEnabled
+    }
+    Repeater {
+        model: root.kAccountKeys
+        Item {
+            required property int modelData
+            Shortcut {
+                sequence: "Ctrl+" + modelData
+                enabled: !App.mobile
+                onActivated: App.switchToNumber(modelData)
+            }
+        }
+    }
+    readonly property var kAccountKeys: [1, 2, 3, 4, 5, 6, 7, 8, 9]
     function offerGateway(link) { appSettings.offerGateway(link) }
     AppSettingsPage {
         id: appSettings

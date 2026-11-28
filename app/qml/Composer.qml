@@ -29,8 +29,8 @@ Rectangle {
     readonly property var kForms: [
         { name: qsTr("bold"), open: "**", close: "**", key: Qt.Key_B },
         { name: qsTr("italic"), open: "*", close: "*", key: Qt.Key_I },
-        { name: qsTr("strikethrough"), open: "~~", close: "~~" },
-        { name: qsTr("code"), open: "```", close: "```" },
+        { name: qsTr("strikethrough"), open: "~~", close: "~~", key: Qt.Key_X, shift: true },
+        { name: qsTr("code"), open: "```", close: "```", key: Qt.Key_E },
         { name: qsTr("command"), open: "!!", close: "!!" }
     ]
 
@@ -443,6 +443,22 @@ Rectangle {
                                 event.accepted = true
                             }
                         }
+                        Keys.onUpPressed: function(event) {
+                            const own = App.mobile || input.length > 0 || root.editing || !root.session
+                                ? ({}) : root.session.conversation.lastOwnText()
+                            event.accepted = own.msgId !== undefined
+                            if (event.accepted) {
+                                root.session.beginEdit(own.msgId, own.e2eId, own.text)
+                            }
+                        }
+                        Keys.onEscapePressed: function(event) {
+                            event.accepted = root.editing || root.replying
+                            if (root.editing) {
+                                root.session.cancelEdit()
+                            } else if (root.replying) {
+                                root.session.cancelReply()
+                            }
+                        }
                         Keys.onTabPressed: function(event) {
                             const choices = root.mentionChoices
                             event.accepted = choices.length > 0
@@ -459,10 +475,12 @@ Rectangle {
                                 event.accepted = true
                                 return
                             }
-                            if (event.modifiers !== Qt.ControlModifier) {
+                            const shifted = event.modifiers === (Qt.ControlModifier | Qt.ShiftModifier)
+                            if (event.modifiers !== Qt.ControlModifier && !shifted) {
                                 return
                             }
-                            const form = root.kForms.find((candidate) => candidate.key === event.key)
+                            const form = root.kForms.find((candidate) => candidate.key === event.key
+                                && (candidate.shift === true) === shifted)
                             if (form !== undefined) {
                                 root.wrapSelection(form.open, form.close)
                                 event.accepted = true

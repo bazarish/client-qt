@@ -213,6 +213,53 @@ try {
     QTest::qWait(kSettleMs);
     expect(choicesOf(composer) == QStringList{QString::fromUtf8("Елена")},
         "a letter still being composed by a keyboard is taken");
+    QInputMethodEvent composed(QString(), {});
+    QCoreApplication::sendEvent(input, &composed);
+
+    const auto formatted = [&](const QString& text, const int from, const int to, const Qt::Key key,
+                               const Qt::KeyboardModifiers modifiers) {
+        putText(input, text);
+        CHECK(QMetaObject::invokeMethod(input, "select", Q_ARG(int, from), Q_ARG(int, to)));
+        QTest::keyClick(window, key, modifiers);
+        QTest::qWait(kSettleMs);
+        return input->property("text").toString();
+    };
+    const QString hello = QStringLiteral("hello world");
+    const int helloEnd = 5;
+    expect(formatted(hello, 0, helloEnd, Qt::Key_B, Qt::ControlModifier)
+            == QStringLiteral("**hello** world"),
+        "Ctrl+B makes the selection bold");
+    expect(formatted(hello, 0, helloEnd, Qt::Key_I, Qt::ControlModifier)
+            == QStringLiteral("*hello* world"),
+        "Ctrl+I makes the selection italic");
+    expect(formatted(hello, 0, helloEnd, Qt::Key_X, Qt::ControlModifier | Qt::ShiftModifier)
+            == QStringLiteral("~~hello~~ world"),
+        "Ctrl+Shift+X strikes the selection through");
+    expect(formatted(hello, 0, helloEnd, Qt::Key_E, Qt::ControlModifier)
+            == QStringLiteral("```hello``` world"),
+        "Ctrl+E makes the selection code");
+    expect(formatted(hello, helloEnd, helloEnd, Qt::Key_B, Qt::ControlModifier) == hello,
+        "Ctrl+B without a selection writes nothing");
+
+    putText(input, QStringLiteral("draft"));
+    QTest::keyClick(window, Qt::Key_Up);
+    QTest::qWait(kSettleMs);
+    expect(!session->property("editBegun").toMap().contains(QStringLiteral("msgId")),
+        "Up in a field with text edits nothing");
+    putText(input, QString());
+    QTest::keyClick(window, Qt::Key_Up);
+    QTest::qWait(kSettleMs);
+    const QVariantMap begun = session->property("editBegun").toMap();
+    expect(begun.value(QStringLiteral("msgId")).toInt() == 7
+            && begun.value(QStringLiteral("text")).toString() == QStringLiteral("my last"),
+        "Up in an empty field edits the last own message");
+
+    CHECK(session->setProperty("replying", true));
+    QTest::qWait(kSettleMs);
+    QTest::keyClick(window, Qt::Key_Escape);
+    QTest::qWait(kSettleMs);
+    expect(session->property("replyCancels").toInt() == 1 && !session->property("replying").toBool(),
+        "Esc drops the reply being written");
 
     QObject* const sheet = window->findChild<QObject*>(QStringLiteral("members"));
     CHECK(sheet != nullptr);
@@ -248,6 +295,57 @@ try {
     CHECK(QMetaObject::invokeMethod(search, "clicked"));
     QTest::qWait(kSettleMs);
     expect(list->property("count").toInt() == shown.size(), "closing the search shows everyone");
+
+    const auto rowOf = [&list](const char* name) -> QQuickItem* {
+        auto* const rows = list->property("contentItem").value<QQuickItem*>();
+        for (QQuickItem* const item : rows->childItems()) {
+            if (item->property("modelData").toString() == QString::fromUtf8(name)) {
+                return item;
+            }
+        }
+        return nullptr;
+    };
+    const auto centreOf = [](const QQuickItem* item) {
+        return item->mapToScene(QPointF(item->width() / 2, item->height() / 2)).toPoint();
+    };
+    const auto openMenus = [&list]() {
+        QList<QObject*> open;
+        for (QQuickItem* const row : list->property("contentItem").value<QQuickItem*>()->childItems()) {
+            for (QObject* const menu : itemsOf<QObject>(row, "QQuickMenu")) {
+                if (menu->property("visible").toBool()) {
+                    open << menu;
+                }
+            }
+        }
+        return open;
+    };
+    QQuickItem* const own = rowOf("Me");
+    QQuickItem* const bobRow = rowOf("Bob");
+    CHECK(own != nullptr && bobRow != nullptr);
+    QTest::mouseClick(window, Qt::LeftButton, {}, centreOf(own));
+    QTest::qWait(kSettleMs);
+    expect(openMenus().isEmpty(), "a tap on the own row opens no menu");
+    QTest::mouseClick(window, Qt::LeftButton, {}, centreOf(bobRow));
+    QTest::qWait(kSettleMs);
+    const QList<QObject*> menus = openMenus();
+    expect(menus.size() == 1, "one tap on a member opens the menu");
+    expect(sheet->property("mentioned").toString().isEmpty(), "the tap itself mentions nobody");
+    QQuickItem* mentionItem = nullptr;
+    if (menus.size() == 1) {
+        for (QQuickItem* const item : itemsOf<QQuickItem>(menus.first(), "QQuickMenuItem")) {
+            if (item->property("text").toString() == QStringLiteral("Mention")) {
+                mentionItem = item;
+            }
+        }
+    }
+    expect(mentionItem != nullptr, "the menu offers Mention");
+    if (mentionItem != nullptr) {
+        QTest::mouseClick(window, Qt::LeftButton, {}, centreOf(mentionItem));
+        QTest::qWait(kSettleMs);
+    }
+    expect(sheet->property("mentioned").toString() == QStringLiteral("Bob"),
+        "Mention in the menu mentions the member");
+    expect(!sheet->property("visible").toBool(), "the member list closes after the mention");
 
     std::printf("TestMentionsUi: %s\n", failures == 0 ? "all checks passed" : "FAILED");
     return failures == 0 ? 0 : 1;

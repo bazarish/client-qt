@@ -599,6 +599,14 @@ void AppController::lockAccount(const QString& id)
     emit commands_.lockAccount(id);
 }
 
+void AppController::switchToNumber(const int number)
+{
+    if (number < 1 || number > accountStatuses_.size()) {
+        return;
+    }
+    switchTo(accountStatuses_.at(number - 1).id);
+}
+
 void AppController::switchTo(const QString& id)
 {
     emit commands_.switchTo(id);

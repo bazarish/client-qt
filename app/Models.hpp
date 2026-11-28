@@ -124,6 +124,7 @@ public:
     void prependMessages(const QVector<StoredMessage>& messages);
     void appendMessages(const QVector<StoredMessage>& messages);
     Q_INVOKABLE int rowForId(qint64 id) const;
+    Q_INVOKABLE QVariantMap lastOwnText() const;
     void markDeliveredThrough(qint64 uptoId);
     bool newestIncomingThrough(int row, qint64& outId, QString& outProtocol, qint64& outSentAt) const;
     void setErrorForId(qint64 id, const QString& error);

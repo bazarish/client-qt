@@ -1596,6 +1596,27 @@ QString SessionController::shortFingerprint(const QString& fp) const
     return ContactBook::shortFingerprint(fp);
 }
 
+QString SessionController::neighbourChat(const int step) const
+{
+    const int count = contactsProxy_.rowCount();
+    if (count == 0) {
+        return {};
+    }
+    const auto peerAt = [this](const int row) {
+        return contactsProxy_.index(row, 0).data(ContactListModel::FingerprintRole).toString();
+    };
+    int row = -1;
+    for (int i = 0; i < count && row < 0; ++i) {
+        if (peerAt(i) == activePeer_) {
+            row = i;
+        }
+    }
+    if (row < 0) {
+        return peerAt(step > 0 ? 0 : count - 1);
+    }
+    return peerAt(((row + step) % count + count) % count);
+}
+
 void SessionController::setChatFilter(const QString& text)
 {
     contactsProxy_.setFilterFixedString(text.trimmed());

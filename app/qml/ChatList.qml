@@ -154,6 +154,15 @@ Item {
             }
         }
 
+        Shortcut {
+            sequence: "Ctrl+K"
+            enabled: !App.mobile && root.visible
+            onActivated: {
+                chatSearch.forceActiveFocus()
+                chatSearch.selectAll()
+            }
+        }
+
         TextField {
             id: chatSearch
             Layout.fillWidth: true

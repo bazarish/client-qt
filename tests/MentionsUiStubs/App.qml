@@ -9,4 +9,5 @@ QtObject {
     function markupPlain(text) { return text }
     function clipboardHasImage() { return false }
     function pickPictures() {}
+    function holdFeedback() {}
 }

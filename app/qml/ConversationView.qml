@@ -89,6 +89,12 @@ Item {
         function onActivePeerChanged() { root.clearChosen() }
     }
     Shortcut {
+        sequences: [StandardKey.Find]
+        enabled: !App.mobile && root.visible && root.session !== null
+            && root.session.activePeer.length > 0 && !root.lookingUp
+        onActivated: searchPopup.openSearch()
+    }
+    Shortcut {
         sequences: [StandardKey.Cancel]
         enabled: root.choosing
         onActivated: root.clearChosen()

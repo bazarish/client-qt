@@ -315,6 +315,7 @@ public:
     Q_INVOKABLE QVariantMap parseServerLink(const QString& uri) const;
     void retranslate();
     Q_INVOKABLE void openConversation(const QString& peer);
+    Q_INVOKABLE QString neighbourChat(int step) const;
     Q_INVOKABLE void closeConversation();
     Q_INVOKABLE void openConversationAtMessage(const QString& peer, qint64 localId);
     Q_INVOKABLE void openQuotedMessage(qint64 localId);

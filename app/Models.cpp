@@ -406,6 +406,17 @@ int ConversationModel::rowForId(qint64 id) const
     return -1;
 }
 
+QVariantMap ConversationModel::lastOwnText() const
+{
+    for (auto it = messages_.crbegin(); it != messages_.crend(); ++it) {
+        if (it->outgoing && it->type == QLatin1String("text")) {
+            return {{QStringLiteral("msgId"), it->id}, {QStringLiteral("e2eId"), it->e2eId},
+                {QStringLiteral("text"), it->text}};
+        }
+    }
+    return {};
+}
+
 void ConversationModel::notifyRow(const int row, const QList<int>& roles)
 {
     if (row < 0) {
