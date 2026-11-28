@@ -976,6 +976,15 @@ void AppController::setInFront(const bool on)
     emit commands_.windowActive(on);
 }
 
+void AppController::setWindowFocused(const bool on)
+{
+    if (windowFocused_ == on) {
+        return;
+    }
+    windowFocused_ = on;
+    emit windowFocusedChanged();
+}
+
 void AppController::moveToBackground() const
 {
 #ifdef Q_OS_ANDROID

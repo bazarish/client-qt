@@ -76,6 +76,7 @@ class AppController : public QObject {
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
 
     Q_PROPERTY(bool inFront READ inFront NOTIFY inFrontChanged)
+    Q_PROPERTY(bool windowFocused READ windowFocused NOTIFY windowFocusedChanged)
     Q_PROPERTY(bool uiLockEnabled READ uiLockEnabled NOTIFY uiLockChanged)
     Q_PROPERTY(bool uiLocked READ uiLocked NOTIFY uiLockChanged)
     Q_PROPERTY(double uiWaitUntil READ uiWaitUntil NOTIFY uiLockChanged)
@@ -256,6 +257,8 @@ public:
 
     bool inFront() const { return inFront_; }
     void setInFront(bool on);
+    bool windowFocused() const { return windowFocused_; }
+    void setWindowFocused(bool on);
     bool uiLockEnabled() const { return uiLockEnabled_; }
     bool uiLocked() const { return uiLocked_; }
     double uiWaitUntil() const { return static_cast<double>(uiWaitUntilMs_); }
@@ -335,6 +338,7 @@ signals:
     void linkRefused(const QString& reason);
     void uiLockChanged();
     void inFrontChanged();
+    void windowFocusedChanged();
     void uiLockRequestedHere();
     void uiUnlockAnswered(bool unlocked);
     void intruderChanged();
@@ -393,6 +397,7 @@ private:
     bool pairing_ = false;
     static constexpr double kMsPerSecond = 1000.0;
     bool inFront_ = false;
+    bool windowFocused_ = true;
     bool uiLockEnabled_ = false;
     bool uiLocked_ = false;
     qint64 uiWaitUntilMs_ = 0;

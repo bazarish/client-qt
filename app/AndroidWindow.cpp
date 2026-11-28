@@ -125,6 +125,11 @@ void resumedChanged(JNIEnv*, jclass, jboolean on)
     inWindowThread<AppController>(gApp, [on](AppController& app) { app.setInFront(on); });
 }
 
+void focusChanged(JNIEnv*, jclass, jboolean on)
+{
+    inWindowThread<AppController>(gApp, [on](AppController& app) { app.setWindowFocused(on); });
+}
+
 void keyboardCovers(JNIEnv*, jclass, jint pixels)
 {
     inWindowThread<AppController>(gApp, [pixels](AppController& app) {
@@ -158,6 +163,7 @@ AndroidWindow::AndroidWindow(AppController& app, QObject* const parent)
         {"fingerprintAnswered", "(Z)V", reinterpret_cast<void*>(fingerprintAnswered)},
         {"ownerConfirmed", "(Z)V", reinterpret_cast<void*>(ownerConfirmed)},
         {"resumedChanged", "(Z)V", reinterpret_cast<void*>(resumedChanged)},
+        {"focusChanged", "(Z)V", reinterpret_cast<void*>(focusChanged)},
     };
     QJniEnvironment env;
     if (!env.registerNativeMethods(kWindow, natives, static_cast<int>(std::size(natives)))) {
@@ -170,6 +176,7 @@ AndroidWindow::AndroidWindow(AppController& app, QObject* const parent)
     }
     QJniObject::callStaticMethod<void>(kWindow, "nativesRegistered", "()V");
     app_.setInFront(QJniObject::callStaticMethod<jboolean>(kWindow, "resumed", "()Z"));
+    app_.setWindowFocused(QJniObject::callStaticMethod<jboolean>(kWindow, "focused", "()Z"));
 
     QJniObject::callStaticMethod<void>(kWindow, "followKeyboard", "()V");
     // Android's touch-and-hold delay, which its accessibility settings change; Qt keeps 800 ms.

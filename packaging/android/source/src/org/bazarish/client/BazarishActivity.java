@@ -42,6 +42,13 @@ public class BazarishActivity extends QtActivity {
         super.onPause();
     }
 
+    // Qt marks its window active only on a touch, so a system prompt's focus is followed here.
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        Window.setFocused(hasFocus);
+    }
+
     @Override
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
         savedInstanceState.remove(QT_STARTED);

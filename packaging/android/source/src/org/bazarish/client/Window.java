@@ -72,6 +72,7 @@ public final class Window {
     private static boolean captureAllowed = false;
     private static boolean recentsHidden = false;
     private static volatile boolean resumed = false;
+    private static volatile boolean focused = false;
     private static volatile boolean nativesReady = false;
     private static Integer systemStatusBar;
     private static int systemNavigationBar;
@@ -92,6 +93,7 @@ public final class Window {
     static native void fingerprintAnswered(boolean ok);
     static native void ownerConfirmed(boolean ok);
     static native void resumedChanged(boolean on);
+    static native void focusChanged(boolean on);
 
     private Window() {}
 
@@ -215,6 +217,17 @@ public final class Window {
         if (nativesReady) {
             resumedChanged(on);
         }
+    }
+
+    static void setFocused(boolean on) {
+        focused = on;
+        if (nativesReady) {
+            focusChanged(on);
+        }
+    }
+
+    public static boolean focused() {
+        return focused;
     }
 
     public static void nativesRegistered() {

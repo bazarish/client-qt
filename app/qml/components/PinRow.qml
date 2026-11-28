@@ -77,7 +77,8 @@ Item {
     }
     function raiseKeyboard() {
         const window = root.Window.window
-        if (root.keyboardWanted && field.activeFocus && App.inFront && window && window.active) {
+        if (root.keyboardWanted && field.activeFocus && App.inFront && App.windowFocused
+                && window && window.active) {
             root.keyboardWanted = false
             Qt.inputMethod.show()
         }
@@ -85,6 +86,7 @@ Item {
     Connections {
         target: App
         function onInFrontChanged() { root.raiseKeyboard() }
+        function onWindowFocusedChanged() { root.raiseKeyboard() }
     }
     Connections {
         target: root.Window.window
