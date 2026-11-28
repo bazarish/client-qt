@@ -217,8 +217,6 @@ void CoreHost::attachWindow(ChannelEnd& channel)
 void CoreHost::detachWindow()
 {
     relay_.detach();
-    // On Android the next window is the app started again, and a start asks for the PIN.
-    lockUi();
     setWindowActive(false);
     setCallScreenShown(false);
 }

@@ -280,12 +280,16 @@ try {
     }
 
     Window third;
-    bool thirdLocked = false;
+    bool thirdEnabled = false;
+    bool thirdLocked = true;
     QObject::connect(&third.events, &AppEvents::uiLock,
-        [&](bool, const bool shut, qint64, int, bool, bool, bool) { thirdLocked = shut; });
+        [&](const bool on, const bool shut, qint64, int, bool, bool, bool) {
+            thirdEnabled = on;
+            thirdLocked = shut;
+        });
     third.connectTo(path);
-    CHECK(settleUntil([&]() { return third.started == 1 && second.lost; }));
-    CHECK(thirdLocked);
+    CHECK(settleUntil([&]() { return third.started == 1 && second.lost && thirdEnabled; }));
+    CHECK(!thirdLocked);
 
     emit third.commands.quit();
     CHECK(settleUntil([&]() { return core.state() == QProcess::NotRunning; }));
