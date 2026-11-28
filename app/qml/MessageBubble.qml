@@ -408,7 +408,7 @@ Item {
         acceptedButtons: Qt.LeftButton
         onLongPressed: {
             const pressed = holdHandler.point.scenePressPosition
-            if (!delegate.systemsTouch(pressed) && !delegate.within(wave, pressed)) {
+            if (!delegate.systemsTouch(pressed) && !delegate.within(voiceTrack, pressed)) {
                 App.holdFeedback()
                 delegate.openMenu()
             }
@@ -433,7 +433,7 @@ Item {
         return item.visible && item.contains(item.mapFromItem(null, scene.x, scene.y))
     }
     function onTappablePart(scene) {
-        const parts = [replyQuote, preview, wave, speedChip, resendLink]
+        const parts = [replyQuote, preview, voiceTrack, resendLink]
         for (let i = 0; i < reactionChips.count; ++i) {
             parts.push(reactionChips.itemAt(i))
         }
@@ -857,6 +857,7 @@ Item {
                     onClicked: delegate.session.playVoice(model.e2eId)
                 }
                 VoiceTrack {
+                    id: voiceTrack
                     Layout.fillWidth: true
                     session: delegate.session
                     e2eId: model.e2eId

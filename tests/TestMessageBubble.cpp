@@ -175,6 +175,16 @@ try {
     expect(shown > 0, "the list draws real bubbles");
     expect(takeWarnings() == 0, "bubbles draw their rows without a warning");
 
+    for (QQuickItem* const item : list->property("contentItem").value<QQuickItem*>()->childItems()) {
+        if (item->property("msgE2eId").toString().startsWith(QStringLiteral("e2e-"))) {
+            QVariant tappable;
+            CHECK(QMetaObject::invokeMethod(item, "onTappablePart", Q_RETURN_ARG(QVariant, tappable),
+                Q_ARG(QVariant, QVariant::fromValue(QPointF()))));
+            break;
+        }
+    }
+    expect(takeWarnings() == 0, "a touch on a bubble reaches every part it can land on");
+
     rows.setMessages(rowsFrom(kThirdChat, kPageRows), {ViewLanding::eUnread, kThirdChat + kLandingRow});
     QTest::qWait(kSettleMs);
     rows.setMessages(rowsFrom(kFirstChat, kPageRows), {ViewLanding::eMessage, kFirstChat + kLandingRow});
