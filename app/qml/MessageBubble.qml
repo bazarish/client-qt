@@ -42,8 +42,6 @@ Item {
     readonly property string kSendScheme: "bz-send:"
     readonly property string kAliasScheme: "bz-alias:"
     readonly property string kCopyScheme: "bz-copy:"
-    property bool copiedBlock: false
-    Timer { id: copiedBlockFor; interval: 1500; onTriggered: delegate.copiedBlock = false }
 
     function activateLink(link) {
         if (link.startsWith(delegate.kSendScheme)) {
@@ -57,8 +55,7 @@ Item {
             if (delegate.session) {
                 App.copyText(
                     decodeURIComponent(link.substring(delegate.kCopyScheme.length)))
-                delegate.copiedBlock = true
-                copiedBlockFor.restart()
+                window.showToast(qsTr("Copied to clipboard"))
             }
         } else if (App.isAppLink(link)) {
             App.openLink(link)
@@ -239,8 +236,6 @@ Item {
         pooled = true
         springBack.stop()
         pull = 0
-        copiedBlock = false
-        copiedBlockFor.stop()
         busy = false
     }
     ListView.onReused: {
@@ -1008,16 +1003,6 @@ Item {
                     value: Text.NativeRendering
                     restoreMode: Binding.RestoreBindingOrValue
                 }
-            }
-
-            Label {
-                visible: delegate.copiedBlock
-                text: qsTr("Copied to clipboard")
-                color: Theme.green
-                font.pixelSize: Theme.fontSmall
-                Layout.topMargin: 2
-                wrapMode: Text.Wrap
-                Layout.fillWidth: true
             }
 
             Loader {
