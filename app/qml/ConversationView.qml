@@ -683,6 +683,8 @@ Item {
                 }
 
                 property bool stickToBottom: true
+                readonly property real kEndSlack: 1
+                property real restingHeight: 0
                 property bool autoScrolling: false
                 property bool paging: false
                 property var highlightId: -1
@@ -695,11 +697,14 @@ Item {
                 property bool landCentre: false
                 property bool landTail: false
 
+                function endFor(viewHeight) {
+                    return Math.max(originY - topMargin, originY + contentHeight + bottomMargin - viewHeight)
+                }
                 // positionViewAtEnd() leaves out bottomMargin.
                 function scrollToEnd() {
                     autoScrolling = true
                     positionViewAtEnd()
-                    contentY = Math.max(originY - topMargin, originY + contentHeight + bottomMargin - height)
+                    contentY = endFor(height)
                     autoScrolling = false
                 }
                 function tailFits() {
@@ -815,7 +820,19 @@ Item {
                 // Follow the bottom as bubbles settle, but not mid-gesture: a drag past the end re-measures rows above.
                 onContentHeightChanged: if (stickToBottom && !paging && !moving && !wheel.wheeling) { scrollToEnd() }
                 onMovementEnded: if (stickToBottom && !paging) { scrollToEnd() }
-                onHeightChanged: if (stickToBottom && !paging) { scrollToEnd() }
+                onHeightChanged: {
+                    const restedAtEnd = Math.abs(contentY - endFor(restingHeight)) < kEndSlack
+                    restingHeight = height
+                    if (paging) {
+                        return
+                    }
+                    if (restedAtEnd && root.session && root.session.atNewest) {
+                        stickToBottom = true
+                    }
+                    if (stickToBottom || restedAtEnd) {
+                        scrollToEnd()
+                    }
+                }
 
                 Connections {
                     target: messages.model

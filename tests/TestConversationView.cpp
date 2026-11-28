@@ -47,6 +47,8 @@ constexpr qint64 kOtherAccount = 301;
 // Neither has a growing picture above it: a picture that decodes later pushes the rows below it.
 constexpr int kUnreadRow = 5;
 constexpr int kFoundRow = 6;
+constexpr int kKeyboardPixels = 300;
+constexpr int kShortRows = 4;
 
 int failures = 0;
 
@@ -240,6 +242,20 @@ try {
     std::printf("  top row after the switch: %d\n", topRow(list));
     expect(topRow(list) == kUnreadRow, "a switch to a chat with unread opens at the first unread");
     expect(bubblesShowTheirRows(list), "every bubble shows its own row after the switch");
+
+    CHECK(session->setProperty("atNewest", false));
+    CHECK(QMetaObject::invokeMethod(session, "open", Q_ARG(QVariant, QStringLiteral("e")),
+        Q_ARG(QVariant, 0), Q_ARG(QVariant, kShortRows), Q_ARG(QVariant, kThirdChat),
+        Q_ARG(QVariant, int(ViewLanding::eUnread)), Q_ARG(QVariant, kThirdChat + kShortRows - 1)));
+    QTest::qWait(kSettleMs);
+    CHECK(session->setProperty("atNewest", true));
+    QTest::qWait(kSettleMs);
+    expect(atEnd(list), "a short chat opened at its unread rests at its end");
+    view.rootObject()->setHeight(view.rootObject()->height() - kKeyboardPixels);
+    QTest::qWait(kSettleMs);
+    expect(atEnd(list), "a chat that rests at its end keeps it in sight under the keyboard");
+    view.rootObject()->setHeight(view.rootObject()->height() + kKeyboardPixels);
+    QTest::qWait(kSettleMs);
 
     open(session, QStringLiteral("c"), 0, kThirdChat, ViewLanding::eMessage,
         kThirdChat + kFoundRow);
