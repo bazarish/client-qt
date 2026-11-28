@@ -38,6 +38,7 @@ Bytes readWhole(const QString& location);
 
 std::unique_ptr<client::FileOutput> openOutput(const QString& dest);
 
+QString safeSaveName(const QString& offered);
 void saveIntoFolder(const QDir& folder, const QString& fileName, const QByteArray& bytes);
 void saveIntoDownloads(const QString& fileName, const QString& mime, const QByteArray& bytes);
 

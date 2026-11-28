@@ -3,6 +3,8 @@
 
 #include "PathText.hpp"
 
+#include <bazarish/PlainText.hpp>
+
 #include <QDir>
 #include <QFileInfo>
 #include <QStandardPaths>
@@ -246,6 +248,11 @@ std::unique_ptr<client::FileOutput> openOutput(const QString& dest)
     return client::fileTargetAt(toPath(dest)).open();
 }
 
+QString safeSaveName(const QString& offered)
+{
+    return QString::fromStdString(bazarish::safeFileName(offered.toStdString()));
+}
+
 void saveIntoFolder(const QDir& folder, const QString& fileName, const QByteArray& bytes)
 {
     if (!folder.mkpath(QStringLiteral("."))) {
@@ -264,8 +271,9 @@ void saveIntoFolder(const QDir& folder, const QString& fileName, const QByteArra
 }
 
 void saveIntoDownloads(
-    const QString& fileName, [[maybe_unused]] const QString& mime, const QByteArray& bytes)
+    const QString& offeredName, [[maybe_unused]] const QString& mime, const QByteArray& bytes)
 {
+    const QString fileName = safeSaveName(offeredName);
 #ifdef Q_OS_ANDROID
     QJniEnvironment env;
     const QJniObject array

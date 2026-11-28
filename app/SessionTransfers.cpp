@@ -36,8 +36,7 @@ QUrl SessionController::defaultSaveUrl(const QString& fileName) const
     if (dir.isEmpty()) {
         dir = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
     }
-    const QString name = fileName.isEmpty() ? QStringLiteral("file") : fileName;
-    return QUrl::fromLocalFile(QDir(dir).filePath(name));
+    return QUrl::fromLocalFile(QDir(dir).filePath(safeSaveName(fileName)));
 }
 
 void SessionController::onTransferStage(
