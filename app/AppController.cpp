@@ -160,6 +160,12 @@ AppController::AppController(Translations& translations, Relay& relay, QObject* 
             const int autoLockSeconds, const bool fingerprint, const bool hidesAll,
             const bool photo) {
             uiLockEnabled_ = enabled;
+            if (locked && !uiLocked_) {
+                for (SessionController* const session : std::as_const(sessions_)) {
+                    session->stopVoice();
+                    session->stopVoiceTake();
+                }
+            }
             uiLocked_ = locked;
             uiWaitUntilMs_ = waitUntilMs;
             uiAutoLockSeconds_ = autoLockSeconds;
@@ -292,6 +298,8 @@ void AppController::endSession(const QString& id)
     if (ctrl == nullptr) {
         return;
     }
+    ctrl->stopVoice();
+    ctrl->stopVoiceTake();
     relay_.forget(id);
     sessions_.removeAll(ctrl);
     if (activeId_ == id) {
