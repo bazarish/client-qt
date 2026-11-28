@@ -104,6 +104,7 @@ Item {
                                              + "M 5 20 A 7 7 0 0 1 19 20"
                         case "send":    return "M 3 12 L 21 4 L 14 21 L 11.5 13.5 Z M 11.5 13.5 L 21 4"
                         case "play":    return "M 8 5 L 19 12 L 8 19 Z"
+                        case "pause":   return "M 9 6 L 9 18 M 15 6 L 15 18"
                         case "file":    return "M 6 3 H 14 L 19 8 V 21 H 6 Z M 14 3 V 8 H 19"
                         case "save":    return "M 12 4 V 15 M 8 11 L 12 15 L 16 11 "
                                              + "M 5 17 V 20 H 19 V 17"

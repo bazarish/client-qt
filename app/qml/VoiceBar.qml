@@ -42,7 +42,7 @@ Rectangle {
         }
         IconButton {
             readonly property bool paused: !!root.session && root.session.voicePaused
-            iconName: paused ? "play" : "stop"
+            iconName: paused ? "play" : "pause"
             Accessible.name: paused ? qsTr("Resume playback") : qsTr("Pause playback")
             onClicked: root.session.toggleVoicePause()
         }
